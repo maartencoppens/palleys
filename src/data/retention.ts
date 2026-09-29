@@ -1,0 +1,1 @@
+export const PREVIEW_RETENTION_DAYS = 30;

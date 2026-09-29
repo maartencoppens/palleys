@@ -1,0 +1,37 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "./generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum PreviewStatus {
+  UPLOADED
+  GENERATING_POSE
+  POSE_READY
+  GENERATING_MODEL
+  MODEL_READY
+  ORDERED
+  FAILED
+  EXPIRED
+}
+
+model Preview {
+  id               String        @id @default(cuid())
+  status           PreviewStatus @default(UPLOADED)
+  originalPhotoKey String?
+  poseImageKey     String?
+  glbKey           String?
+  meshyTaskId      String?
+  email            String?
+  error            String?
+  createdAt        DateTime      @default(now())
+  expiresAt        DateTime
+}
