@@ -14,24 +14,31 @@ datasource db {
 
 enum PreviewStatus {
   UPLOADED
+  PAID
   GENERATING_POSE
   POSE_READY
   GENERATING_MODEL
   MODEL_READY
-  ORDERED
+  APPROVED
+  PRINT_READY
   FAILED
   EXPIRED
 }
 
 model Preview {
-  id               String        @id @default(cuid())
-  status           PreviewStatus @default(UPLOADED)
-  originalPhotoKey String?
-  poseImageKey     String?
-  glbKey           String?
-  meshyTaskId      String?
-  email            String?
-  error            String?
-  createdAt        DateTime      @default(now())
-  expiresAt        DateTime
+  id                String        @id @default(cuid())
+  status            PreviewStatus @default(UPLOADED)
+  originalPhotoKey  String?
+  poseImageKey      String?
+  glbKey            String?
+  meshyTaskId       String?
+  email             String?
+  error             String?
+  shopifyOrderId    String?
+  shopifyLineItemId String?       @unique
+  createdAt         DateTime      @default(now())
+  expiresAt         DateTime?     // alleen voor niet-betaalde uploads, leeg na betaling
+  photosDeleteAt    DateTime?     // voor betaalde orders, na verzending
+
+  @@index([status, expiresAt])
 }

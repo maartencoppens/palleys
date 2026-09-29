@@ -33,8 +33,11 @@ export type PreviewMinAggregateOutputType = {
   meshyTaskId: string | null
   email: string | null
   error: string | null
+  shopifyOrderId: string | null
+  shopifyLineItemId: string | null
   createdAt: Date | null
   expiresAt: Date | null
+  photosDeleteAt: Date | null
 }
 
 export type PreviewMaxAggregateOutputType = {
@@ -46,8 +49,11 @@ export type PreviewMaxAggregateOutputType = {
   meshyTaskId: string | null
   email: string | null
   error: string | null
+  shopifyOrderId: string | null
+  shopifyLineItemId: string | null
   createdAt: Date | null
   expiresAt: Date | null
+  photosDeleteAt: Date | null
 }
 
 export type PreviewCountAggregateOutputType = {
@@ -59,8 +65,11 @@ export type PreviewCountAggregateOutputType = {
   meshyTaskId: number
   email: number
   error: number
+  shopifyOrderId: number
+  shopifyLineItemId: number
   createdAt: number
   expiresAt: number
+  photosDeleteAt: number
   _all: number
 }
 
@@ -74,8 +83,11 @@ export type PreviewMinAggregateInputType = {
   meshyTaskId?: true
   email?: true
   error?: true
+  shopifyOrderId?: true
+  shopifyLineItemId?: true
   createdAt?: true
   expiresAt?: true
+  photosDeleteAt?: true
 }
 
 export type PreviewMaxAggregateInputType = {
@@ -87,8 +99,11 @@ export type PreviewMaxAggregateInputType = {
   meshyTaskId?: true
   email?: true
   error?: true
+  shopifyOrderId?: true
+  shopifyLineItemId?: true
   createdAt?: true
   expiresAt?: true
+  photosDeleteAt?: true
 }
 
 export type PreviewCountAggregateInputType = {
@@ -100,8 +115,11 @@ export type PreviewCountAggregateInputType = {
   meshyTaskId?: true
   email?: true
   error?: true
+  shopifyOrderId?: true
+  shopifyLineItemId?: true
   createdAt?: true
   expiresAt?: true
+  photosDeleteAt?: true
   _all?: true
 }
 
@@ -186,8 +204,11 @@ export type PreviewGroupByOutputType = {
   meshyTaskId: string | null
   email: string | null
   error: string | null
+  shopifyOrderId: string | null
+  shopifyLineItemId: string | null
   createdAt: Date
-  expiresAt: Date
+  expiresAt: Date | null
+  photosDeleteAt: Date | null
   _count: PreviewCountAggregateOutputType | null
   _min: PreviewMinAggregateOutputType | null
   _max: PreviewMaxAggregateOutputType | null
@@ -220,8 +241,11 @@ export type PreviewWhereInput = {
   meshyTaskId?: Prisma.StringNullableFilter<"Preview"> | string | null
   email?: Prisma.StringNullableFilter<"Preview"> | string | null
   error?: Prisma.StringNullableFilter<"Preview"> | string | null
+  shopifyOrderId?: Prisma.StringNullableFilter<"Preview"> | string | null
+  shopifyLineItemId?: Prisma.StringNullableFilter<"Preview"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Preview"> | Date | string
-  expiresAt?: Prisma.DateTimeFilter<"Preview"> | Date | string
+  expiresAt?: Prisma.DateTimeNullableFilter<"Preview"> | Date | string | null
+  photosDeleteAt?: Prisma.DateTimeNullableFilter<"Preview"> | Date | string | null
 }
 
 export type PreviewOrderByWithRelationInput = {
@@ -233,12 +257,16 @@ export type PreviewOrderByWithRelationInput = {
   meshyTaskId?: Prisma.SortOrderInput | Prisma.SortOrder
   email?: Prisma.SortOrderInput | Prisma.SortOrder
   error?: Prisma.SortOrderInput | Prisma.SortOrder
+  shopifyOrderId?: Prisma.SortOrderInput | Prisma.SortOrder
+  shopifyLineItemId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
-  expiresAt?: Prisma.SortOrder
+  expiresAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  photosDeleteAt?: Prisma.SortOrderInput | Prisma.SortOrder
 }
 
 export type PreviewWhereUniqueInput = Prisma.AtLeast<{
   id?: string
+  shopifyLineItemId?: string
   AND?: Prisma.PreviewWhereInput | Prisma.PreviewWhereInput[]
   OR?: Prisma.PreviewWhereInput[]
   NOT?: Prisma.PreviewWhereInput | Prisma.PreviewWhereInput[]
@@ -249,9 +277,11 @@ export type PreviewWhereUniqueInput = Prisma.AtLeast<{
   meshyTaskId?: Prisma.StringNullableFilter<"Preview"> | string | null
   email?: Prisma.StringNullableFilter<"Preview"> | string | null
   error?: Prisma.StringNullableFilter<"Preview"> | string | null
+  shopifyOrderId?: Prisma.StringNullableFilter<"Preview"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Preview"> | Date | string
-  expiresAt?: Prisma.DateTimeFilter<"Preview"> | Date | string
-}, "id">
+  expiresAt?: Prisma.DateTimeNullableFilter<"Preview"> | Date | string | null
+  photosDeleteAt?: Prisma.DateTimeNullableFilter<"Preview"> | Date | string | null
+}, "id" | "shopifyLineItemId">
 
 export type PreviewOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -262,8 +292,11 @@ export type PreviewOrderByWithAggregationInput = {
   meshyTaskId?: Prisma.SortOrderInput | Prisma.SortOrder
   email?: Prisma.SortOrderInput | Prisma.SortOrder
   error?: Prisma.SortOrderInput | Prisma.SortOrder
+  shopifyOrderId?: Prisma.SortOrderInput | Prisma.SortOrder
+  shopifyLineItemId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
-  expiresAt?: Prisma.SortOrder
+  expiresAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  photosDeleteAt?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.PreviewCountOrderByAggregateInput
   _max?: Prisma.PreviewMaxOrderByAggregateInput
   _min?: Prisma.PreviewMinOrderByAggregateInput
@@ -281,8 +314,11 @@ export type PreviewScalarWhereWithAggregatesInput = {
   meshyTaskId?: Prisma.StringNullableWithAggregatesFilter<"Preview"> | string | null
   email?: Prisma.StringNullableWithAggregatesFilter<"Preview"> | string | null
   error?: Prisma.StringNullableWithAggregatesFilter<"Preview"> | string | null
+  shopifyOrderId?: Prisma.StringNullableWithAggregatesFilter<"Preview"> | string | null
+  shopifyLineItemId?: Prisma.StringNullableWithAggregatesFilter<"Preview"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Preview"> | Date | string
-  expiresAt?: Prisma.DateTimeWithAggregatesFilter<"Preview"> | Date | string
+  expiresAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Preview"> | Date | string | null
+  photosDeleteAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Preview"> | Date | string | null
 }
 
 export type PreviewCreateInput = {
@@ -294,8 +330,11 @@ export type PreviewCreateInput = {
   meshyTaskId?: string | null
   email?: string | null
   error?: string | null
+  shopifyOrderId?: string | null
+  shopifyLineItemId?: string | null
   createdAt?: Date | string
-  expiresAt: Date | string
+  expiresAt?: Date | string | null
+  photosDeleteAt?: Date | string | null
 }
 
 export type PreviewUncheckedCreateInput = {
@@ -307,8 +346,11 @@ export type PreviewUncheckedCreateInput = {
   meshyTaskId?: string | null
   email?: string | null
   error?: string | null
+  shopifyOrderId?: string | null
+  shopifyLineItemId?: string | null
   createdAt?: Date | string
-  expiresAt: Date | string
+  expiresAt?: Date | string | null
+  photosDeleteAt?: Date | string | null
 }
 
 export type PreviewUpdateInput = {
@@ -320,8 +362,11 @@ export type PreviewUpdateInput = {
   meshyTaskId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shopifyOrderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shopifyLineItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  photosDeleteAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type PreviewUncheckedUpdateInput = {
@@ -333,8 +378,11 @@ export type PreviewUncheckedUpdateInput = {
   meshyTaskId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shopifyOrderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shopifyLineItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  photosDeleteAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type PreviewCreateManyInput = {
@@ -346,8 +394,11 @@ export type PreviewCreateManyInput = {
   meshyTaskId?: string | null
   email?: string | null
   error?: string | null
+  shopifyOrderId?: string | null
+  shopifyLineItemId?: string | null
   createdAt?: Date | string
-  expiresAt: Date | string
+  expiresAt?: Date | string | null
+  photosDeleteAt?: Date | string | null
 }
 
 export type PreviewUpdateManyMutationInput = {
@@ -359,8 +410,11 @@ export type PreviewUpdateManyMutationInput = {
   meshyTaskId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shopifyOrderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shopifyLineItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  photosDeleteAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type PreviewUncheckedUpdateManyInput = {
@@ -372,8 +426,11 @@ export type PreviewUncheckedUpdateManyInput = {
   meshyTaskId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shopifyOrderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shopifyLineItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  photosDeleteAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type PreviewCountOrderByAggregateInput = {
@@ -385,8 +442,11 @@ export type PreviewCountOrderByAggregateInput = {
   meshyTaskId?: Prisma.SortOrder
   email?: Prisma.SortOrder
   error?: Prisma.SortOrder
+  shopifyOrderId?: Prisma.SortOrder
+  shopifyLineItemId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   expiresAt?: Prisma.SortOrder
+  photosDeleteAt?: Prisma.SortOrder
 }
 
 export type PreviewMaxOrderByAggregateInput = {
@@ -398,8 +458,11 @@ export type PreviewMaxOrderByAggregateInput = {
   meshyTaskId?: Prisma.SortOrder
   email?: Prisma.SortOrder
   error?: Prisma.SortOrder
+  shopifyOrderId?: Prisma.SortOrder
+  shopifyLineItemId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   expiresAt?: Prisma.SortOrder
+  photosDeleteAt?: Prisma.SortOrder
 }
 
 export type PreviewMinOrderByAggregateInput = {
@@ -411,8 +474,11 @@ export type PreviewMinOrderByAggregateInput = {
   meshyTaskId?: Prisma.SortOrder
   email?: Prisma.SortOrder
   error?: Prisma.SortOrder
+  shopifyOrderId?: Prisma.SortOrder
+  shopifyLineItemId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   expiresAt?: Prisma.SortOrder
+  photosDeleteAt?: Prisma.SortOrder
 }
 
 export type StringFieldUpdateOperationsInput = {
@@ -431,6 +497,10 @@ export type DateTimeFieldUpdateOperationsInput = {
   set?: Date | string
 }
 
+export type NullableDateTimeFieldUpdateOperationsInput = {
+  set?: Date | string | null
+}
+
 
 
 export type PreviewSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -442,8 +512,11 @@ export type PreviewSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   meshyTaskId?: boolean
   email?: boolean
   error?: boolean
+  shopifyOrderId?: boolean
+  shopifyLineItemId?: boolean
   createdAt?: boolean
   expiresAt?: boolean
+  photosDeleteAt?: boolean
 }, ExtArgs["result"]["preview"]>
 
 export type PreviewSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -455,8 +528,11 @@ export type PreviewSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   meshyTaskId?: boolean
   email?: boolean
   error?: boolean
+  shopifyOrderId?: boolean
+  shopifyLineItemId?: boolean
   createdAt?: boolean
   expiresAt?: boolean
+  photosDeleteAt?: boolean
 }, ExtArgs["result"]["preview"]>
 
 export type PreviewSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -468,8 +544,11 @@ export type PreviewSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   meshyTaskId?: boolean
   email?: boolean
   error?: boolean
+  shopifyOrderId?: boolean
+  shopifyLineItemId?: boolean
   createdAt?: boolean
   expiresAt?: boolean
+  photosDeleteAt?: boolean
 }, ExtArgs["result"]["preview"]>
 
 export type PreviewSelectScalar = {
@@ -481,11 +560,14 @@ export type PreviewSelectScalar = {
   meshyTaskId?: boolean
   email?: boolean
   error?: boolean
+  shopifyOrderId?: boolean
+  shopifyLineItemId?: boolean
   createdAt?: boolean
   expiresAt?: boolean
+  photosDeleteAt?: boolean
 }
 
-export type PreviewOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "status" | "originalPhotoKey" | "poseImageKey" | "glbKey" | "meshyTaskId" | "email" | "error" | "createdAt" | "expiresAt", ExtArgs["result"]["preview"]>
+export type PreviewOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "status" | "originalPhotoKey" | "poseImageKey" | "glbKey" | "meshyTaskId" | "email" | "error" | "shopifyOrderId" | "shopifyLineItemId" | "createdAt" | "expiresAt" | "photosDeleteAt", ExtArgs["result"]["preview"]>
 
 export type $PreviewPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Preview"
@@ -499,8 +581,11 @@ export type $PreviewPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     meshyTaskId: string | null
     email: string | null
     error: string | null
+    shopifyOrderId: string | null
+    shopifyLineItemId: string | null
     createdAt: Date
-    expiresAt: Date
+    expiresAt: Date | null
+    photosDeleteAt: Date | null
   }, ExtArgs["result"]["preview"]>
   composites: {}
 }
@@ -932,8 +1017,11 @@ export interface PreviewFieldRefs {
   readonly meshyTaskId: Prisma.FieldRef<"Preview", 'String'>
   readonly email: Prisma.FieldRef<"Preview", 'String'>
   readonly error: Prisma.FieldRef<"Preview", 'String'>
+  readonly shopifyOrderId: Prisma.FieldRef<"Preview", 'String'>
+  readonly shopifyLineItemId: Prisma.FieldRef<"Preview", 'String'>
   readonly createdAt: Prisma.FieldRef<"Preview", 'DateTime'>
   readonly expiresAt: Prisma.FieldRef<"Preview", 'DateTime'>
+  readonly photosDeleteAt: Prisma.FieldRef<"Preview", 'DateTime'>
 }
     
 
@@ -1133,7 +1221,7 @@ export type PreviewCreateArgs<ExtArgs extends runtime.Types.Extensions.InternalA
   /**
    * The data needed to create a Preview.
    */
-  data: Prisma.XOR<Prisma.PreviewCreateInput, Prisma.PreviewUncheckedCreateInput>
+  data?: Prisma.XOR<Prisma.PreviewCreateInput, Prisma.PreviewUncheckedCreateInput>
 }
 
 /**

@@ -539,8 +539,11 @@ export const PreviewScalarFieldEnum = {
   meshyTaskId: 'meshyTaskId',
   email: 'email',
   error: 'error',
+  shopifyOrderId: 'shopifyOrderId',
+  shopifyLineItemId: 'shopifyLineItemId',
   createdAt: 'createdAt',
-  expiresAt: 'expiresAt'
+  expiresAt: 'expiresAt',
+  photosDeleteAt: 'photosDeleteAt'
 } as const
 
 export type PreviewScalarFieldEnum = (typeof PreviewScalarFieldEnum)[keyof typeof PreviewScalarFieldEnum]
