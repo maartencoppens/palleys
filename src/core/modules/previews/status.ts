@@ -17,8 +17,17 @@ export function canTransition(from: PreviewStatus, to: PreviewStatus) {
   return TRANSITIONS[from].includes(to);
 }
 
+export class InvalidTransitionError extends Error {
+  constructor(
+    public readonly from: PreviewStatus,
+    public readonly to: PreviewStatus,
+  ) {
+    super(`Invalid preview transition: ${from} -> ${to}`);
+  }
+}
+
 export function assertTransition(from: PreviewStatus, to: PreviewStatus) {
   if (!canTransition(from, to)) {
-    throw new Error(`Invalid preview transition: ${from} -> ${to}`);
+    throw new InvalidTransitionError(from, to);
   }
 }

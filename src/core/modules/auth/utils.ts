@@ -9,3 +9,5 @@ export function isAllowedAdminEmail(email?: string | null): boolean {
   if (!email) return false;
   return getAllowedAdminEmails().includes(email.trim().toLowerCase());
 }
+
+export const AUTH_COOKIE_PREFIX = "palleys";

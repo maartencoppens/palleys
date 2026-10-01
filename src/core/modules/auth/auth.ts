@@ -4,7 +4,7 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 import { prisma } from "@/db/client";
-import { isAllowedAdminEmail } from "./utils";
+import { AUTH_COOKIE_PREFIX, isAllowedAdminEmail } from "./utils";
 
 export const auth = betterAuth({
   appName: "Palleys Admin",
@@ -25,7 +25,7 @@ export const auth = betterAuth({
   },
 
   advanced: {
-    cookiePrefix: "palleys",
+    cookiePrefix: AUTH_COOKIE_PREFIX,
     defaultCookieAttributes: { httpOnly: true, sameSite: "lax" },
   },
 
