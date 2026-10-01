@@ -1,10 +1,17 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { prisma, PreviewStatus } from "@/db/client";
-import { createUploadUrl } from "@/core/networking/external/storage-client";
-import { assertTransition, InvalidTransitionError } from "./status";
+import {
+  createDownloadUrl,
+  createUploadUrl,
+} from "@/core/networking/external/storage-client";
+import {
+  assertTransition,
+  canTransition,
+  InvalidTransitionError,
+} from "./status";
 import { unpaidExpiry } from "./utils";
-import type { CreateUploadInput } from "./types";
+import type { AdminPreviewDetail, CreateUploadInput } from "./types";
 
 const EXTENSIONS: Record<CreateUploadInput["contentType"], string> = {
   "image/jpeg": "jpg",
@@ -46,4 +53,47 @@ export async function approvePreview(id: string) {
   }
 
   return { previewId: id, status: PreviewStatus.APPROVED };
+}
+
+function signedUrlOrNull(key: string | null) {
+  return key ? createDownloadUrl(key) : Promise.resolve(null);
+}
+
+export async function getPreviewForAdmin(
+  id: string,
+): Promise<AdminPreviewDetail | null> {
+  const preview = await prisma.preview.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      status: true,
+      email: true,
+      error: true,
+      shopifyOrderId: true,
+      createdAt: true,
+      originalPhotoKey: true,
+      poseImageKey: true,
+      glbKey: true,
+    },
+  });
+  if (!preview) return null;
+
+  const [originalPhotoUrl, poseImageUrl, glbUrl] = await Promise.all([
+    signedUrlOrNull(preview.originalPhotoKey),
+    signedUrlOrNull(preview.poseImageKey),
+    signedUrlOrNull(preview.glbKey),
+  ]);
+
+  return {
+    id: preview.id,
+    status: preview.status,
+    email: preview.email,
+    error: preview.error,
+    shopifyOrderId: preview.shopifyOrderId,
+    createdAt: preview.createdAt.toISOString(),
+    originalPhotoUrl,
+    poseImageUrl,
+    glbUrl,
+    canApprove: canTransition(preview.status, PreviewStatus.APPROVED),
+  };
 }

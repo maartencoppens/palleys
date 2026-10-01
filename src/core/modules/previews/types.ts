@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { PreviewStatus } from "@/db/client";
 
 export const ALLOWED_MIME_TYPES = [
   "image/jpeg",
@@ -13,3 +14,16 @@ export const createUploadSchema = z.object({
 });
 
 export type CreateUploadInput = z.infer<typeof createUploadSchema>;
+
+export type AdminPreviewDetail = {
+  id: string;
+  status: PreviewStatus;
+  email: string | null;
+  error: string | null;
+  shopifyOrderId: string | null;
+  createdAt: string; // ISO-string: Date gaat niet zuiver van server naar client
+  originalPhotoUrl: string | null;
+  poseImageUrl: string | null;
+  glbUrl: string | null;
+  canApprove: boolean;
+};
