@@ -31,3 +31,10 @@ export function assertTransition(from: PreviewStatus, to: PreviewStatus) {
     throw new InvalidTransitionError(from, to);
   }
 }
+
+// Alle statussen van waaruit een overgang naar `to` toegelaten is.
+export function statusesThatCanTransitionTo(to: PreviewStatus) {
+  return (Object.keys(TRANSITIONS) as PreviewStatus[]).filter((from) =>
+    canTransition(from, to),
+  );
+}

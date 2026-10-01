@@ -53,8 +53,9 @@ export function ModelViewer({ src, alt }: ModelViewerProps) {
           return;
         }
         const model = gltf.scene;
-        frameModel(model, camera, controls);
+        const size = frameModel(model, camera, controls);
         scene.add(model);
+        scene.add(createPrintBed(size));
         setStatus("ready");
       },
       undefined,
@@ -91,26 +92,26 @@ export function ModelViewer({ src, alt }: ModelViewerProps) {
   }, [src]);
 
   return (
-    <div style={{ position: "relative", width: "100%", height: 480 }}>
+    <div className="relative h-[360px] overflow-hidden rounded-lg border border-line bg-surface sm:h-[480px]">
       <div
         ref={containerRef}
         role="img"
         aria-label={alt}
-        style={{ width: "100%", height: "100%" }}
+        className="h-full w-full cursor-grab active:cursor-grabbing"
       />
       {status !== "ready" && (
         <p
           role={status === "error" ? "alert" : undefined}
-          style={{
-            position: "absolute",
-            top: "50%",
-            width: "100%",
-            textAlign: "center",
-          }}
+          className={`absolute inset-0 flex items-center justify-center text-sm ${status === "error" ? "text-danger" : "text-muted"}`}
         >
           {status === "loading"
             ? "3D-model laden…"
             : "Het 3D-model kon niet geladen worden."}
+        </p>
+      )}
+      {status === "ready" && (
+        <p className="pointer-events-none absolute bottom-3 left-4 text-xs text-muted">
+          Slepen om te draaien, scrollen om te zoomen
         </p>
       )}
     </div>
@@ -131,19 +132,32 @@ function frameModel(
   model.position.sub(center);
 
   const maxDim = Math.max(size.x, size.y, size.z);
-  camera.position.set(0, maxDim * 0.6, maxDim * 1.8);
+  camera.position.set(maxDim * 0.8, maxDim * 0.6, maxDim * 1.2);
   camera.near = maxDim / 100;
   camera.far = maxDim * 100;
   camera.updateProjectionMatrix();
 
   controls.target.set(0, 0, 0);
   controls.update();
+  return size;
 }
 
-// Geeft het GPU-geheugen van alle meshes, materialen en texturen vrij.
+// Een raster onder het model, zoals een printbed: zo zie je meteen
+// of het dier plat ligt en hoe het zich tot de ondergrond verhoudt.
+function createPrintBed(modelSize: THREE.Vector3) {
+  const maxDim = Math.max(modelSize.x, modelSize.y, modelSize.z);
+  const grid = new THREE.GridHelper(maxDim * 3, 24, 0xb9c0ba, 0xdde2dd);
+  grid.position.y = -modelSize.y / 2;
+  return grid;
+}
+
+// Geeft het GPU-geheugen van alle meshes en lijnen (het raster),
+// materialen en texturen vrij.
 function disposeObject(root: THREE.Object3D) {
   root.traverse((object) => {
-    if (!(object instanceof THREE.Mesh)) return;
+    if (!(object instanceof THREE.Mesh || object instanceof THREE.Line)) {
+      return;
+    }
     object.geometry.dispose();
     const materials = Array.isArray(object.material)
       ? object.material

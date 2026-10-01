@@ -2,13 +2,18 @@
 
 import { useState } from "react";
 import { signInWithGoogle } from "@/core/modules/auth/api";
-import Button from "@/components/design/Button";
+import { Button } from "@/components/design/Button";
 
-export function GoogleSignInButton() {
+type GoogleSignInButtonProps = {
+  className?: string;
+};
+
+export function GoogleSignInButton({ className }: GoogleSignInButtonProps) {
   const [loading, setLoading] = useState(false);
 
   return (
     <Button
+      className={className}
       loading={loading}
       onClick={async () => {
         setLoading(true);

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "@/core/modules/auth/api";
-import Button from "@/components/design/Button";
+import { Button } from "@/components/design/Button";
 
 export function SignOutButton() {
   const router = useRouter();
@@ -12,6 +12,7 @@ export function SignOutButton() {
   return (
     <Button
       loading={loading}
+      variant="secondary"
       onClick={async () => {
         setLoading(true);
         await signOut(); // verwijdert sessie in DB + cookie

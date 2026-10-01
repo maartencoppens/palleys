@@ -9,9 +9,14 @@ import {
   assertTransition,
   canTransition,
   InvalidTransitionError,
+  statusesThatCanTransitionTo,
 } from "./status";
 import { unpaidExpiry } from "./utils";
-import type { AdminPreviewDetail, CreateUploadInput } from "./types";
+import type {
+  AdminPreviewDetail,
+  AdminPreviewListItem,
+  CreateUploadInput,
+} from "./types";
 
 const EXTENSIONS: Record<CreateUploadInput["contentType"], string> = {
   "image/jpeg": "jpg",
@@ -96,4 +101,31 @@ export async function getPreviewForAdmin(
     glbUrl,
     canApprove: canTransition(preview.status, PreviewStatus.APPROVED),
   };
+}
+
+const REVIEW_LIST_LIMIT = 100;
+
+export async function listPreviewsForReview(): Promise<AdminPreviewListItem[]> {
+  const previews = await prisma.preview.findMany({
+    where: {
+      status: { in: statusesThatCanTransitionTo(PreviewStatus.APPROVED) },
+    },
+    orderBy: { createdAt: "asc" },
+    take: REVIEW_LIST_LIMIT,
+    select: {
+      id: true,
+      status: true,
+      email: true,
+      error: true,
+      createdAt: true,
+    },
+  });
+
+  return previews.map((preview) => ({
+    id: preview.id,
+    status: preview.status,
+    email: preview.email,
+    error: preview.error,
+    createdAt: preview.createdAt.toISOString(),
+  }));
 }

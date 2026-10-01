@@ -27,3 +27,11 @@ export type AdminPreviewDetail = {
   glbUrl: string | null;
   canApprove: boolean;
 };
+
+export type AdminPreviewListItem = {
+  id: string;
+  status: PreviewStatus;
+  email: string | null;
+  error: string | null;
+  createdAt: string;
+};
