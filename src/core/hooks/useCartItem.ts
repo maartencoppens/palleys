@@ -5,17 +5,12 @@ import {
   saveCart,
   type CartItem,
   type StoredCart,
-} from "@/core/utils/cart-storage";
+} from "@/core/modules/shopify/cart-storage";
 import { UNPAID_UPLOAD_TTL_DAYS } from "@/data/retention";
 
 export function useCartItems() {
-  const [cart, setCart] = useState<StoredCart>({ items: [] });
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    setCart(loadCart());
-    setReady(true);
-  }, []);
+  const [cart, setCart] = useState<StoredCart>(() => loadCart());
+  const ready = true;
 
   useEffect(() => {
     if (ready) saveCart(cart);
