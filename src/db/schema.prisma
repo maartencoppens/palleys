@@ -26,7 +26,7 @@ enum PreviewStatus {
 }
 
 model Preview {
-  id                String        @id @default(cuid())
+  id                String        @id @default(uuid())
   status            PreviewStatus @default(UPLOADED)
   originalPhotoKey  String?
   poseImageKey      String?
