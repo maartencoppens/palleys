@@ -44,7 +44,11 @@ markings in the same locations. Do not invent, remove, or relocate any
 markings. Do not change the breed or body type.
 
 Clean closed silhouette, no thin protruding parts, symmetrical anatomy,
-orthographic camera angle, high detail on facial features and proportions.`;
+orthographic camera angle, high detail on facial features and proportions.
+
+No whiskers, no individual hairs or fur strands extending beyond the
+silhouette. Ears, tail and paws must be thick and solid.
+`;
 
 const GEMINI_API_KEY = env.GEMINI_API_KEY;
 const GEMINI_MODEL = env.GEMINI_MODEL;
