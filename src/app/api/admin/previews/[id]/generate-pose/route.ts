@@ -14,7 +14,7 @@ const paramsSchema = z.object({ id: z.uuid() });
 
 export async function POST(
   _request: Request,
-  ctx: RouteContext<"/api/admin/previews/[id]/approve">,
+  ctx: RouteContext<"/api/admin/previews/[id]/generate-pose">,
 ) {
   try {
     await requireAdmin();
@@ -28,12 +28,12 @@ export async function POST(
     if (error instanceof ZodError) {
       return NextResponse.json({ error: "Invalid input" }, { status: 400 });
     }
-    if (error instanceof PreviewNotFoundError) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (error instanceof PreviewConflictError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
     }
     if (error instanceof InvalidTransitionError) {
       return NextResponse.json(
-        { error: `Cannot approve preview in status ${error.from}` },
+        { error: `Cannot generate pose in status ${error.from}` },
         { status: 409 },
       );
     }

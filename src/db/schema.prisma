@@ -30,10 +30,10 @@ model Preview {
   status            PreviewStatus @default(UPLOADED)
   originalPhotoKey  String?
   poseImageKey      String?
-  glbKey            String?
-  meshyTaskId       String?
+  glbKey            String?       
+  meshyTaskId       String?       @unique
   email             String?
-  poseAttempts      Int      @default(0)
+  poseAttempts      Int           @default(0)
   error             String?
   shopifyOrderId    String?
   shopifyLineItemId String?       @unique

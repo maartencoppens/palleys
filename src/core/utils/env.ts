@@ -9,6 +9,10 @@ const schema = z.object({
   R2_BUCKET: z.string().min(1),
   GEMINI_API_KEY: z.string().min(1),
   GEMINI_MODEL: z.string().min(1).default("gemini-3-pro-image"),
+  MESHY_API_KEY: z.string().min(1),
+  MESHY_WEBHOOK_SECRET: z.string().min(32),
+  // Publieke basis-URL van de app, voor webhooks. Bewust los van BETTER_AUTH_URL.
+  APP_URL: z.url().transform((url) => url.replace(/\/+$/, "")),
 });
 
 export const env = schema.parse(process.env);
