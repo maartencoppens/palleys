@@ -4,9 +4,10 @@ import { z } from "zod";
 import { requireAdminPage } from "@/core/modules/auth/service";
 import { getPreviewForAdmin } from "@/core/modules/previews/service";
 import { formatDateTime } from "@/core/utils/format";
-import { ModelViewer } from "@/components/functional/ModelViewer";
-import { ApprovePreviewButton } from "@/components/functional/ApprovePreviewButton";
-import { PreviewStatusBadge } from "@/components/functional/PreviewStatusBadge";
+import { ModelViewer } from "@/components/functional/admin/ModelViewer";
+import { ApprovePreviewButton } from "@/components/functional/admin/ApprovePreviewButton";
+import { PreviewStatusBadge } from "@/components/functional/admin/PreviewStatusBadge";
+import { GeneratePoseButton } from "@/components/functional/admin/GeneratePoseButton";
 
 const paramsSchema = z.object({ id: z.uuid() });
 
@@ -75,6 +76,22 @@ export default async function AdminPreviewDetailPage({
             <section className="rounded-lg bg-danger-soft p-5 text-sm text-danger">
               <h2 className="font-semibold">Fout in de pipeline</h2>
               <p className="mt-1 break-words">{preview.error}</p>
+            </section>
+          )}
+
+          {preview.canGeneratePose && (
+            <section className="rounded-lg border border-line bg-surface p-5">
+              <h2 className="font-semibold">Pose</h2>
+              <p className="mt-1 text-sm text-muted">
+                {preview.poseImageUrl
+                  ? "Niet tevreden met de pose? Genereer een nieuwe versie."
+                  : "Genereer de pose-afbeelding op basis van de originele foto."}
+              </p>
+              <GeneratePoseButton
+                previewId={preview.id}
+                hasPose={Boolean(preview.poseImageUrl)}
+                attemptsLeft={preview.poseAttemptsLeft}
+              />
             </section>
           )}
 

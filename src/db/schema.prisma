@@ -33,6 +33,7 @@ model Preview {
   glbKey            String?
   meshyTaskId       String?
   email             String?
+  poseAttempts      Int      @default(0)
   error             String?
   shopifyOrderId    String?
   shopifyLineItemId String?       @unique

@@ -6,3 +6,11 @@ export async function postApprovePreview(previewId: string) {
   );
   return data;
 }
+
+export function generatePose(id: string) {
+  return api.post<{ id: string; status: string }>(
+    `/admin/previews/${id}/generate-pose`,
+    undefined,
+    { timeout: 180_000 },
+  );
+}

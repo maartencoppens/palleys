@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireAdminPage } from "@/core/modules/auth/service";
 import { listPreviewsForReview } from "@/core/modules/previews/service";
 import { formatDateTime } from "@/core/utils/format";
-import { PreviewStatusBadge } from "@/components/functional/PreviewStatusBadge";
+import { PreviewStatusBadge } from "@/components/functional/admin/PreviewStatusBadge";
 
 export default async function AdminHomePage() {
   await requireAdminPage();

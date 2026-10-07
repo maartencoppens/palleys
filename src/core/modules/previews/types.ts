@@ -26,6 +26,8 @@ export type AdminPreviewDetail = {
   poseImageUrl: string | null;
   glbUrl: string | null;
   canApprove: boolean;
+  canGeneratePose: boolean;
+  poseAttemptsLeft: number;
 };
 
 export type AdminPreviewListItem = {

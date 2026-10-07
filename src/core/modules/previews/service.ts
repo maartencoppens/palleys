@@ -4,6 +4,8 @@ import { prisma, PreviewStatus } from "@/db/client";
 import {
   createDownloadUrl,
   createUploadUrl,
+  getObject,
+  putObject,
 } from "@/core/networking/external/storage-client";
 import {
   assertTransition,
@@ -11,12 +13,18 @@ import {
   InvalidTransitionError,
   statusesThatCanTransitionTo,
 } from "./status";
-import { unpaidExpiry } from "./utils";
+import {
+  mimeTypeForKey,
+  poseImageKey,
+  toErrorMessage,
+  unpaidExpiry,
+} from "./utils";
 import type {
   AdminPreviewDetail,
   AdminPreviewListItem,
   CreateUploadInput,
 } from "./types";
+import { MAX_POSE_ATTEMPTS } from "@/data/pipeline";
 
 const EXTENSIONS: Record<CreateUploadInput["contentType"], string> = {
   "image/jpeg": "jpg",
@@ -24,7 +32,10 @@ const EXTENSIONS: Record<CreateUploadInput["contentType"], string> = {
   "image/webp": "webp",
 };
 
+import { generatePose as geminiGeneratePose } from "@/core/networking/external/gemini-client";
+
 export class PreviewNotFoundError extends Error {}
+export class PreviewConflictError extends Error {}
 
 export async function createPreview(input: CreateUploadInput) {
   const id = randomUUID();
@@ -60,6 +71,52 @@ export async function approvePreview(id: string) {
   return { previewId: id, status: PreviewStatus.APPROVED };
 }
 
+export async function generatePose(id: string) {
+  const preview = await prisma.preview.findUnique({ where: { id } });
+  if (!preview) throw new PreviewNotFoundError(id);
+
+  assertTransition(preview.status, PreviewStatus.GENERATING_POSE);
+
+  const originalKey = preview.originalPhotoKey;
+  if (!originalKey) throw new PreviewConflictError("No original photo");
+  if (preview.poseAttempts >= MAX_POSE_ATTEMPTS) {
+    throw new PreviewConflictError("Max pose attempts reached");
+  }
+
+  const claimed = await prisma.preview.updateMany({
+    where: { id, status: preview.status },
+    data: {
+      status: PreviewStatus.GENERATING_POSE,
+      error: null,
+      poseAttempts: { increment: 1 },
+    },
+  });
+  if (claimed.count === 0)
+    throw new PreviewConflictError("Already being processed");
+
+  try {
+    const original = await getObject(originalKey);
+    const pose = await geminiGeneratePose({
+      image: original,
+      mimeType: mimeTypeForKey(originalKey),
+    });
+
+    const key = poseImageKey(id, pose.mimeType);
+    await putObject(key, pose.image, pose.mimeType);
+
+    return await prisma.preview.update({
+      where: { id },
+      data: { status: PreviewStatus.POSE_READY, poseImageKey: key },
+    });
+  } catch (err) {
+    await prisma.preview.updateMany({
+      where: { id, status: PreviewStatus.GENERATING_POSE },
+      data: { status: PreviewStatus.FAILED, error: toErrorMessage(err) },
+    });
+    throw err;
+  }
+}
+
 function signedUrlOrNull(key: string | null) {
   return key ? createDownloadUrl(key) : Promise.resolve(null);
 }
@@ -79,6 +136,7 @@ export async function getPreviewForAdmin(
       originalPhotoKey: true,
       poseImageKey: true,
       glbKey: true,
+      poseAttempts: true,
     },
   });
   if (!preview) return null;
@@ -100,16 +158,26 @@ export async function getPreviewForAdmin(
     poseImageUrl,
     glbUrl,
     canApprove: canTransition(preview.status, PreviewStatus.APPROVED),
+    canGeneratePose: canTransition(
+      preview.status,
+      PreviewStatus.GENERATING_POSE,
+    ),
+    poseAttemptsLeft: Math.max(0, MAX_POSE_ATTEMPTS - preview.poseAttempts),
   };
 }
 
 const REVIEW_LIST_LIMIT = 100;
 
+const REVIEWABLE_STATUSES = [
+  ...new Set([
+    ...statusesThatCanTransitionTo(PreviewStatus.GENERATING_POSE),
+    ...statusesThatCanTransitionTo(PreviewStatus.APPROVED),
+  ]),
+];
+
 export async function listPreviewsForReview(): Promise<AdminPreviewListItem[]> {
   const previews = await prisma.preview.findMany({
-    where: {
-      status: { in: statusesThatCanTransitionTo(PreviewStatus.APPROVED) },
-    },
+    where: { status: { in: REVIEWABLE_STATUSES } },
     orderBy: { createdAt: "asc" },
     take: REVIEW_LIST_LIMIT,
     select: {

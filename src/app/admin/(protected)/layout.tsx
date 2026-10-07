@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireAdminPage } from "@/core/modules/auth/service";
-import { SignOutButton } from "@/components/functional/SignOutButton";
+import { SignOutButton } from "@/components/functional/admin/SignOutButton";
 
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   const { user } = await requireAdminPage();
