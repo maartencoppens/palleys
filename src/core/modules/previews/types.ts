@@ -28,6 +28,8 @@ export type AdminPreviewDetail = {
   canApprove: boolean;
   canGeneratePose: boolean;
   poseAttemptsLeft: number;
+  canStartModel: boolean;
+  canSyncModel: boolean;
 };
 
 export type AdminPreviewListItem = {
@@ -36,4 +38,9 @@ export type AdminPreviewListItem = {
   email: string | null;
   error: string | null;
   createdAt: string;
+};
+
+export type PreviewActionResult = {
+  previewId: string;
+  status: PreviewStatus;
 };

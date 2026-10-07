@@ -4,9 +4,18 @@ import { prisma, PreviewStatus } from "@/db/client";
 import {
   createDownloadUrl,
   createUploadUrl,
+  deleteObject,
   getObject,
   putObject,
 } from "@/core/networking/external/storage-client";
+import { generatePose as geminiGeneratePose } from "@/core/networking/external/gemini-client";
+import {
+  assertValidWebhookToken,
+  createImageTo3dTask,
+  downloadModel,
+  getImageTo3dTask,
+  isFinishedStatus,
+} from "@/core/networking/external/meshy-client";
 import {
   assertTransition,
   canTransition,
@@ -14,6 +23,7 @@ import {
   statusesThatCanTransitionTo,
 } from "./status";
 import {
+  glbKey,
   mimeTypeForKey,
   poseImageKey,
   toErrorMessage,
@@ -23,6 +33,7 @@ import type {
   AdminPreviewDetail,
   AdminPreviewListItem,
   CreateUploadInput,
+  PreviewActionResult,
 } from "./types";
 import { MAX_POSE_ATTEMPTS } from "@/data/pipeline";
 
@@ -32,10 +43,24 @@ const EXTENSIONS: Record<CreateUploadInput["contentType"], string> = {
   "image/webp": "webp",
 };
 
-import { generatePose as geminiGeneratePose } from "@/core/networking/external/gemini-client";
-
 export class PreviewNotFoundError extends Error {}
 export class PreviewConflictError extends Error {}
+
+// Ruimt bestanden op die door een nieuw resultaat vervangen zijn.
+// Mag de actie nooit laten mislukken: het nieuwe resultaat staat al in de database.
+async function deleteReplacedFiles(keys: (string | null)[]) {
+  await Promise.all(
+    keys
+      .filter((key): key is string => Boolean(key))
+      .map(async (key) => {
+        try {
+          await deleteObject(key);
+        } catch (err) {
+          console.error(`Could not delete ${key}:`, toErrorMessage(err));
+        }
+      }),
+  );
+}
 
 export async function createPreview(input: CreateUploadInput) {
   const id = randomUUID();
@@ -71,7 +96,7 @@ export async function approvePreview(id: string) {
   return { previewId: id, status: PreviewStatus.APPROVED };
 }
 
-export async function generatePose(id: string) {
+export async function generatePose(id: string): Promise<PreviewActionResult> {
   const preview = await prisma.preview.findUnique({ where: { id } });
   if (!preview) throw new PreviewNotFoundError(id);
 
@@ -91,8 +116,9 @@ export async function generatePose(id: string) {
       poseAttempts: { increment: 1 },
     },
   });
-  if (claimed.count === 0)
+  if (claimed.count === 0) {
     throw new PreviewConflictError("Already being processed");
+  }
 
   try {
     const original = await getObject(originalKey);
@@ -104,10 +130,19 @@ export async function generatePose(id: string) {
     const key = poseImageKey(id, pose.mimeType);
     await putObject(key, pose.image, pose.mimeType);
 
-    return await prisma.preview.update({
+    // Een nieuwe pose maakt een bestaand model ongeldig.
+    await prisma.preview.update({
       where: { id },
-      data: { status: PreviewStatus.POSE_READY, poseImageKey: key },
+      data: {
+        status: PreviewStatus.POSE_READY,
+        poseImageKey: key,
+        glbKey: null,
+        meshyTaskId: null,
+      },
     });
+    await deleteReplacedFiles([preview.poseImageKey, preview.glbKey]);
+
+    return { previewId: id, status: PreviewStatus.POSE_READY };
   } catch (err) {
     await prisma.preview.updateMany({
       where: { id, status: PreviewStatus.GENERATING_POSE },
@@ -115,6 +150,155 @@ export async function generatePose(id: string) {
     });
     throw err;
   }
+}
+
+export async function startModelGeneration(
+  id: string,
+): Promise<PreviewActionResult> {
+  const preview = await prisma.preview.findUnique({
+    where: { id },
+    select: { status: true, poseImageKey: true },
+  });
+  if (!preview) throw new PreviewNotFoundError(id);
+
+  assertTransition(preview.status, PreviewStatus.GENERATING_MODEL);
+
+  const poseKey = preview.poseImageKey;
+  if (!poseKey) {
+    throw new PreviewConflictError("No pose image to build a model from");
+  }
+
+  const claimed = await prisma.preview.updateMany({
+    where: { id, status: preview.status },
+    data: {
+      status: PreviewStatus.GENERATING_MODEL,
+      error: null,
+      meshyTaskId: null,
+    },
+  });
+  if (claimed.count === 0) {
+    throw new PreviewConflictError("Already being processed");
+  }
+
+  try {
+    const pose = await getObject(poseKey);
+    const taskId = await createImageTo3dTask({
+      image: pose,
+      mimeType: mimeTypeForKey(poseKey),
+    });
+    await prisma.preview.update({
+      where: { id },
+      data: { meshyTaskId: taskId },
+    });
+    return { previewId: id, status: PreviewStatus.GENERATING_MODEL };
+  } catch (err) {
+    await prisma.preview.updateMany({
+      where: { id, status: PreviewStatus.GENERATING_MODEL },
+      data: { status: PreviewStatus.FAILED, error: toErrorMessage(err) },
+    });
+    throw err;
+  }
+}
+
+const SYNC_SELECT = {
+  id: true,
+  status: true,
+  meshyTaskId: true,
+  glbKey: true,
+} as const;
+
+type SyncablePreview = {
+  id: string;
+  status: PreviewStatus;
+  meshyTaskId: string | null;
+  glbKey: string | null;
+};
+
+// Kern van de Meshy-flow: vraagt de taak op bij Meshy en verwerkt het resultaat.
+// Wordt aangeroepen door de webhook én door de knop "Status ophalen".
+async function syncModelTask(
+  preview: SyncablePreview,
+): Promise<PreviewActionResult> {
+  const taskId = preview.meshyTaskId;
+  const unchanged = { previewId: preview.id, status: preview.status };
+
+  // Alleen previews die op Meshy wachten. Al de rest is al verwerkt
+  // (bv. een dubbele webhook) en laten we met rust.
+  if (preview.status !== PreviewStatus.GENERATING_MODEL || !taskId) {
+    return unchanged;
+  }
+
+  // De bron van waarheid is Meshy zelf, niet de webhook-payload.
+  const task = await getImageTo3dTask(taskId);
+  if (!isFinishedStatus(task.status)) return unchanged;
+
+  const lock = {
+    id: preview.id,
+    status: PreviewStatus.GENERATING_MODEL,
+    meshyTaskId: taskId,
+  };
+
+  const glbUrl = task.model_urls?.glb;
+  if (task.status !== "SUCCEEDED" || !glbUrl) {
+    await prisma.preview.updateMany({
+      where: lock,
+      data: {
+        status: PreviewStatus.FAILED,
+        error:
+          task.task_error?.message ||
+          `Meshy task ended with status ${task.status}`,
+      },
+    });
+    return { previewId: preview.id, status: PreviewStatus.FAILED };
+  }
+
+  // Vanaf hier: fouten in download of opslag zetten de preview NIET op FAILED.
+  // De taak bij Meshy blijft geldig, dus een volgende sync kan het opnieuw proberen.
+  const glb = await downloadModel(glbUrl);
+  const key = glbKey(preview.id, taskId);
+  await putObject(key, glb, "model/gltf-binary");
+
+  const { count } = await prisma.preview.updateMany({
+    where: lock,
+    data: { status: PreviewStatus.MODEL_READY, glbKey: key },
+  });
+  if (count === 0) return unchanged; // iemand anders was ons voor
+
+  if (preview.glbKey !== key) await deleteReplacedFiles([preview.glbKey]);
+  return { previewId: preview.id, status: PreviewStatus.MODEL_READY };
+}
+
+export async function syncModel(id: string): Promise<PreviewActionResult> {
+  const preview = await prisma.preview.findUnique({
+    where: { id },
+    select: SYNC_SELECT,
+  });
+  if (!preview) throw new PreviewNotFoundError(id);
+  if (
+    preview.status !== PreviewStatus.GENERATING_MODEL ||
+    !preview.meshyTaskId
+  ) {
+    throw new PreviewConflictError("No model generation in progress");
+  }
+  return syncModelTask(preview);
+}
+
+export async function handleMeshyWebhook(input: {
+  token: string;
+  taskId: string;
+  status?: string;
+}): Promise<PreviewActionResult | null> {
+  assertValidWebhookToken(input.token);
+
+  // Tussentijdse meldingen (voortgang) negeren we zonder Meshy te bevragen.
+  if (input.status && !isFinishedStatus(input.status)) return null;
+
+  const preview = await prisma.preview.findUnique({
+    where: { meshyTaskId: input.taskId },
+    select: SYNC_SELECT,
+  });
+  if (!preview) return null; // onbekende taak, bv. een oude testtaak
+  return syncModelTask(preview);
 }
 
 function signedUrlOrNull(key: string | null) {
@@ -137,6 +321,7 @@ export async function getPreviewForAdmin(
       poseImageKey: true,
       glbKey: true,
       poseAttempts: true,
+      meshyTaskId: true,
     },
   });
   if (!preview) return null;
@@ -163,6 +348,12 @@ export async function getPreviewForAdmin(
       PreviewStatus.GENERATING_POSE,
     ),
     poseAttemptsLeft: Math.max(0, MAX_POSE_ATTEMPTS - preview.poseAttempts),
+    canStartModel:
+      canTransition(preview.status, PreviewStatus.GENERATING_MODEL) &&
+      preview.poseImageKey !== null,
+    canSyncModel:
+      preview.status === PreviewStatus.GENERATING_MODEL &&
+      preview.meshyTaskId !== null,
   };
 }
 
@@ -171,6 +362,8 @@ const REVIEW_LIST_LIMIT = 100;
 const REVIEWABLE_STATUSES = [
   ...new Set([
     ...statusesThatCanTransitionTo(PreviewStatus.GENERATING_POSE),
+    ...statusesThatCanTransitionTo(PreviewStatus.GENERATING_MODEL),
+    ...statusesThatCanTransitionTo(PreviewStatus.MODEL_READY), // wacht op Meshy
     ...statusesThatCanTransitionTo(PreviewStatus.APPROVED),
   ]),
 ];

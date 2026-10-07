@@ -35,3 +35,9 @@ export function mimeTypeForKey(key: string) {
   if (!mime) throw new Error(`Unsupported image type: .${ext}`);
   return mime;
 }
+
+// Key per Meshy-taak, niet per tijdstip: wordt dezelfde taak twee keer
+// verwerkt (webhook + knop), dan overschrijft de tweede gewoon de eerste.
+export function glbKey(previewId: string, taskId: string) {
+  return `previews/${previewId}/model-${taskId}.glb`;
+}
