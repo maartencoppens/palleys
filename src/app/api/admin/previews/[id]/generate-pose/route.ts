@@ -28,6 +28,9 @@ export async function POST(
     if (error instanceof ZodError) {
       return NextResponse.json({ error: "Invalid input" }, { status: 400 });
     }
+    if (error instanceof PreviewNotFoundError) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
     if (error instanceof PreviewConflictError) {
       return NextResponse.json({ error: error.message }, { status: 409 });
     }
@@ -37,7 +40,6 @@ export async function POST(
         { status: 409 },
       );
     }
-
     console.error(error);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
