@@ -2,30 +2,33 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { postGeneratePose } from "@/core/modules/previews/api";
+import { postGenerateModel } from "@/core/modules/previews/api";
 import { getApiErrorMessage } from "@/core/networking/api";
 import { Button } from "@/components/design/Button";
 
-type GeneratePoseButtonProps = {
+type GenerateModelButtonProps = {
   previewId: string;
-  hasPose: boolean;
-  attemptsLeft: number;
+  hasModel: boolean;
 };
 
-export function GeneratePoseButton({
+export function GenerateModelButton({
   previewId,
-  hasPose,
-  attemptsLeft,
-}: GeneratePoseButtonProps) {
+  hasModel,
+}: GenerateModelButtonProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleClick() {
+    const question = hasModel
+      ? "Een nieuw 3D-model laten maken? Dit kost Meshy-credits."
+      : "Pose goedkeuren en het 3D-model laten maken? Dit kost Meshy-credits.";
+    if (!window.confirm(question)) return;
+
     setLoading(true);
     setError(null);
     try {
-      await postGeneratePose(previewId);
+      await postGenerateModel(previewId);
     } catch (e) {
       setError(getApiErrorMessage(e));
     } finally {
@@ -35,23 +38,17 @@ export function GeneratePoseButton({
   }
 
   return (
-    <div className="mt-4 space-y-2">
+    <div className="mt-4">
       <Button
         className="w-full"
         loading={loading}
-        loadingText="Bezig met genereren…"
-        disabled={attemptsLeft <= 0}
+        loadingText="Taak starten…"
         onClick={handleClick}
       >
-        {hasPose ? "Pose opnieuw genereren" : "Pose genereren"}
+        {hasModel ? "Model opnieuw genereren" : "Pose goedkeuren"}
       </Button>
-      <p className="text-sm text-muted">
-        {attemptsLeft > 0
-          ? `Nog ${attemptsLeft} ${attemptsLeft === 1 ? "poging" : "pogingen"}`
-          : "Maximum aantal pogingen bereikt"}
-      </p>
       {error && (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="mt-3 text-sm text-danger">
           {error}
         </p>
       )}

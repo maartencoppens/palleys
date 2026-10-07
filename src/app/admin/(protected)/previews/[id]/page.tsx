@@ -8,6 +8,8 @@ import { ModelViewer } from "@/components/functional/admin/ModelViewer";
 import { ApprovePreviewButton } from "@/components/functional/admin/ApprovePreviewButton";
 import { PreviewStatusBadge } from "@/components/functional/admin/PreviewStatusBadge";
 import { GeneratePoseButton } from "@/components/functional/admin/GeneratePoseButton";
+import { GenerateModelButton } from "@/components/functional/admin/GenerateModelButton";
+import { SyncModelButton } from "@/components/functional/admin/SyncModelButton";
 
 const paramsSchema = z.object({ id: z.uuid() });
 
@@ -94,7 +96,32 @@ export default async function AdminPreviewDetailPage({
               />
             </section>
           )}
-
+          {(preview.canStartModel || preview.canSyncModel) && (
+            <section className="rounded-lg border border-line bg-surface p-5">
+              <h2 className="font-semibold">3D-model</h2>
+              {preview.canSyncModel ? (
+                <>
+                  <p className="mt-1 text-sm text-muted">
+                    Meshy maakt het model. Dit duurt enkele minuten. Ververs de
+                    pagina of haal de status zelf op.
+                  </p>
+                  <SyncModelButton previewId={preview.id} />
+                </>
+              ) : (
+                <>
+                  <p className="mt-1 text-sm text-muted">
+                    {preview.glbUrl
+                      ? "Niet tevreden met het model? Laat een nieuw maken op basis van de huidige pose."
+                      : "Is de pose goed? Dan maakt Meshy er een 3D-model van."}
+                  </p>
+                  <GenerateModelButton
+                    previewId={preview.id}
+                    hasModel={Boolean(preview.glbUrl)}
+                  />
+                </>
+              )}
+            </section>
+          )}
           {preview.canApprove && (
             <section className="rounded-lg border border-line bg-surface p-5">
               <h2 className="font-semibold">Goedkeuren</h2>
