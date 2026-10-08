@@ -14,6 +14,14 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
           >
             Palleys admin
           </Link>
+          <nav className="flex gap-5 text-sm">
+            <Link href="/admin" className="text-muted hover:text-ink">
+              Te reviewen
+            </Link>
+            <Link href="/admin/approved" className="text-muted hover:text-ink">
+              Goedgekeurd
+            </Link>
+          </nav>
           <div className="ml-auto flex items-center gap-4">
             <span className="text-sm text-muted">{user.email}</span>
             <SignOutButton />

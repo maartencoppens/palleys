@@ -40,6 +40,8 @@ model Preview {
   createdAt         DateTime      @default(now())
   expiresAt         DateTime? // alleen voor niet-betaalde uploads, leeg na betaling
   photosDeleteAt    DateTime? // voor betaalde orders, na verzending
+  downloadedAt      DateTime?
+  downloadedBy      String?
 
   @@index([status, expiresAt])
 }

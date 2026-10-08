@@ -32,3 +32,10 @@ export async function postSyncModel(previewId: string) {
   );
   return data;
 }
+
+export async function postDownloadModels(previewIds: string[]) {
+  const { data } = await api.post<{
+    files: { previewId: string; url: string }[];
+  }>("/admin/previews/download", { previewIds });
+  return data.files;
+}

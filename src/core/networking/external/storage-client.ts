@@ -38,10 +38,19 @@ export async function createUploadUrl(key: string, contentType: string) {
   );
 }
 
-export async function createDownloadUrl(key: string) {
-  return getSignedUrl(s3, new GetObjectCommand({ Bucket: bucket, Key: key }), {
-    expiresIn: DOWNLOAD_TTL_SECONDS,
-  });
+export async function createDownloadUrl(key: string, downloadName?: string) {
+  return getSignedUrl(
+    s3,
+    new GetObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      // Laat de browser het bestand opslaan in plaats van het te openen.
+      ResponseContentDisposition: downloadName
+        ? `attachment; filename="${downloadName}"`
+        : undefined,
+    }),
+    { expiresIn: DOWNLOAD_TTL_SECONDS },
+  );
 }
 
 export async function putObject(

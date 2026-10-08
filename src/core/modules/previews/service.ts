@@ -260,7 +260,12 @@ async function syncModelTask(
 
   const { count } = await prisma.preview.updateMany({
     where: lock,
-    data: { status: PreviewStatus.MODEL_READY, glbKey: key },
+    data: {
+      status: PreviewStatus.MODEL_READY,
+      glbKey: key,
+      downloadedAt: null,
+      downloadedBy: null,
+    },
   });
   if (count === 0) return unchanged; // iemand anders was ons voor
 
@@ -389,4 +394,55 @@ export async function listPreviewsForReview(): Promise<AdminPreviewListItem[]> {
     error: preview.error,
     createdAt: preview.createdAt.toISOString(),
   }));
+}
+
+const APPROVED_STATUSES = [PreviewStatus.APPROVED, PreviewStatus.PRINT_READY];
+
+export async function listApprovedModels() {
+  const previews = await prisma.preview.findMany({
+    where: { status: { in: APPROVED_STATUSES }, glbKey: { not: null } },
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      status: true,
+      createdAt: true,
+      downloadedAt: true,
+      downloadedBy: true,
+    },
+  });
+
+  return previews.map((p) => ({
+    id: p.id,
+    status: p.status,
+    createdAt: p.createdAt.toISOString(),
+    downloadedAt: p.downloadedAt?.toISOString() ?? null,
+    downloadedBy: p.downloadedBy,
+  }));
+}
+
+// Markeert de modellen als gedownload en geeft een downloadlink per model terug.
+export async function downloadModels(previewIds: string[], adminName: string) {
+  const previews = await prisma.preview.findMany({
+    where: {
+      id: { in: previewIds },
+      status: { in: APPROVED_STATUSES },
+      glbKey: { not: null },
+    },
+    select: { id: true, glbKey: true },
+  });
+
+  await prisma.preview.updateMany({
+    where: { id: { in: previews.map((p) => p.id) } },
+    data: { downloadedAt: new Date(), downloadedBy: adminName },
+  });
+
+  return Promise.all(
+    previews.map(async (p) => ({
+      previewId: p.id,
+      url: await createDownloadUrl(
+        p.glbKey!,
+        `palleys-${p.id.slice(0, 8)}.glb`,
+      ),
+    })),
+  );
 }
