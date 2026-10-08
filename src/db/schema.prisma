@@ -30,7 +30,7 @@ model Preview {
   status            PreviewStatus @default(UPLOADED)
   originalPhotoKey  String?
   poseImageKey      String?
-  glbKey            String?       
+  glbKey            String?          
   meshyTaskId       String?       @unique
   email             String?
   poseAttempts      Int           @default(0)

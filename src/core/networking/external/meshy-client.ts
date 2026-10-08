@@ -75,6 +75,7 @@ export async function createImageTo3dTask(input: {
       ...TASK_OPTIONS,
       image_url: `data:${input.mimeType};base64,${input.image.toString("base64")}`,
       webhook_url: webhookUrl(),
+      target_format: "obj",
     });
     return res.data.result;
   } catch (error) {
@@ -105,5 +106,20 @@ export async function downloadModel(url: string): Promise<Buffer> {
     return Buffer.from(res.data);
   } catch (error) {
     throw toMeshyError(error, "model download");
+  }
+}
+
+export async function resizeModel(input: {
+  inputTaskId: string;
+}): Promise<string> {
+  try {
+    const res = await meshy.post<{ result: string }>("/resize", {
+      resize_longest_side: 0.036, // 3.6cm
+      input_task_id: input.inputTaskId,
+      webhook_url: webhookUrl(),
+    });
+    return res.data.result;
+  } catch (error) {
+    throw toMeshyError(error, "create task");
   }
 }
