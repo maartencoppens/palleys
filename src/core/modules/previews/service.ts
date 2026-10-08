@@ -30,6 +30,7 @@ import {
   unpaidExpiry,
 } from "./utils";
 import type {
+  AdminDashboard,
   AdminPreviewDetail,
   AdminPreviewListItem,
   CreateUploadInput,
@@ -42,6 +43,7 @@ const EXTENSIONS: Record<CreateUploadInput["contentType"], string> = {
   "image/png": "png",
   "image/webp": "webp",
 };
+import { z } from "zod";
 
 export class PreviewNotFoundError extends Error {}
 export class PreviewConflictError extends Error {}
@@ -445,4 +447,66 @@ export async function downloadModels(previewIds: string[], adminName: string) {
       ),
     })),
   );
+}
+
+const SEARCH_LIMIT = 20;
+
+// Alles voor de dashboardpagina in één aanroep: tellingen + zoekresultaten.
+export async function getAdminDashboard(query = ""): Promise<AdminDashboard> {
+  const q = query.trim();
+
+  const [byStatus, toDownload, results] = await Promise.all([
+    prisma.preview.groupBy({ by: ["status"], _count: { _all: true } }),
+    prisma.preview.count({
+      where: {
+        status: { in: APPROVED_STATUSES },
+        glbKey: { not: null },
+        downloadedAt: null,
+      },
+    }),
+    q ? searchPreviews(q) : Promise.resolve([]),
+  ]);
+
+  const countOf = (statuses: PreviewStatus[]) =>
+    byStatus
+      .filter((row) => statuses.includes(row.status))
+      .reduce((sum, row) => sum + row._count._all, 0);
+
+  return {
+    stats: {
+      toReview: countOf(REVIEWABLE_STATUSES),
+      toDownload,
+      failed: countOf([PreviewStatus.FAILED]),
+      approved: countOf(APPROVED_STATUSES),
+    },
+    query: q,
+    results,
+  };
+}
+
+// Zoekt op preview-id (exact), e-mail of Shopify-ordernummer (deel van).
+async function searchPreviews(q: string): Promise<AdminPreviewListItem[]> {
+  const isId = z.uuid().safeParse(q).success;
+
+  const previews = await prisma.preview.findMany({
+    where: isId
+      ? { id: q }
+      : {
+          OR: [
+            { email: { contains: q, mode: "insensitive" } },
+            { shopifyOrderId: { contains: q } },
+          ],
+        },
+    orderBy: { createdAt: "desc" },
+    take: SEARCH_LIMIT,
+    select: {
+      id: true,
+      status: true,
+      email: true,
+      error: true,
+      createdAt: true,
+    },
+  });
+
+  return previews.map((p) => ({ ...p, createdAt: p.createdAt.toISOString() }));
 }

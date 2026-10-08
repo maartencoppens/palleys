@@ -16,6 +16,9 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
           </Link>
           <nav className="flex gap-5 text-sm">
             <Link href="/admin" className="text-muted hover:text-ink">
+              Dashboard
+            </Link>
+            <Link href="/admin/review" className="text-muted hover:text-ink">
               Te reviewen
             </Link>
             <Link href="/admin/approved" className="text-muted hover:text-ink">

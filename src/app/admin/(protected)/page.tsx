@@ -1,83 +1,94 @@
 import Link from "next/link";
+import { z } from "zod";
 import { requireAdminPage } from "@/core/modules/auth/service";
-import { listPreviewsForReview } from "@/core/modules/previews/service";
+import { getAdminDashboard } from "@/core/modules/previews/service";
 import { formatDateTime } from "@/core/utils/format";
+import { StatCard } from "@/components/design/StatCard";
 import { PreviewStatusBadge } from "@/components/functional/admin/PreviewStatusBadge";
 
-export default async function AdminHomePage() {
+const searchSchema = z.object({ q: z.string().max(200).optional() });
+
+export default async function AdminDashboardPage({
+  searchParams,
+}: PageProps<"/admin">) {
   await requireAdminPage();
-  const previews = await listPreviewsForReview();
+  const parsed = searchSchema.safeParse(await searchParams);
+  const { stats, query, results } = await getAdminDashboard(
+    parsed.success ? parsed.data.q : "",
+  );
 
   return (
     <main>
-      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-        <h1 className="text-4xl font-semibold tracking-tight font-stretch-semi-condensed">
-          Te reviewen
-        </h1>
-        {previews.length > 0 && (
-          <p className="text-sm text-muted">
-            {previews.length === 1
-              ? "1 preview wacht op goedkeuring"
-              : `${previews.length} previews wachten op goedkeuring`}
-            , oudste eerst
-          </p>
-        )}
+      <h1 className="text-4xl font-semibold tracking-tight font-stretch-semi-condensed">
+        Dashboard
+      </h1>
+
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Te reviewen"
+          value={stats.toReview}
+          href="/admin/review"
+        />
+        <StatCard
+          label="Nog te downloaden"
+          value={stats.toDownload}
+          href="/admin/approved"
+        />
+        <StatCard
+          label="Mislukt"
+          value={stats.failed}
+          href="/admin/review"
+          tone="danger"
+        />
+        <StatCard
+          label="Goedgekeurd (totaal)"
+          value={stats.approved}
+          href="/admin/approved"
+        />
       </div>
 
-      {previews.length === 0 ? (
-        <div className="mt-8 rounded-lg border border-dashed border-line px-6 py-16 text-center">
-          <p className="font-medium">Er wacht niets op goedkeuring.</p>
-          <p className="mt-1 text-sm text-muted">
-            Nieuwe modellen verschijnen hier zodra de pipeline ze klaar heeft.
+      <section className="mt-10">
+        <h2 className="font-semibold">Preview zoeken</h2>
+        <form className="mt-3 flex gap-3">
+          <input
+            name="q"
+            defaultValue={query}
+            placeholder="Ordernummer, e-mail of preview-id"
+            className="w-full max-w-md rounded-md border border-line bg-surface px-3 py-2 text-sm"
+          />
+          <button
+            type="submit"
+            className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-strong"
+          >
+            Zoeken
+          </button>
+        </form>
+
+        {query && results.length === 0 && (
+          <p className="mt-4 text-sm text-muted">
+            Niets gevonden voor “{query}”.
           </p>
-        </div>
-      ) : (
-        <div className="mt-8 overflow-x-auto rounded-lg border border-line bg-surface">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-line text-muted">
-              <tr>
-                <th className="px-4 py-3 font-medium">Aangemaakt</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">E-mail</th>
-                <th className="px-4 py-3 font-medium">Fout</th>
-                <th className="px-4 py-3">
-                  <span className="sr-only">Actie</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {previews.map((preview) => (
-                <tr
-                  key={preview.id}
-                  className="border-b border-line last:border-0 hover:bg-canvas/60"
+        )}
+
+        {results.length > 0 && (
+          <ul className="mt-4 divide-y divide-line rounded-lg border border-line bg-surface">
+            {results.map((preview) => (
+              <li key={preview.id}>
+                <Link
+                  href={`/admin/previews/${preview.id}`}
+                  className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 text-sm hover:bg-canvas"
                 >
-                  <td className="whitespace-nowrap px-4 py-3 tabular-nums">
+                  <span className="tabular-nums text-muted">
                     {formatDateTime(preview.createdAt)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <PreviewStatusBadge status={preview.status} />
-                  </td>
-                  <td className="px-4 py-3">{preview.email ?? "—"}</td>
-                  <td
-                    className="max-w-xs truncate px-4 py-3 text-muted"
-                    title={preview.error ?? undefined}
-                  >
-                    {preview.error ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Link
-                      href={`/admin/previews/${preview.id}`}
-                      className="rounded font-semibold text-accent hover:underline focus-visible:outline-2 focus-visible:outline-accent"
-                    >
-                      Bekijken
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+                  </span>
+                  <PreviewStatusBadge status={preview.status} />
+                  <span>{preview.email ?? "—"}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </main>
   );
 }

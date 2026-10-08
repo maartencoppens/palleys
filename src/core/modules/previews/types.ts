@@ -44,3 +44,16 @@ export type PreviewActionResult = {
   previewId: string;
   status: PreviewStatus;
 };
+
+export type DashboardStats = {
+  toReview: number;
+  toDownload: number;
+  failed: number;
+  approved: number;
+};
+
+export type AdminDashboard = {
+  stats: DashboardStats;
+  query: string;
+  results: AdminPreviewListItem[];
+};
