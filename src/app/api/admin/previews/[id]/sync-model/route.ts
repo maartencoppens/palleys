@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { z, ZodError } from "zod";
 import { requireAdmin, UnauthorizedError } from "@/core/modules/auth/service";
-import { InvalidTransitionError } from "@/core/modules/previews/status";
 import {
   PreviewConflictError,
   PreviewNotFoundError,

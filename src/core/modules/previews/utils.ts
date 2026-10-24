@@ -1,28 +1,32 @@
 import { UNPAID_UPLOAD_TTL_MS } from "@/data/retention";
-
-export function unpaidExpiry(from: number = Date.now()) {
-  return new Date(from + UNPAID_UPLOAD_TTL_MS);
-}
-
-const EXT_BY_MIME: Record<string, string> = {
-  "image/png": "png",
-  "image/jpeg": "jpg",
-  "image/webp": "webp",
-};
+import { IMAGE_EXTENSIONS } from "@/data/uploads";
+import { DOWNLOAD_NAME_PREFIX, PREVIEW_KEY_PREFIX } from "@/data/storage";
 
 const MIME_BY_EXT: Record<string, string> = {
-  png: "image/png",
-  jpg: "image/jpeg",
+  ...Object.fromEntries(
+    Object.entries(IMAGE_EXTENSIONS).map(([mime, ext]) => [ext, mime]),
+  ),
   jpeg: "image/jpeg",
-  webp: "image/webp",
 };
 
 export function extensionForMime(mimeType: string) {
-  return EXT_BY_MIME[mimeType] ?? "bin";
+  return IMAGE_EXTENSIONS[mimeType as keyof typeof IMAGE_EXTENSIONS] ?? "bin";
+}
+
+function previewFolder(previewId: string) {
+  return `${PREVIEW_KEY_PREFIX}/${previewId}`;
+}
+
+export function originalPhotoKey(previewId: string, mimeType: string) {
+  return `${previewFolder(previewId)}/original.${extensionForMime(mimeType)}`;
 }
 
 export function poseImageKey(previewId: string, mimeType: string) {
-  return `previews/${previewId}/pose-${Date.now()}.${extensionForMime(mimeType)}`;
+  return `${previewFolder(previewId)}/pose-${Date.now()}.${extensionForMime(mimeType)}`;
+}
+
+export function unpaidExpiry(from: number = Date.now()) {
+  return new Date(from + UNPAID_UPLOAD_TTL_MS);
 }
 
 export function toErrorMessage(err: unknown) {
@@ -39,7 +43,7 @@ export function mimeTypeForKey(key: string) {
 // Keys per Meshy-taak, niet per tijdstip: wordt dezelfde taak twee keer
 // verwerkt (webhook + knop), dan overschrijft de tweede gewoon de eerste.
 export function modelKeys(previewId: string, taskId: string) {
-  const base = `previews/${previewId}/model-${taskId}`;
+  const base = `${previewFolder(previewId)}/model-${taskId}`;
   return {
     glbKey: `${base}.glb`,
     objKey: `${base}.obj`,
@@ -51,7 +55,7 @@ export function modelKeys(previewId: string, taskId: string) {
 // De naam waaronder OBJ, MTL en PNG gedownload worden. Moet dezelfde zijn
 // als in linkPrintFiles, anders vindt de slicer de textuur niet.
 export function printFileBaseName(previewId: string) {
-  return `palleys-${previewId.slice(0, 8)}`;
+  return `${DOWNLOAD_NAME_PREFIX}-${previewId.slice(0, 8)}`;
 }
 
 // Een OBJ verwijst via `mtllib` naar zijn MTL, en de MTL via `map_Kd` naar

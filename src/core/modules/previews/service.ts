@@ -31,6 +31,7 @@ import {
   printFileBaseName,
   toErrorMessage,
   unpaidExpiry,
+  originalPhotoKey,
 } from "./utils";
 import type {
   AdminDashboard,
@@ -40,14 +41,10 @@ import type {
   DownloadFile,
   PreviewActionResult,
 } from "./types";
-import { MAX_POSE_ATTEMPTS } from "@/data/pipeline";
 
-const EXTENSIONS: Record<CreateUploadInput["contentType"], string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-};
 import { z } from "zod";
+import { MAX_POSE_ATTEMPTS } from "@/data/pipeline";
+import { REVIEW_LIST_LIMIT, SEARCH_LIMIT } from "@/data/admin";
 
 export class PreviewNotFoundError extends Error {}
 export class PreviewConflictError extends Error {}
@@ -89,7 +86,7 @@ async function deleteReplacedFiles(keys: (string | null)[]) {
 
 export async function createPreview(input: CreateUploadInput) {
   const id = randomUUID();
-  const key = `previews/${id}/original.${EXTENSIONS[input.contentType]}`;
+  const key = originalPhotoKey(id, input.contentType);
   const expiresAt = unpaidExpiry();
 
   await prisma.preview.create({
@@ -411,8 +408,6 @@ export async function getPreviewForAdmin(
   };
 }
 
-const REVIEW_LIST_LIMIT = 100;
-
 const REVIEWABLE_STATUSES = [
   ...new Set([
     ...statusesThatCanTransitionTo(PreviewStatus.GENERATING_POSE),
@@ -511,8 +506,6 @@ export async function downloadModels(
     })),
   );
 }
-
-const SEARCH_LIMIT = 20;
 
 // Alles voor de dashboardpagina in één aanroep: tellingen + zoekresultaten.
 export async function getAdminDashboard(query = ""): Promise<AdminDashboard> {

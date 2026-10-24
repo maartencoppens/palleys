@@ -1,15 +1,9 @@
 import { z } from "zod";
 import type { PreviewStatus } from "@/db/client";
-
-export const ALLOWED_MIME_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-] as const;
-export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+import { ALLOWED_IMAGE_TYPES, MAX_UPLOAD_BYTES } from "@/data/uploads";
 
 export const createUploadSchema = z.object({
-  contentType: z.enum(ALLOWED_MIME_TYPES),
+  contentType: z.enum(ALLOWED_IMAGE_TYPES),
   size: z.number().int().positive().max(MAX_UPLOAD_BYTES),
 });
 

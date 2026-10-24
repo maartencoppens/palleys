@@ -7,6 +7,10 @@ import {
 } from "@aws-sdk/client-s3";
 import { env } from "@/core/utils/env";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import {
+  DOWNLOAD_URL_TTL_SECONDS,
+  UPLOAD_URL_TTL_SECONDS,
+} from "@/data/storage";
 
 const bucket = env.R2_BUCKET;
 
@@ -23,9 +27,6 @@ const s3 = new S3Client({
   responseChecksumValidation: "WHEN_REQUIRED",
 });
 
-const UPLOAD_TTL_SECONDS = 300;
-const DOWNLOAD_TTL_SECONDS = 300;
-
 export async function createUploadUrl(key: string, contentType: string) {
   return getSignedUrl(
     s3,
@@ -34,7 +35,7 @@ export async function createUploadUrl(key: string, contentType: string) {
       Key: key,
       ContentType: contentType,
     }),
-    { expiresIn: UPLOAD_TTL_SECONDS },
+    { expiresIn: UPLOAD_URL_TTL_SECONDS },
   );
 }
 
@@ -49,7 +50,7 @@ export async function createDownloadUrl(key: string, downloadName?: string) {
         ? `attachment; filename="${downloadName}"`
         : undefined,
     }),
-    { expiresIn: DOWNLOAD_TTL_SECONDS },
+    { expiresIn: DOWNLOAD_URL_TTL_SECONDS },
   );
 }
 

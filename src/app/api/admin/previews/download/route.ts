@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 import { z, ZodError } from "zod";
 import { requireAdmin, UnauthorizedError } from "@/core/modules/auth/service";
 import { downloadModels } from "@/core/modules/previews/service";
+import { MAX_DOWNLOAD_BATCH } from "@/data/admin";
 
-const bodySchema = z.object({ previewIds: z.array(z.uuid()).min(1).max(50) });
+const bodySchema = z.object({
+  previewIds: z.array(z.uuid()).min(1).max(MAX_DOWNLOAD_BATCH),
+});
 
 export async function POST(request: Request) {
   try {

@@ -2,24 +2,15 @@ import "server-only";
 import { timingSafeEqual } from "node:crypto";
 import axios from "axios";
 import { env } from "@/core/utils/env";
+import { MAX_MODEL_BYTES, MESHY_TASK_OPTIONS } from "@/data/pipeline";
 
 const BASE_URL = "https://api.meshy.ai/openapi/v1";
-const MAX_MODEL_BYTES = 100 * 1024 * 1024;
 
 const meshy = axios.create({
   baseURL: BASE_URL,
   headers: { Authorization: `Bearer ${env.MESHY_API_KEY}` },
   timeout: 30_000,
 });
-
-// Instellingen voor image-to-3D. Vul aan met wat jullie in de Meshy-playground
-// getest hebben (textuur, polycount, ...). Controleer de veldnamen in de API-docs.
-const TASK_OPTIONS = {
-  ai_model: "latest",
-  // glb voor de 3D-viewer in de backoffice, obj (+ mtl) voor de printer.
-  // Alleen deze formaten vragen maakt de taak ook sneller.
-  target_formats: ["glb", "obj"],
-};
 
 export type MeshyTaskStatus =
   | "PENDING"
@@ -76,7 +67,7 @@ export async function createImageTo3dTask(input: {
 }): Promise<string> {
   try {
     const res = await meshy.post<{ result: string }>("/image-to-3d", {
-      ...TASK_OPTIONS,
+      ...MESHY_TASK_OPTIONS,
       image_url: `data:${input.mimeType};base64,${input.image.toString("base64")}`,
       webhook_url: webhookUrl(),
     });
@@ -132,10 +123,11 @@ export async function downloadModel(url: string): Promise<Buffer> {
 
 export async function resizeModel(input: {
   inputTaskId: string;
+  longestSideMeters: number;
 }): Promise<string> {
   try {
     const res = await meshy.post<{ result: string }>("/resize", {
-      resize_longest_side: 0.036, // 3.6cm
+      resize_longest_side: input.longestSideMeters,
       input_task_id: input.inputTaskId,
       webhook_url: webhookUrl(),
     });

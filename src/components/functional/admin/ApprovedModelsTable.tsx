@@ -9,6 +9,7 @@ import { getApiErrorMessage } from "@/core/networking/api";
 import { formatDateTime } from "@/core/utils/format";
 import { Badge } from "@/components/design/Badge";
 import { Button } from "@/components/design/Button";
+import { DOWNLOAD_PAUSE_MS } from "@/data/admin";
 
 type Model = {
   id: string;
@@ -42,8 +43,7 @@ export function ApprovedModelsTable({ models }: { models: Model[] }) {
         link.href = file.url;
         link.download = file.fileName;
         link.click();
-        // Kleine pauze: zonder pauze slaat de browser soms bestanden over.
-        await new Promise((resolve) => setTimeout(resolve, 400));
+        await new Promise((resolve) => setTimeout(resolve, DOWNLOAD_PAUSE_MS));
       }
       setSelected([]);
       router.refresh();
