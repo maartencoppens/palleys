@@ -10,6 +10,7 @@ import { PreviewStatusBadge } from "@/components/functional/admin/PreviewStatusB
 import { GeneratePoseButton } from "@/components/functional/admin/GeneratePoseButton";
 import { GenerateModelButton } from "@/components/functional/admin/GenerateModelButton";
 import { SyncModelButton } from "@/components/functional/admin/SyncModelButton";
+import { AnimalTypePicker } from "@/components/functional/admin/AnimalTypePicker";
 
 const paramsSchema = z.object({ id: z.uuid() });
 
@@ -122,6 +123,16 @@ export default async function AdminPreviewDetailPage({
               )}
             </section>
           )}
+          <section className="rounded-lg border border-line bg-surface p-5">
+            <h2 className="font-semibold">Diersoort</h2>
+            <p className="mt-1 text-sm text-muted">
+              Komt in de bestandsnaam van de print. Nodig om goed te keuren.
+            </p>
+            <AnimalTypePicker
+              previewId={preview.id}
+              value={preview.animalType}
+            />
+          </section>
           {preview.canApprove && (
             <section className="rounded-lg border border-line bg-surface p-5">
               <h2 className="font-semibold">Goedkeuren</h2>

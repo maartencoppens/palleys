@@ -4,6 +4,7 @@ import { requireAdmin, UnauthorizedError } from "@/core/modules/auth/service";
 import {
   approvePreview,
   PreviewNotFoundError,
+  PreviewConflictError,
 } from "@/core/modules/previews/service";
 import { InvalidTransitionError } from "@/core/modules/previews/status";
 
@@ -27,6 +28,12 @@ export async function POST(
     }
     if (error instanceof PreviewNotFoundError) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    if (error instanceof PreviewConflictError) {
+      return NextResponse.json(
+        { error: "Kies eerst een diersoort" },
+        { status: 409 },
+      );
     }
     if (error instanceof InvalidTransitionError) {
       return NextResponse.json(

@@ -1,6 +1,7 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { prisma, PreviewStatus } from "@/db/client";
+import type { AnimalType } from "@/data/animals";
 import {
   createDownloadUrl,
   createUploadUrl,
@@ -24,7 +25,6 @@ import {
   statusesThatCanTransitionTo,
 } from "./status";
 import {
-  linkPrintFiles,
   mimeTypeForKey,
   modelKeys,
   poseImageKey,
@@ -38,7 +38,7 @@ import type {
   AdminPreviewDetail,
   AdminPreviewListItem,
   CreateUploadInput,
-  DownloadFile,
+  PrintDownload,
   PreviewActionResult,
 } from "./types";
 
@@ -100,12 +100,15 @@ export async function createPreview(input: CreateUploadInput) {
 export async function approvePreview(id: string) {
   const preview = await prisma.preview.findUnique({
     where: { id },
-    select: { status: true },
+    select: { status: true, animalType: true },
   });
   if (!preview) throw new PreviewNotFoundError();
 
   assertTransition(preview.status, PreviewStatus.APPROVED);
-
+  // Het diersoort staat in de bestandsnaam van de print: eerst kiezen.
+  if (!preview.animalType) {
+    throw new PreviewConflictError("Choose an animal type before approving");
+  }
   // Alleen updaten als de status sinds het lezen niet veranderd is.
   const { count } = await prisma.preview.updateMany({
     where: { id, status: preview.status },
@@ -116,6 +119,16 @@ export async function approvePreview(id: string) {
   }
 
   return { previewId: id, status: PreviewStatus.APPROVED };
+}
+
+// Mag in elke status: ook na goedkeuring kan een vergissing rechtgezet worden.
+export async function setAnimalType(id: string, animalType: AnimalType) {
+  const { count } = await prisma.preview.updateMany({
+    where: { id },
+    data: { animalType },
+  });
+  if (count === 0) throw new PreviewNotFoundError(id);
+  return { previewId: id, animalType };
 }
 
 export async function generatePose(id: string): Promise<PreviewActionResult> {
@@ -286,17 +299,12 @@ async function syncModelTask(
     downloadModel(urls.mtl),
     downloadModel(urls.texture),
   ]);
-  const printFiles = linkPrintFiles({
-    obj,
-    mtl,
-    baseName: printFileBaseName(preview.id),
-  });
 
   const keys = modelKeys(preview.id, taskId);
   await Promise.all([
     putObject(keys.glbKey, glb, "model/gltf-binary"),
-    putObject(keys.objKey, printFiles.obj, "model/obj"),
-    putObject(keys.mtlKey, printFiles.mtl, "model/mtl"),
+    putObject(keys.objKey, obj, "model/obj"),
+    putObject(keys.mtlKey, mtl, "model/mtl"),
     putObject(keys.textureKey, texture, "image/png"),
   ]);
 
@@ -372,6 +380,7 @@ export async function getPreviewForAdmin(
       poseImageKey: true,
       glbKey: true,
       poseAttempts: true,
+      animalType: true,
       meshyTaskId: true,
     },
   });
@@ -393,7 +402,10 @@ export async function getPreviewForAdmin(
     originalPhotoUrl,
     poseImageUrl,
     glbUrl,
-    canApprove: canTransition(preview.status, PreviewStatus.APPROVED),
+    animalType: preview.animalType,
+    canApprove:
+      canTransition(preview.status, PreviewStatus.APPROVED) &&
+      preview.animalType !== null,
     canGeneratePose: canTransition(
       preview.status,
       PreviewStatus.GENERATING_POSE,
@@ -475,13 +487,25 @@ export async function listApprovedModels() {
 
 // Markeert de modellen als gedownload en geeft per model drie downloadlinks
 // terug: OBJ, MTL en PNG, met dezelfde basisnaam zodat ze samen horen.
+// Markeert de modellen als gedownload en geeft per model de printnaam en
+// drie signed URL's terug. De browser maakt er zelf de zip(s) van.
 export async function downloadModels(
   previewIds: string[],
   adminName: string,
-): Promise<DownloadFile[]> {
+): Promise<PrintDownload[]> {
   const previews = await prisma.preview.findMany({
     where: { id: { in: previewIds }, ...DOWNLOADABLE },
-    select: { id: true, objKey: true, mtlKey: true, textureKey: true },
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      objKey: true,
+      mtlKey: true,
+      textureKey: true,
+      shopifyOrderNumber: true,
+      animalType: true,
+      paidAt: true,
+      createdAt: true,
+    },
   });
 
   await prisma.preview.updateMany({
@@ -489,21 +513,19 @@ export async function downloadModels(
     data: { downloadedAt: new Date(), downloadedBy: adminName },
   });
 
-  const files = previews.flatMap((p) => {
-    const base = printFileBaseName(p.id);
-    return [
-      { previewId: p.id, key: p.objKey!, fileName: `${base}.obj` },
-      { previewId: p.id, key: p.mtlKey!, fileName: `${base}.mtl` },
-      { previewId: p.id, key: p.textureKey!, fileName: `${base}.png` },
-    ];
-  });
-
   return Promise.all(
-    files.map(async ({ previewId, key, fileName }) => ({
-      previewId,
-      fileName,
-      url: await createDownloadUrl(key, fileName),
-    })),
+    previews.map(async (p) => {
+      const [obj, mtl, texture] = await Promise.all([
+        createDownloadUrl(p.objKey!),
+        createDownloadUrl(p.mtlKey!),
+        createDownloadUrl(p.textureKey!),
+      ]);
+      return {
+        previewId: p.id,
+        baseName: printFileBaseName(p),
+        urls: { obj, mtl, texture },
+      };
+    }),
   );
 }
 

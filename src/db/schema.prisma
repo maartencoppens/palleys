@@ -39,6 +39,9 @@ model Preview {
   poseAttempts      Int           @default(0)
   error             String?
   shopifyOrderId    String?
+  shopifyOrderNumber String? // zoals in Shopify-admin, bv. "1042"
+  paidAt            DateTime? // orderdatum, gezet door de Shopify-webhook
+  animalType        String? // code uit src/data/animals.ts, gekozen door de admin
   shopifyLineItemId String?       @unique
   createdAt         DateTime      @default(now())
   expiresAt         DateTime? // alleen voor niet-betaalde uploads, leeg na betaling

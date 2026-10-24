@@ -1,6 +1,11 @@
 import { UNPAID_UPLOAD_TTL_MS } from "@/data/retention";
 import { IMAGE_EXTENSIONS } from "@/data/uploads";
-import { DOWNLOAD_NAME_PREFIX, PREVIEW_KEY_PREFIX } from "@/data/storage";
+import {
+  NO_ORDER_LABEL,
+  PREVIEW_KEY_PREFIX,
+  PRINT_NAME_PREFIX,
+} from "@/data/storage";
+import { formatDateCompact } from "@/core/utils/format";
 
 const MIME_BY_EXT: Record<string, string> = {
   ...Object.fromEntries(
@@ -52,37 +57,50 @@ export function modelKeys(previewId: string, taskId: string) {
   };
 }
 
-// De naam waaronder OBJ, MTL en PNG gedownload worden. Moet dezelfde zijn
-// als in linkPrintFiles, anders vindt de slicer de textuur niet.
-export function printFileBaseName(previewId: string) {
-  return `${DOWNLOAD_NAME_PREFIX}-${previewId.slice(0, 8)}`;
+// PAL-<ordernummer>-<model>-<dier>-<orderdatum>, zonder extensie.
+// Zonder order (testpreviews) staat er NOORDER en valt de datum terug op
+// de aanmaakdatum. Alles wat geen letter of cijfer is, gaat eruit ("#1042").
+export function printFileBaseName(preview: {
+  id: string;
+  shopifyOrderNumber: string | null;
+  animalType: string | null;
+  paidAt: Date | null;
+  createdAt: Date;
+}) {
+  const order = preview.shopifyOrderNumber?.replace(/[^a-zA-Z0-9]/g, "");
+  return [
+    PRINT_NAME_PREFIX,
+    order || NO_ORDER_LABEL,
+    preview.id.slice(0, 8),
+    preview.animalType ?? "UNKNOWN",
+    formatDateCompact(preview.paidAt ?? preview.createdAt),
+  ].join("-");
 }
 
 // Een OBJ verwijst via `mtllib` naar zijn MTL, en de MTL via `map_Kd` naar
-// de PNG. Dat gaat op bestandsnaam. We hernoemen de bestanden bij download,
-// dus zetten we de verwijzingen hier op dezelfde namen.
+// de PNG. Dat gaat op bestandsnaam. De naam ligt pas vast bij het downloaden
+// (dier en order kunnen nog wijzigen), dus herschrijven we dan pas.
+// Werkt met strings zodat het ook in de browser draait.
 export function linkPrintFiles(input: {
-  obj: Buffer;
-  mtl: Buffer;
+  obj: string;
+  mtl: string;
   baseName: string;
 }) {
   // Een zip begint met "PK": dan klopt onze aanname over Meshy niet meer.
-  if (input.obj.subarray(0, 2).toString("latin1") === "PK") {
+  if (input.obj.startsWith("PK")) {
     throw new Error("Meshy returned the OBJ as a zip, expected a plain .obj");
   }
 
   const mtllib = `mtllib ${input.baseName}.mtl`;
-  let obj = input.obj.toString("utf8");
-  obj = /^mtllib\s/m.test(obj)
-    ? obj.replace(/^mtllib\s.*$/m, mtllib)
-    : `${mtllib}\n${obj}`;
+  const obj = /^mtllib\s/m.test(input.obj)
+    ? input.obj.replace(/^mtllib\s.*$/m, mtllib)
+    : `${mtllib}\n${input.obj}`;
 
   const mtl = input.mtl
-    .toString("utf8")
     .replace(/^(\s*)map_Kd\s.*$/gm, `$1map_Kd ${input.baseName}.png`)
     // Andere texturen (normal, roughness, ...) downloaden we niet:
     // verwijzingen ernaar zouden in de slicer als ontbrekend bestand opduiken.
     .replace(/^\s*(map_(?!Kd\b)\w+|bump|norm|disp)\s.*(\r?\n|$)/gm, "");
 
-  return { obj: Buffer.from(obj, "utf8"), mtl: Buffer.from(mtl, "utf8") };
+  return { obj, mtl };
 }

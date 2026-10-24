@@ -14,8 +14,8 @@ export async function POST(request: Request) {
     const { previewIds } = bodySchema.parse(
       await request.json().catch(() => null),
     );
-    const files = await downloadModels(previewIds, session.user.name);
-    return NextResponse.json({ files });
+    const downloads = await downloadModels(previewIds, session.user.name);
+    return NextResponse.json({ downloads });
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

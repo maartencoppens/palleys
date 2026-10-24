@@ -6,4 +6,6 @@ export const DOWNLOAD_URL_TTL_SECONDS = 300;
 export const PREVIEW_KEY_PREFIX = "previews";
 
 // Begin van de bestandsnaam bij downloaden (palleys-abcd1234.obj).
-export const DOWNLOAD_NAME_PREFIX = "palleys";
+// Printbestanden: PAL-<order>-<model>-<dier>-<datum>.obj
+export const PRINT_NAME_PREFIX = "PAL";
+export const NO_ORDER_LABEL = "NOORDER";

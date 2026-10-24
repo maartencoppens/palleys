@@ -9,7 +9,7 @@ import { getApiErrorMessage } from "@/core/networking/api";
 import { formatDateTime } from "@/core/utils/format";
 import { Badge } from "@/components/design/Badge";
 import { Button } from "@/components/design/Button";
-import { DOWNLOAD_PAUSE_MS } from "@/data/admin";
+import { buildPrintZip, saveFile } from "@/core/modules/previews/print-zip";
 
 type Model = {
   id: string;
@@ -35,16 +35,9 @@ export function ApprovedModelsTable({ models }: { models: Model[] }) {
     setLoading(true);
     setError(null);
     try {
-      const files = await postDownloadModels(selected);
-      // Drie bestanden per model (OBJ, MTL, PNG). De eerste keer vraagt de
-      // browser of deze site meerdere bestanden mag downloaden: toestaan.
-      for (const file of files) {
-        const link = document.createElement("a");
-        link.href = file.url;
-        link.download = file.fileName;
-        link.click();
-        await new Promise((resolve) => setTimeout(resolve, DOWNLOAD_PAUSE_MS));
-      }
+      const downloads = await postDownloadModels(selected);
+      const zip = await buildPrintZip(downloads);
+      saveFile(zip.fileName, zip.data);
       setSelected([]);
       router.refresh();
     } catch (e) {

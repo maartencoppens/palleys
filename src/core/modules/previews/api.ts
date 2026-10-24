@@ -1,5 +1,6 @@
 import { api } from "@/core/networking/api";
-import type { DownloadFile, PreviewActionResult } from "./types";
+import type { AnimalType } from "@/data/animals";
+import type { PreviewActionResult, PrintDownload } from "./types";
 
 export async function postApprovePreview(previewId: string) {
   const { data } = await api.post<PreviewActionResult>(
@@ -34,9 +35,20 @@ export async function postSyncModel(previewId: string) {
 }
 
 export async function postDownloadModels(previewIds: string[]) {
-  const { data } = await api.post<{ files: DownloadFile[] }>(
+  const { data } = await api.post<{ downloads: PrintDownload[] }>(
     "/admin/previews/download",
     { previewIds },
   );
-  return data.files;
+  return data.downloads;
+}
+
+export async function postAnimalType(
+  previewId: string,
+  animalType: AnimalType,
+) {
+  const { data } = await api.post<{
+    previewId: string;
+    animalType: AnimalType;
+  }>(`/admin/previews/${previewId}/animal-type`, { animalType });
+  return data;
 }
