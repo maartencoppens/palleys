@@ -10,7 +10,9 @@ export const POSE_IMAGE_CONFIG = {
 
 // Meshy image-to-3D. glb voor de viewer, obj (+ mtl) voor de printer.
 export const MESHY_TASK_OPTIONS = {
-  ai_model: "latest",
+  ai_model: "meshy-7.1",
+  should_remesh: true,
+  target_polycount: 150_000, // Meshy laat 100 tot 300.000 toe
   target_formats: ["glb", "obj"],
 };
 

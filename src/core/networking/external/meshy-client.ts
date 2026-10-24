@@ -21,6 +21,7 @@ export type MeshyTaskStatus =
 
 export type MeshyTask = {
   id: string;
+  preceding_tasks?: number; // aantal taken voor deze in de wachtrij
   status: MeshyTaskStatus;
   progress?: number;
   model_urls?: { glb?: string; obj?: string; mtl?: string };

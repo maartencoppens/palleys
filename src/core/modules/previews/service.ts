@@ -44,6 +44,7 @@ import type {
   PreviewActionResult,
   PhotoInput,
   ReviewListItem,
+  MeshyProgress,
   StatusOverrideInput,
 } from "./types";
 
@@ -480,6 +481,22 @@ export async function handleMeshyWebhook(input: {
   return syncModelTask(preview);
 }
 
+// Vraagt de stand op bij Meshy voor de previewpagina. Mag de pagina nooit
+// laten crashen: lukt het niet, dan tonen we gewoon geen voortgang.
+async function getMeshyProgress(taskId: string): Promise<MeshyProgress | null> {
+  try {
+    const task = await getImageTo3dTask(taskId);
+    return {
+      status: task.status,
+      progress: task.progress ?? null,
+      precedingTasks: task.preceding_tasks ?? null,
+    };
+  } catch (err) {
+    console.error("Could not fetch Meshy progress:", toErrorMessage(err));
+    return null;
+  }
+}
+
 function signedUrlOrNull(key: string | null) {
   return key ? createDownloadUrl(key) : Promise.resolve(null);
 }
@@ -518,8 +535,10 @@ export async function getPreviewForAdmin(
     },
   });
   if (!preview) return null;
+  const isGeneratingModel =
+    preview.status === PreviewStatus.GENERATING_MODEL && preview.meshyTaskId;
 
-  const [photos, poseImageUrl, glbUrl] = await Promise.all([
+  const [photos, poseImageUrl, glbUrl, meshyProgress] = await Promise.all([
     Promise.all(
       preview.photos.map(async (photo) => ({
         id: photo.id,
@@ -529,6 +548,9 @@ export async function getPreviewForAdmin(
     ),
     signedUrlOrNull(preview.poseImageKey),
     signedUrlOrNull(preview.glbKey),
+    isGeneratingModel
+      ? getMeshyProgress(preview.meshyTaskId!)
+      : Promise.resolve(null),
   ]);
 
   return {
@@ -548,6 +570,8 @@ export async function getPreviewForAdmin(
     poseImageUrl,
     glbUrl,
     animalType: preview.animalType,
+    meshyTaskId: preview.meshyTaskId,
+    meshyProgress,
     canApprove:
       canTransition(preview.status, PreviewStatus.APPROVED) &&
       preview.animalType !== null,

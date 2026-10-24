@@ -13,6 +13,7 @@ import { SyncModelButton } from "@/components/functional/admin/SyncModelButton";
 import { AnimalTypePicker } from "@/components/functional/admin/AnimalTypePicker";
 import { PhotoManager } from "@/components/functional/admin/PhotoManager";
 import { StatusOverridePanel } from "@/components/functional/admin/StatusOverridePanel";
+import type { MeshyProgress } from "@/core/modules/previews/types";
 
 const paramsSchema = z.object({ id: z.uuid() });
 
@@ -78,6 +79,12 @@ export default async function AdminPreviewDetailPage({
                 <dt className="text-muted">Shopify-order</dt>
                 <dd>{preview.shopifyOrderId ?? "—"}</dd>
               </div>
+              <div>
+                <dt className="text-muted">Meshy-taak</dt>
+                <dd className="break-all font-mono text-xs">
+                  {preview.meshyTaskId ?? "—"}
+                </dd>
+              </div>
             </dl>
           </section>
 
@@ -112,6 +119,11 @@ export default async function AdminPreviewDetailPage({
                     Meshy maakt het model. Dit duurt enkele minuten. Ververs de
                     pagina of haal de status zelf op.
                   </p>
+                  {preview.meshyProgress && (
+                    <p className="mt-2 text-sm font-medium tabular-nums">
+                      {meshyProgressLabel(preview.meshyProgress)}
+                    </p>
+                  )}
                   <SyncModelButton previewId={preview.id} />
                 </>
               ) : (
@@ -165,6 +177,19 @@ export default async function AdminPreviewDetailPage({
       </div>
     </main>
   );
+}
+
+function meshyProgressLabel(meshy: MeshyProgress) {
+  if (meshy.status === "PENDING") {
+    return meshy.precedingTasks
+      ? `Meshy: in de wachtrij (${meshy.precedingTasks} voor jou)`
+      : "Meshy: in de wachtrij";
+  }
+  if (meshy.status === "IN_PROGRESS") {
+    return `Meshy: ${meshy.progress ?? 0}%`;
+  }
+  // SUCCEEDED of FAILED: klaar bij Meshy, nog niet bij ons opgehaald.
+  return `Meshy: ${meshy.status.toLowerCase()} — haal de status op`;
 }
 
 type PhotoProps = {

@@ -50,6 +50,13 @@ export type AdminStatusChange = {
   createdAt: string;
 };
 
+// Live stand van de Meshy-taak, rechtstreeks bij Meshy opgevraagd.
+export type MeshyProgress = {
+  status: string;
+  progress: number | null;
+  precedingTasks: number | null;
+};
+
 export type AdminPreviewDetail = {
   id: string;
   status: PreviewStatus;
@@ -63,6 +70,8 @@ export type AdminPreviewDetail = {
   statusChanges: AdminStatusChange[];
   poseImageUrl: string | null;
   glbUrl: string | null;
+  meshyTaskId: string | null;
+  meshyProgress: MeshyProgress | null; // alleen terwijl het model gemaakt wordt
   canApprove: boolean;
   canGeneratePose: boolean;
   poseAttemptsLeft: number;
