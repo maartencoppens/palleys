@@ -30,7 +30,10 @@ model Preview {
   status            PreviewStatus @default(UPLOADED)
   originalPhotoKey  String?
   poseImageKey      String?
-  glbKey            String?          
+  glbKey            String? // voor de 3D-viewer in de backoffice
+  objKey            String? // printbestanden voor full color resin:
+  mtlKey            String? //   OBJ + MTL + PNG-textuur, altijd samen
+  textureKey        String?
   meshyTaskId       String?       @unique
   email             String?
   poseAttempts      Int           @default(0)

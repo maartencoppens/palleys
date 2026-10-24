@@ -14,6 +14,7 @@ import {
   createImageTo3dTask,
   downloadModel,
   getImageTo3dTask,
+  getModelFileUrls,
   isFinishedStatus,
 } from "@/core/networking/external/meshy-client";
 import {
@@ -23,9 +24,11 @@ import {
   statusesThatCanTransitionTo,
 } from "./status";
 import {
-  glbKey,
+  linkPrintFiles,
   mimeTypeForKey,
+  modelKeys,
   poseImageKey,
+  printFileBaseName,
   toErrorMessage,
   unpaidExpiry,
 } from "./utils";
@@ -34,6 +37,7 @@ import type {
   AdminPreviewDetail,
   AdminPreviewListItem,
   CreateUploadInput,
+  DownloadFile,
   PreviewActionResult,
 } from "./types";
 import { MAX_POSE_ATTEMPTS } from "@/data/pipeline";
@@ -50,6 +54,25 @@ export class PreviewConflictError extends Error {}
 
 // Ruimt bestanden op die door een nieuw resultaat vervangen zijn.
 // Mag de actie nooit laten mislukken: het nieuwe resultaat staat al in de database.
+// Alle bestanden van één 3D-model: de GLB voor de viewer + de printbestanden.
+type ModelFileKeys = {
+  glbKey: string | null;
+  objKey: string | null;
+  mtlKey: string | null;
+  textureKey: string | null;
+};
+
+const NO_MODEL: ModelFileKeys = {
+  glbKey: null,
+  objKey: null,
+  mtlKey: null,
+  textureKey: null,
+};
+
+function modelKeyList(model: ModelFileKeys) {
+  return [model.glbKey, model.objKey, model.mtlKey, model.textureKey];
+}
+
 async function deleteReplacedFiles(keys: (string | null)[]) {
   await Promise.all(
     keys
@@ -138,11 +161,11 @@ export async function generatePose(id: string): Promise<PreviewActionResult> {
       data: {
         status: PreviewStatus.POSE_READY,
         poseImageKey: key,
-        glbKey: null,
+        ...NO_MODEL,
         meshyTaskId: null,
       },
     });
-    await deleteReplacedFiles([preview.poseImageKey, preview.glbKey]);
+    await deleteReplacedFiles([preview.poseImageKey, ...modelKeyList(preview)]);
 
     return { previewId: id, status: PreviewStatus.POSE_READY };
   } catch (err) {
@@ -207,13 +230,15 @@ const SYNC_SELECT = {
   status: true,
   meshyTaskId: true,
   glbKey: true,
+  objKey: true,
+  mtlKey: true,
+  textureKey: true,
 } as const;
 
-type SyncablePreview = {
+type SyncablePreview = ModelFileKeys & {
   id: string;
   status: PreviewStatus;
   meshyTaskId: string | null;
-  glbKey: string | null;
 };
 
 // Kern van de Meshy-flow: vraagt de taak op bij Meshy en verwerkt het resultaat.
@@ -240,15 +265,17 @@ async function syncModelTask(
     meshyTaskId: taskId,
   };
 
-  const glbUrl = task.model_urls?.glb;
-  if (task.status !== "SUCCEEDED" || !glbUrl) {
+  const urls = task.status === "SUCCEEDED" ? getModelFileUrls(task) : null;
+  if (!urls) {
     await prisma.preview.updateMany({
       where: lock,
       data: {
         status: PreviewStatus.FAILED,
         error:
-          task.task_error?.message ||
-          `Meshy task ended with status ${task.status}`,
+          task.status === "SUCCEEDED"
+            ? "Meshy result is missing glb, obj, mtl or texture"
+            : task.task_error?.message ||
+              `Meshy task ended with status ${task.status}`,
       },
     });
     return { previewId: preview.id, status: PreviewStatus.FAILED };
@@ -256,22 +283,42 @@ async function syncModelTask(
 
   // Vanaf hier: fouten in download of opslag zetten de preview NIET op FAILED.
   // De taak bij Meshy blijft geldig, dus een volgende sync kan het opnieuw proberen.
-  const glb = await downloadModel(glbUrl);
-  const key = glbKey(preview.id, taskId);
-  await putObject(key, glb, "model/gltf-binary");
+  const [glb, obj, mtl, texture] = await Promise.all([
+    downloadModel(urls.glb),
+    downloadModel(urls.obj),
+    downloadModel(urls.mtl),
+    downloadModel(urls.texture),
+  ]);
+  const printFiles = linkPrintFiles({
+    obj,
+    mtl,
+    baseName: printFileBaseName(preview.id),
+  });
+
+  const keys = modelKeys(preview.id, taskId);
+  await Promise.all([
+    putObject(keys.glbKey, glb, "model/gltf-binary"),
+    putObject(keys.objKey, printFiles.obj, "model/obj"),
+    putObject(keys.mtlKey, printFiles.mtl, "model/mtl"),
+    putObject(keys.textureKey, texture, "image/png"),
+  ]);
 
   const { count } = await prisma.preview.updateMany({
     where: lock,
     data: {
       status: PreviewStatus.MODEL_READY,
-      glbKey: key,
+      ...keys,
       downloadedAt: null,
       downloadedBy: null,
     },
   });
   if (count === 0) return unchanged; // iemand anders was ons voor
 
-  if (preview.glbKey !== key) await deleteReplacedFiles([preview.glbKey]);
+  // Oude bestanden weg, behalve als het dezelfde keys zijn (zelfde taak).
+  const newKeys = modelKeyList(keys);
+  await deleteReplacedFiles(
+    modelKeyList(preview).filter((key) => !newKeys.includes(key)),
+  );
   return { previewId: preview.id, status: PreviewStatus.MODEL_READY };
 }
 
@@ -400,9 +447,18 @@ export async function listPreviewsForReview(): Promise<AdminPreviewListItem[]> {
 
 const APPROVED_STATUSES = [PreviewStatus.APPROVED, PreviewStatus.PRINT_READY];
 
+// Goedgekeurd én alle drie de printbestanden aanwezig. Previews van vóór de
+// overstap naar OBJ hebben alleen een GLB en vallen hier dus buiten.
+const DOWNLOADABLE = {
+  status: { in: APPROVED_STATUSES },
+  objKey: { not: null },
+  mtlKey: { not: null },
+  textureKey: { not: null },
+};
+
 export async function listApprovedModels() {
   const previews = await prisma.preview.findMany({
-    where: { status: { in: APPROVED_STATUSES }, glbKey: { not: null } },
+    where: DOWNLOADABLE,
     orderBy: { createdAt: "asc" },
     select: {
       id: true,
@@ -422,15 +478,15 @@ export async function listApprovedModels() {
   }));
 }
 
-// Markeert de modellen als gedownload en geeft een downloadlink per model terug.
-export async function downloadModels(previewIds: string[], adminName: string) {
+// Markeert de modellen als gedownload en geeft per model drie downloadlinks
+// terug: OBJ, MTL en PNG, met dezelfde basisnaam zodat ze samen horen.
+export async function downloadModels(
+  previewIds: string[],
+  adminName: string,
+): Promise<DownloadFile[]> {
   const previews = await prisma.preview.findMany({
-    where: {
-      id: { in: previewIds },
-      status: { in: APPROVED_STATUSES },
-      glbKey: { not: null },
-    },
-    select: { id: true, glbKey: true },
+    where: { id: { in: previewIds }, ...DOWNLOADABLE },
+    select: { id: true, objKey: true, mtlKey: true, textureKey: true },
   });
 
   await prisma.preview.updateMany({
@@ -438,13 +494,20 @@ export async function downloadModels(previewIds: string[], adminName: string) {
     data: { downloadedAt: new Date(), downloadedBy: adminName },
   });
 
+  const files = previews.flatMap((p) => {
+    const base = printFileBaseName(p.id);
+    return [
+      { previewId: p.id, key: p.objKey!, fileName: `${base}.obj` },
+      { previewId: p.id, key: p.mtlKey!, fileName: `${base}.mtl` },
+      { previewId: p.id, key: p.textureKey!, fileName: `${base}.png` },
+    ];
+  });
+
   return Promise.all(
-    previews.map(async (p) => ({
-      previewId: p.id,
-      url: await createDownloadUrl(
-        p.glbKey!,
-        `palleys-${p.id.slice(0, 8)}.glb`,
-      ),
+    files.map(async ({ previewId, key, fileName }) => ({
+      previewId,
+      fileName,
+      url: await createDownloadUrl(key, fileName),
     })),
   );
 }
@@ -457,13 +520,7 @@ export async function getAdminDashboard(query = ""): Promise<AdminDashboard> {
 
   const [byStatus, toDownload, results] = await Promise.all([
     prisma.preview.groupBy({ by: ["status"], _count: { _all: true } }),
-    prisma.preview.count({
-      where: {
-        status: { in: APPROVED_STATUSES },
-        glbKey: { not: null },
-        downloadedAt: null,
-      },
-    }),
+    prisma.preview.count({ where: { ...DOWNLOADABLE, downloadedAt: null } }),
     q ? searchPreviews(q) : Promise.resolve([]),
   ]);
 

@@ -45,6 +45,12 @@ export type PreviewActionResult = {
   status: PreviewStatus;
 };
 
+export type DownloadFile = {
+  previewId: string;
+  fileName: string;
+  url: string; // signed URL, kort geldig
+};
+
 export type DashboardStats = {
   toReview: number;
   toDownload: number;

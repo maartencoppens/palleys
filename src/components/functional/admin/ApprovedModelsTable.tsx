@@ -35,9 +35,12 @@ export function ApprovedModelsTable({ models }: { models: Model[] }) {
     setError(null);
     try {
       const files = await postDownloadModels(selected);
+      // Drie bestanden per model (OBJ, MTL, PNG). De eerste keer vraagt de
+      // browser of deze site meerdere bestanden mag downloaden: toestaan.
       for (const file of files) {
         const link = document.createElement("a");
         link.href = file.url;
+        link.download = file.fileName;
         link.click();
         // Kleine pauze: zonder pauze slaat de browser soms bestanden over.
         await new Promise((resolve) => setTimeout(resolve, 400));

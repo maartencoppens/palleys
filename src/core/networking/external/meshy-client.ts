@@ -16,6 +16,9 @@ const meshy = axios.create({
 // getest hebben (textuur, polycount, ...). Controleer de veldnamen in de API-docs.
 const TASK_OPTIONS = {
   ai_model: "latest",
+  // glb voor de 3D-viewer in de backoffice, obj (+ mtl) voor de printer.
+  // Alleen deze formaten vragen maakt de taak ook sneller.
+  target_formats: ["glb", "obj"],
 };
 
 export type MeshyTaskStatus =
@@ -29,7 +32,8 @@ export type MeshyTask = {
   id: string;
   status: MeshyTaskStatus;
   progress?: number;
-  model_urls?: { glb?: string };
+  model_urls?: { glb?: string; obj?: string; mtl?: string };
+  texture_urls?: { base_color?: string }[];
   task_error?: { message?: string };
 };
 
@@ -75,12 +79,29 @@ export async function createImageTo3dTask(input: {
       ...TASK_OPTIONS,
       image_url: `data:${input.mimeType};base64,${input.image.toString("base64")}`,
       webhook_url: webhookUrl(),
-      target_format: "obj",
     });
     return res.data.result;
   } catch (error) {
     throw toMeshyError(error, "create task");
   }
+}
+
+export type ModelFileUrls = {
+  glb: string;
+  obj: string;
+  mtl: string;
+  texture: string;
+};
+
+// Haalt de vier bestanden uit een geslaagde taak die wij nodig hebben.
+// null als er één ontbreekt: zonder MTL of textuur is er geen kleurenprint.
+export function getModelFileUrls(task: MeshyTask): ModelFileUrls | null {
+  const glb = task.model_urls?.glb;
+  const obj = task.model_urls?.obj;
+  const mtl = task.model_urls?.mtl;
+  const texture = task.texture_urls?.[0]?.base_color;
+  if (!glb || !obj || !mtl || !texture) return null;
+  return { glb, obj, mtl, texture };
 }
 
 export async function getImageTo3dTask(taskId: string): Promise<MeshyTask> {
