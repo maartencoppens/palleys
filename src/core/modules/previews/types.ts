@@ -1,11 +1,30 @@
 import { z } from "zod";
 import type { PreviewStatus } from "@/db/client";
-import { ALLOWED_IMAGE_TYPES, MAX_UPLOAD_BYTES } from "@/data/uploads";
-import { ANIMAL_TYPE_CODES, AnimalType } from "@/data/animals";
+import {
+  ALLOWED_IMAGE_TYPES,
+  MAX_UPLOAD_BYTES,
+  MAX_PHOTOS_PER_PREVIEW,
+} from "@/data/uploads";
+import { ANIMAL_TYPE_CODES } from "@/data/animals";
+import { ADMIN_SETTABLE_STATUSES } from "./status";
 
-export const createUploadSchema = z.object({
+export const photoInputSchema = z.object({
   contentType: z.enum(ALLOWED_IMAGE_TYPES),
   size: z.number().int().positive().max(MAX_UPLOAD_BYTES),
+});
+
+// De klant uploadt 1 tot MAX_PHOTOS_PER_PREVIEW foto's in één keer.
+export const createUploadSchema = z.object({
+  photos: z.array(photoInputSchema).min(1).max(MAX_PHOTOS_PER_PREVIEW),
+});
+
+export const confirmPhotoSchema = z.object({ key: z.string().min(1).max(300) });
+
+export const statusOverrideSchema = z.object({
+  status: z.enum(
+    ADMIN_SETTABLE_STATUSES as [PreviewStatus, ...PreviewStatus[]],
+  ),
+  reason: z.string().trim().min(3).max(500),
 });
 
 export const animalTypeSchema = z.object({
@@ -14,6 +33,23 @@ export const animalTypeSchema = z.object({
 
 export type CreateUploadInput = z.infer<typeof createUploadSchema>;
 
+export type PhotoInput = z.infer<typeof photoInputSchema>;
+export type StatusOverrideInput = z.infer<typeof statusOverrideSchema>;
+
+export type AdminPhoto = {
+  id: string;
+  url: string; // signed URL, kort geldig
+  uploadedBy: string | null; // null = klant
+};
+
+export type AdminStatusChange = {
+  fromStatus: PreviewStatus;
+  toStatus: PreviewStatus;
+  reason: string;
+  changedBy: string;
+  createdAt: string;
+};
+
 export type AdminPreviewDetail = {
   id: string;
   status: PreviewStatus;
@@ -21,7 +57,10 @@ export type AdminPreviewDetail = {
   error: string | null;
   shopifyOrderId: string | null;
   createdAt: string; // ISO-string: Date gaat niet zuiver van server naar client
-  originalPhotoUrl: string | null;
+  photos: AdminPhoto[];
+  canAddPhoto: boolean;
+  canDeletePhoto: boolean;
+  statusChanges: AdminStatusChange[];
   poseImageUrl: string | null;
   glbUrl: string | null;
   canApprove: boolean;
@@ -38,6 +77,10 @@ export type AdminPreviewListItem = {
   email: string | null;
   error: string | null;
   createdAt: string;
+};
+
+export type ReviewListItem = AdminPreviewListItem & {
+  photoUrls: string[];
 };
 
 export type PreviewActionResult = {

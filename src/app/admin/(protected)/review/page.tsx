@@ -36,6 +36,7 @@ export default async function AdminReviewPage() {
           <table className="w-full text-left text-sm">
             <thead className="border-b border-line text-muted">
               <tr>
+                <th className="px-4 py-3 font-medium">Foto&apos;s</th>
                 <th className="px-4 py-3 font-medium">Aangemaakt</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">E-mail</th>
@@ -51,6 +52,21 @@ export default async function AdminReviewPage() {
                   key={preview.id}
                   className="border-b border-line last:border-0 hover:bg-canvas/60"
                 >
+                  <td className="px-4 py-3">
+                    <div className="flex gap-1">
+                      {preview.photoUrls.map((url, index) => (
+                        /* Bewust <img>, niet next/image: klantfoto's (GDPR). */
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          key={url}
+                          src={url}
+                          alt={`Foto ${index + 1}`}
+                          loading="lazy"
+                          className="size-10 rounded border border-line object-cover"
+                        />
+                      ))}
+                    </div>
+                  </td>
                   <td className="whitespace-nowrap px-4 py-3 tabular-nums">
                     {formatDateTime(preview.createdAt)}
                   </td>

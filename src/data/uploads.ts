@@ -13,3 +13,6 @@ export const IMAGE_EXTENSIONS: Record<ImageMimeType, string> = {
   "image/png": "png",
   "image/webp": "webp",
 };
+
+// Hoeveel foto's van het dier een preview mag hebben (klant + admin samen).
+export const MAX_PHOTOS_PER_PREVIEW = 4;

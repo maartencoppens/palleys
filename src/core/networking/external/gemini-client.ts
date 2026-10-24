@@ -2,7 +2,12 @@ import "server-only";
 import { env } from "@/core/utils/env";
 import axios from "axios";
 import { POSE_PROMPT } from "@/data/prompts";
-import { POSE_IMAGE_CONFIG } from "@/data/pipeline";
+import {
+  GEMINI_INPUT_JPEG_QUALITY,
+  GEMINI_INPUT_MAX_PX,
+  POSE_IMAGE_CONFIG,
+} from "@/data/pipeline";
+import sharp from "sharp";
 
 type GeminiPart = {
   text?: string;
@@ -30,18 +35,32 @@ const gemini = axios.create({
 
 export class PoseGenerationError extends Error {}
 
-export async function generatePose(input: { image: Buffer; mimeType: string }) {
+// Verkleint een foto en zet hem om naar JPEG. `rotate()` zonder argument
+// draait de foto volgens de EXIF-info, zoals een gsm-foto bedoeld is.
+async function prepareImage(image: Buffer) {
+  return sharp(image)
+    .rotate()
+    .resize(GEMINI_INPUT_MAX_PX, GEMINI_INPUT_MAX_PX, {
+      fit: "inside",
+      withoutEnlargement: true,
+    })
+    .jpeg({ quality: GEMINI_INPUT_JPEG_QUALITY })
+    .toBuffer();
+}
+
+export async function generatePose(input: { images: Buffer[] }) {
+  const prepared = await Promise.all(input.images.map(prepareImage));
   const body = {
     contents: [
       {
         parts: [
           { text: POSE_PROMPT },
-          {
+          ...prepared.map((image) => ({
             inline_data: {
-              mime_type: input.mimeType,
-              data: input.image.toString("base64"),
+              mime_type: "image/jpeg",
+              data: image.toString("base64"),
             },
-          },
+          })),
         ],
       },
     ],

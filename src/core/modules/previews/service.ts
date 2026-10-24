@@ -8,6 +8,7 @@ import {
   deleteObject,
   getObject,
   putObject,
+  objectExists,
 } from "@/core/networking/external/storage-client";
 import { generatePose as geminiGeneratePose } from "@/core/networking/external/gemini-client";
 import {
@@ -31,7 +32,8 @@ import {
   printFileBaseName,
   toErrorMessage,
   unpaidExpiry,
-  originalPhotoKey,
+  isPhotoKeyOf,
+  photoKey,
 } from "./utils";
 import type {
   AdminDashboard,
@@ -40,7 +42,12 @@ import type {
   CreateUploadInput,
   PrintDownload,
   PreviewActionResult,
+  PhotoInput,
+  ReviewListItem,
+  StatusOverrideInput,
 } from "./types";
+
+import { MAX_PHOTOS_PER_PREVIEW } from "@/data/uploads";
 
 import { z } from "zod";
 import { MAX_POSE_ATTEMPTS } from "@/data/pipeline";
@@ -84,17 +91,125 @@ async function deleteReplacedFiles(keys: (string | null)[]) {
   );
 }
 
+// Maakt de preview aan met een rij per foto, en geeft per foto een signed
+// upload-URL terug in dezelfde volgorde als de input.
 export async function createPreview(input: CreateUploadInput) {
   const id = randomUUID();
-  const key = originalPhotoKey(id, input.contentType);
   const expiresAt = unpaidExpiry();
+  const photos = input.photos.map((photo) => ({
+    key: photoKey(id, photo.contentType),
+    contentType: photo.contentType,
+  }));
 
   await prisma.preview.create({
-    data: { id, originalPhotoKey: key, expiresAt },
+    data: {
+      id,
+      expiresAt,
+      photos: { create: photos.map((photo) => ({ key: photo.key })) },
+    },
   });
 
+  const uploadUrls = await Promise.all(
+    photos.map((photo) => createUploadUrl(photo.key, photo.contentType)),
+  );
+  return { previewId: id, uploadUrls, expiresAt: expiresAt.toISOString() };
+}
+
+async function countPhotos(id: string) {
+  const preview = await prisma.preview.findUnique({
+    where: { id },
+    select: { _count: { select: { photos: true } } },
+  });
+  if (!preview) throw new PreviewNotFoundError(id);
+  return preview._count.photos;
+}
+
+const TOO_MANY_PHOTOS = `Maximum ${MAX_PHOTOS_PER_PREVIEW} foto's per preview`;
+
+// Stap 1 van een upload door de admin: alleen een signed URL, nog geen rij.
+// De rij komt pas in confirmPhotoUpload, als het bestand echt in R2 staat.
+export async function createPhotoUpload(id: string, input: PhotoInput) {
+  if ((await countPhotos(id)) >= MAX_PHOTOS_PER_PREVIEW) {
+    throw new PreviewConflictError(TOO_MANY_PHOTOS);
+  }
+  const key = photoKey(id, input.contentType);
   const uploadUrl = await createUploadUrl(key, input.contentType);
-  return { previewId: id, uploadUrl, expiresAt: expiresAt.toISOString() };
+  return { key, uploadUrl };
+}
+
+// Stap 2: de browser heeft geüpload, wij controleren en slaan de foto op.
+export async function confirmPhotoUpload(
+  id: string,
+  key: string,
+  adminName: string,
+) {
+  if (!isPhotoKeyOf(id, key)) throw new PreviewConflictError("Ongeldige key");
+
+  if ((await countPhotos(id)) >= MAX_PHOTOS_PER_PREVIEW) {
+    await deleteReplacedFiles([key]); // te veel: geüpload bestand opruimen
+    throw new PreviewConflictError(TOO_MANY_PHOTOS);
+  }
+  if (!(await objectExists(key))) {
+    throw new PreviewConflictError("Upload niet gevonden, probeer opnieuw");
+  }
+
+  const photo = await prisma.previewPhoto.upsert({
+    where: { key }, // twee keer bevestigen maakt geen tweede rij
+    create: { previewId: id, key, uploadedBy: adminName },
+    update: {},
+  });
+  return { photoId: photo.id };
+}
+
+// Er blijft altijd minstens één foto over, anders kan er geen pose meer
+// gemaakt worden. Dus: eerst de nieuwe uploaden, dan de slechte verwijderen.
+export async function deletePhoto(id: string, photoId: string) {
+  const photo = await prisma.previewPhoto.findFirst({
+    where: { id: photoId, previewId: id },
+    select: { key: true },
+  });
+  if (!photo) throw new PreviewNotFoundError(photoId);
+
+  if ((await countPhotos(id)) <= 1) {
+    throw new PreviewConflictError(
+      "De laatste foto kan niet verwijderd worden. Upload eerst een nieuwe.",
+    );
+  }
+
+  await prisma.previewPhoto.delete({ where: { id: photoId } });
+  await deleteReplacedFiles([photo.key]); // klantfoto: ook uit R2 weg (GDPR)
+  return { photoId };
+}
+
+// Noodknop: zet de status zonder state machine en logt wie, wanneer en waarom.
+// Raakt verder niets aan (bestanden, Meshy-taak, ...): dat blijft zoals het is.
+export async function overrideStatus(
+  id: string,
+  input: StatusOverrideInput,
+  adminName: string,
+) {
+  const preview = await prisma.preview.findUnique({
+    where: { id },
+    select: { status: true },
+  });
+  if (!preview) throw new PreviewNotFoundError(id);
+  if (preview.status === input.status) {
+    throw new PreviewConflictError("De preview heeft deze status al");
+  }
+
+  await prisma.$transaction([
+    prisma.preview.update({ where: { id }, data: { status: input.status } }),
+    prisma.previewStatusChange.create({
+      data: {
+        previewId: id,
+        fromStatus: preview.status,
+        toStatus: input.status,
+        reason: input.reason,
+        changedBy: adminName,
+      },
+    }),
+  ]);
+  return { previewId: id, status: input.status };
 }
 
 export async function approvePreview(id: string) {
@@ -132,13 +247,19 @@ export async function setAnimalType(id: string, animalType: AnimalType) {
 }
 
 export async function generatePose(id: string): Promise<PreviewActionResult> {
-  const preview = await prisma.preview.findUnique({ where: { id } });
+  const preview = await prisma.preview.findUnique({
+    where: { id },
+    include: {
+      photos: { orderBy: { createdAt: "asc" }, select: { key: true } },
+    },
+  });
   if (!preview) throw new PreviewNotFoundError(id);
 
   assertTransition(preview.status, PreviewStatus.GENERATING_POSE);
 
-  const originalKey = preview.originalPhotoKey;
-  if (!originalKey) throw new PreviewConflictError("No original photo");
+  if (preview.photos.length === 0) {
+    throw new PreviewConflictError("No photos to build a pose from");
+  }
   if (preview.poseAttempts >= MAX_POSE_ATTEMPTS) {
     throw new PreviewConflictError("Max pose attempts reached");
   }
@@ -156,11 +277,10 @@ export async function generatePose(id: string): Promise<PreviewActionResult> {
   }
 
   try {
-    const original = await getObject(originalKey);
-    const pose = await geminiGeneratePose({
-      image: original,
-      mimeType: mimeTypeForKey(originalKey),
-    });
+    const images = await Promise.all(
+      preview.photos.map((photo) => getObject(photo.key)),
+    );
+    const pose = await geminiGeneratePose({ images });
 
     const key = poseImageKey(id, pose.mimeType);
     await putObject(key, pose.image, pose.mimeType);
@@ -376,18 +496,37 @@ export async function getPreviewForAdmin(
       error: true,
       shopifyOrderId: true,
       createdAt: true,
-      originalPhotoKey: true,
       poseImageKey: true,
       glbKey: true,
       poseAttempts: true,
       animalType: true,
       meshyTaskId: true,
+      photos: {
+        orderBy: { createdAt: "asc" },
+        select: { id: true, key: true, uploadedBy: true },
+      },
+      statusChanges: {
+        orderBy: { createdAt: "desc" },
+        select: {
+          fromStatus: true,
+          toStatus: true,
+          reason: true,
+          changedBy: true,
+          createdAt: true,
+        },
+      },
     },
   });
   if (!preview) return null;
 
-  const [originalPhotoUrl, poseImageUrl, glbUrl] = await Promise.all([
-    signedUrlOrNull(preview.originalPhotoKey),
+  const [photos, poseImageUrl, glbUrl] = await Promise.all([
+    Promise.all(
+      preview.photos.map(async (photo) => ({
+        id: photo.id,
+        url: await createDownloadUrl(photo.key),
+        uploadedBy: photo.uploadedBy,
+      })),
+    ),
     signedUrlOrNull(preview.poseImageKey),
     signedUrlOrNull(preview.glbKey),
   ]);
@@ -399,7 +538,13 @@ export async function getPreviewForAdmin(
     error: preview.error,
     shopifyOrderId: preview.shopifyOrderId,
     createdAt: preview.createdAt.toISOString(),
-    originalPhotoUrl,
+    photos,
+    canAddPhoto: photos.length < MAX_PHOTOS_PER_PREVIEW,
+    canDeletePhoto: photos.length > 1,
+    statusChanges: preview.statusChanges.map((change) => ({
+      ...change,
+      createdAt: change.createdAt.toISOString(),
+    })),
     poseImageUrl,
     glbUrl,
     animalType: preview.animalType,
@@ -429,7 +574,7 @@ const REVIEWABLE_STATUSES = [
   ]),
 ];
 
-export async function listPreviewsForReview(): Promise<AdminPreviewListItem[]> {
+export async function listPreviewsForReview(): Promise<ReviewListItem[]> {
   const previews = await prisma.preview.findMany({
     where: { status: { in: REVIEWABLE_STATUSES } },
     orderBy: { createdAt: "asc" },
@@ -440,16 +585,24 @@ export async function listPreviewsForReview(): Promise<AdminPreviewListItem[]> {
       email: true,
       error: true,
       createdAt: true,
+      photos: { orderBy: { createdAt: "asc" }, select: { key: true } },
     },
   });
 
-  return previews.map((preview) => ({
-    id: preview.id,
-    status: preview.status,
-    email: preview.email,
-    error: preview.error,
-    createdAt: preview.createdAt.toISOString(),
-  }));
+  // Signed URL's maken gebeurt lokaal (geen request naar R2), dus ook voor
+  // 100 previews met 4 foto's blijft dit snel.
+  return Promise.all(
+    previews.map(async (preview) => ({
+      id: preview.id,
+      status: preview.status,
+      email: preview.email,
+      error: preview.error,
+      createdAt: preview.createdAt.toISOString(),
+      photoUrls: await Promise.all(
+        preview.photos.map((photo) => createDownloadUrl(photo.key)),
+      ),
+    })),
+  );
 }
 
 const APPROVED_STATUSES = [PreviewStatus.APPROVED, PreviewStatus.PRINT_READY];

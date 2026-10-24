@@ -38,3 +38,9 @@ export function statusesThatCanTransitionTo(to: PreviewStatus) {
     canTransition(from, to),
   );
 }
+
+// Noodknop in de backoffice: een admin mag ELKE status zetten, bewust buiten
+// TRANSITIONS om. Alleen bedoeld om vastgelopen previews recht te zetten.
+export const ADMIN_SETTABLE_STATUSES = Object.keys(
+  TRANSITIONS,
+) as PreviewStatus[];

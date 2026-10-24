@@ -4,6 +4,8 @@ import {
   PutObjectCommand,
   GetObjectCommand,
   DeleteObjectCommand,
+  HeadObjectCommand,
+  NotFound,
 } from "@aws-sdk/client-s3";
 import { env } from "@/core/utils/env";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
@@ -76,4 +78,16 @@ export async function getObject(key: string): Promise<Buffer> {
 
 export async function deleteObject(key: string) {
   await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+}
+
+// Bestaat het bestand echt? Gebruikt na een upload via signed URL, want die
+// gaat rechtstreeks van de browser naar R2 en niet via onze server.
+export async function objectExists(key: string) {
+  try {
+    await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+    return true;
+  } catch (error) {
+    if (error instanceof NotFound) return false;
+    throw error;
+  }
 }

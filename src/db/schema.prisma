@@ -28,7 +28,6 @@ enum PreviewStatus {
 model Preview {
   id                String        @id @default(uuid())
   status            PreviewStatus @default(UPLOADED)
-  originalPhotoKey  String?
   poseImageKey      String?
   glbKey            String? // voor de 3D-viewer in de backoffice
   objKey            String? // printbestanden voor full color resin:
@@ -48,6 +47,8 @@ model Preview {
   photosDeleteAt    DateTime? // voor betaalde orders, na verzending
   downloadedAt      DateTime?
   downloadedBy      String?
+  photos            PreviewPhoto[]
+  statusChanges     PreviewStatusChange[]
 
   @@index([status, expiresAt])
 }
@@ -124,3 +125,29 @@ model RateLimit {
   @@unique([key])
   @@map("rateLimit")
 }
+
+  // Foto's van het dier, maximaal MAX_PHOTOS_PER_PREVIEW (src/data/uploads.ts).
+  model PreviewPhoto {
+    id         String   @id @default(uuid())
+    previewId  String
+    preview    Preview  @relation(fields: [previewId], references: [id], onDelete: Cascade)
+    key        String   @unique // R2-key, nooit de foto zelf
+    uploadedBy String? // null = klant, anders de naam van de admin
+    createdAt  DateTime @default(now())
+
+    @@index([previewId])
+  }
+
+  // Logboek van handmatige statuswijzigingen door een admin (de noodknop).
+  model PreviewStatusChange {
+    id         String        @id @default(uuid())
+    previewId  String
+    preview    Preview       @relation(fields: [previewId], references: [id], onDelete: Cascade)
+    fromStatus PreviewStatus
+    toStatus   PreviewStatus
+    reason     String
+    changedBy  String
+    createdAt  DateTime      @default(now())
+
+    @@index([previewId])
+  }

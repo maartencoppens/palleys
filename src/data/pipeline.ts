@@ -15,3 +15,8 @@ export const MESHY_TASK_OPTIONS = {
 };
 
 export const MAX_MODEL_BYTES = 100 * 1024 * 1024;
+
+// Foto's worden verkleind voor ze naar Gemini gaan: de API heeft een limiet
+// op de totale grootte van een request, en grotere foto's maken de pose niet beter.
+export const GEMINI_INPUT_MAX_PX = 1536;
+export const GEMINI_INPUT_JPEG_QUALITY = 90;

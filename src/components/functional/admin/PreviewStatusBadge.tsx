@@ -22,6 +22,10 @@ type PreviewStatusBadgeProps = {
   status: PreviewStatus;
 };
 
+export function previewStatusLabel(status: PreviewStatus) {
+  return STATUS_DISPLAY[status].label;
+}
+
 export function PreviewStatusBadge({ status }: PreviewStatusBadgeProps) {
   const { label, tone } = STATUS_DISPLAY[status];
   return <Badge tone={tone}>{label}</Badge>;

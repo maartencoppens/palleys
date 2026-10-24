@@ -22,8 +22,17 @@ function previewFolder(previewId: string) {
   return `${PREVIEW_KEY_PREFIX}/${previewId}`;
 }
 
-export function originalPhotoKey(previewId: string, mimeType: string) {
-  return `${previewFolder(previewId)}/original.${extensionForMime(mimeType)}`;
+// Willekeurige naam: foto's worden los toegevoegd en verwijderd.
+export function photoKey(previewId: string, mimeType: string) {
+  return `${previewFolder(previewId)}/photo-${crypto.randomUUID()}.${extensionForMime(mimeType)}`;
+}
+
+// Hoort deze key bij een foto van deze preview? Controle voor keys die
+// de browser ons terugstuurt na een upload.
+export function isPhotoKeyOf(previewId: string, key: string) {
+  return (
+    key.startsWith(`${previewFolder(previewId)}/photo-`) && !key.includes("..")
+  );
 }
 
 export function poseImageKey(previewId: string, mimeType: string) {

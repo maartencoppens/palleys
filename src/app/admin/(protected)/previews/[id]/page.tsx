@@ -11,6 +11,8 @@ import { GeneratePoseButton } from "@/components/functional/admin/GeneratePoseBu
 import { GenerateModelButton } from "@/components/functional/admin/GenerateModelButton";
 import { SyncModelButton } from "@/components/functional/admin/SyncModelButton";
 import { AnimalTypePicker } from "@/components/functional/admin/AnimalTypePicker";
+import { PhotoManager } from "@/components/functional/admin/PhotoManager";
+import { StatusOverridePanel } from "@/components/functional/admin/StatusOverridePanel";
 
 const paramsSchema = z.object({ id: z.uuid() });
 
@@ -53,7 +55,11 @@ export default async function AdminPreviewDetailPage({
             Nog geen 3D-model voor deze preview.
           </div>
         )}
-
+        <StatusOverridePanel
+          previewId={preview.id}
+          currentStatus={preview.status}
+          history={preview.statusChanges}
+        />
         <aside className="space-y-6 lg:row-span-2">
           <section className="rounded-lg border border-line bg-surface p-5">
             <h2 className="font-semibold">Gegevens</h2>
@@ -145,9 +151,16 @@ export default async function AdminPreviewDetailPage({
           )}
         </aside>
 
-        <div className="grid grid-cols-2 gap-4">
-          <Photo url={preview.originalPhotoUrl} caption="Originele foto" />
-          <Photo url={preview.poseImageUrl} caption="Pose" />
+        <div className="space-y-8">
+          <PhotoManager
+            previewId={preview.id}
+            photos={preview.photos}
+            canAdd={preview.canAddPhoto}
+            canDelete={preview.canDeletePhoto}
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Photo url={preview.poseImageUrl} caption="Pose" />
+          </div>
         </div>
       </div>
     </main>
