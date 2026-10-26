@@ -13,6 +13,11 @@ const schema = z.object({
   MESHY_WEBHOOK_SECRET: z.string().min(32),
   // Publieke basis-URL van de app, voor webhooks. Bewust los van BETTER_AUTH_URL.
   APP_URL: z.url().transform((url) => url.replace(/\/+$/, "")),
+  SHOPIFY_STORE_DOMAIN: z.string().min(1),
+  SHOPIFY_API_VERSION: z.string().min(1),
+  SHOPIFY_STOREFRONT_PRIVATE_TOKEN: z.string().min(1),
+  SHOPIFY_CLIENT_ID: z.string().min(1),
+  SHOPIFY_CLIENT_SECRET: z.string().min(1),
 });
 
 export const env = schema.parse(process.env);
