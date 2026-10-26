@@ -24,6 +24,9 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
             <Link href="/admin/approved" className="text-muted hover:text-ink">
               Goedgekeurd
             </Link>
+            <Link href="/admin/processed" className="text-muted hover:text-ink">
+              Processed
+            </Link>
           </nav>
           <div className="ml-auto flex items-center gap-4">
             <span className="text-sm text-muted">{user.email}</span>

@@ -47,6 +47,9 @@ model Preview {
   photosDeleteAt    DateTime? // voor betaalde orders, na verzending
   downloadedAt      DateTime?
   downloadedBy      String?
+  processedKey      String? // zip uit Blender, klaar voor print
+  processedAt       DateTime?
+  processedBy       String?
   photos            PreviewPhoto[]
   statusChanges     PreviewStatusChange[]
 

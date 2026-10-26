@@ -641,8 +641,9 @@ const DOWNLOADABLE = {
 };
 
 export async function listApprovedModels() {
+  // Alleen wat nog naar Blender moet. Verwerkte modellen staan op Processed.
   const previews = await prisma.preview.findMany({
-    where: DOWNLOADABLE,
+    where: { ...DOWNLOADABLE, status: PreviewStatus.APPROVED },
     orderBy: { createdAt: "asc" },
     select: {
       id: true,

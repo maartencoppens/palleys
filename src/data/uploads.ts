@@ -16,3 +16,7 @@ export const IMAGE_EXTENSIONS: Record<ImageMimeType, string> = {
 
 // Hoeveel foto's van het dier een preview mag hebben (klant + admin samen).
 export const MAX_PHOTOS_PER_PREVIEW = 4;
+
+// Verwerkte printbestanden uit Blender: één zip met OBJ + MTL + PNG.
+export const PRINT_FILE_CONTENT_TYPE = "application/zip";
+export const MAX_PRINT_FILE_BYTES = 200 * 1024 * 1024;
