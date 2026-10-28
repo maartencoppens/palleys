@@ -4,7 +4,7 @@ import { createDownloadUrl, objectExists } from "@/core/networking/external/stor
 import { canTransition } from "@/core/modules/previews/status";
 import { animals, editions, getVariant } from "@/data/options";
 import { LINE_ATTRIBUTES } from "@/data/shopify";
-import { addCartLines, createCart, fetchCart, getVariantBySku, removeCartLines } from "./cart";
+import { addCartLines, createCart, fetchCart, getVariantBySku, knownSkus, removeCartLines } from "./cart";
 import type {
   AddToCartInput,
   CartContext,
@@ -152,7 +152,15 @@ export async function addPreviewToCart(
 
   const { sku } = getVariant(input.edition, input.animal);
   const variant = await getVariantBySku(sku);
-  if (!variant?.availableForSale) throw new CartError("variant_unavailable");
+  if (!variant) {
+    console.error(`Shopify has no variant with SKU ${sku}. SKUs found: ${knownSkus().join(", ") || "none"}`);
+    throw new CartError("variant_unavailable");
+  }
+  if (!variant.availableForSale) {
+    // Usually inventory tracking with 0 stock: made-to-order variants shouldn't track stock.
+    console.error(`Shopify variant ${sku} is not available for sale (stock 0 with inventory tracking?)`);
+    throw new CartError("variant_unavailable");
+  }
 
   const attributes: { key: string; value: string }[] = [
     { key: LINE_ATTRIBUTES.previewId, value: input.previewId },

@@ -128,3 +128,8 @@ export async function getVariantBySku(sku: string): Promise<VariantInfo | null> 
   }
   return variantCache.bySku.get(sku) ?? null;
 }
+
+/** All SKUs Shopify returned for the product, for logging when a lookup misses. */
+export function knownSkus() {
+  return variantCache ? [...variantCache.bySku.keys()] : [];
+}
