@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { getAdminSession } from "@/core/modules/auth/service";
 import { GoogleSignInButton } from "@/components/functional/admin/GoogleSignInButton";
 
+export const instant = false;
+
 export default async function AdminLoginPage({
   searchParams,
 }: PageProps<"/admin/login">) {

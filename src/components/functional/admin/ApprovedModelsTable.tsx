@@ -8,7 +8,7 @@ import { postDownloadModels } from "@/core/modules/previews/api";
 import { getApiErrorMessage } from "@/core/networking/api";
 import { formatDateTime } from "@/core/utils/format";
 import { Badge } from "@/components/design/Badge";
-import { Button } from "@/components/design/Button";
+import Button from "@/components/design/Button";
 import { buildPrintZip, saveFile } from "@/core/modules/previews/print-zip";
 
 type Model = {

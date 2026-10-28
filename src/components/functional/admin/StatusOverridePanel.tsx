@@ -54,8 +54,8 @@ export function StatusOverridePanel({
         Status handmatig aanpassen
       </summary>
       <p className="mt-2 text-sm text-muted">
-        Alleen als er iets is misgelopen. Bestanden en Meshy-taken blijven
-        zoals ze zijn.
+        Alleen als er iets is misgelopen. Bestanden en Meshy-taken blijven zoals
+        ze zijn.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-4 space-y-3 text-sm">

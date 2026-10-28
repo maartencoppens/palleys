@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ANIMAL_TYPES, type AnimalType } from "@/data/animals";
 import { postAnimalType } from "@/core/modules/previews/api";
 import { getApiErrorMessage } from "@/core/networking/api";
-import { Button } from "@/components/design/Button";
+import Button from "@/components/design/Button";
 
 type AnimalTypePickerProps = {
   previewId: string;
@@ -32,15 +32,18 @@ export function AnimalTypePicker({ previewId, value }: AnimalTypePickerProps) {
 
   return (
     <div className="mt-4">
-      <div className="grid grid-cols-2 gap-2" role="group" aria-label="Diersoort">
+      <div
+        className="grid grid-cols-2 gap-2"
+        role="group"
+        aria-label="Diersoort"
+      >
         {ANIMAL_TYPES.map((option) => (
           <Button
             key={option.code}
-            variant={value === option.code ? "primary" : "secondary"}
+            variant={value === option.code ? "orange" : "bare"}
             aria-pressed={value === option.code}
-            loading={saving === option.code}
-            disabled={saving !== null}
-            onClick={() => handleChoose(option.code)}
+            aria-disabled={saving !== null}
+            onClick={() => saving === null && handleChoose(option.code)}
           >
             {option.label}
           </Button>

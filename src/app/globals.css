@@ -1,44 +1,169 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-admin: var(--font-instrument-sans), system-ui, sans-serif;
-}
-
-/* Admin-palet. De shop krijgt later een eigen merkidentiteit. */
+/*
+ * Design tokens taken from the Palleys Figma file (Website Layout | Palleys).
+ * Names mirror the Figma variables where one exists, e.g. `bg-accent-highlights`.
+ */
 @theme {
-  --color-canvas: #eef0ec;
-  --color-surface: #ffffff;
-  --color-ink: #1c2422;
-  --color-muted: #5f6964;
-  --color-line: #d5dad5;
-  --color-accent: #2b4cdb;
-  --color-accent-strong: #1f3bb3;
-  --color-waiting: #8a5a12;
-  --color-waiting-soft: #fbefd6;
-  --color-danger: #a8261b;
-  --color-danger-soft: #fbe6e3;
-  --color-success: #1d6b45;
-  --color-success-soft: #dff1e7;
-}
+  --color-accent-highlights: #f7a836;
+  --color-accent-highlights-hover: #ee9a1f;
+  --color-button-primary-text: #f5f2e4;
+  --color-text-secondary: #f5f2e4;
+  --color-title-accent: #ecbc46;
+  --color-hero: #075f4e;
+  --color-medium-green: #075847;
+  --color-medium-green-hover: #04473a;
+  --color-page: #ebe9df;
+  --color-banner: #f6d66b;
+  --color-banner-text: #034b3e;
+  --color-banner-dot: #f06432;
+  --color-text-muted: #828282;
+  --color-text-primary: #1a2815;
+  --color-light-green: #a5cfb2;
+  --color-card: #f9f9f9;
+  --color-background-default: #f5f2e4;
+  --color-off-white: #f5f2e4;
+  --color-light-yellow: #f6d66b;
+  --color-pink: #f4d4c9;
+  --color-off-white-dark: #ebe9df;
+  --color-placeholder: #8d8d8d;
+  --color-orange: #c2521f;
+  --color-orange-hover: #a8451a;
+  --color-coral: #ef7550;
+  --color-teal: #16a39a;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  --spacing-s: 12px;
+  --spacing-m: 16px;
+  --spacing-l: 24px;
+  --spacing-2xl: 48px;
+
+  --radius-pill: 128px;
+
+  /*
+   * Big rounded section corners (Made in Gent, charity, contact, footer). They shrink steeply with the
+   * viewport: 160px / 200px at 1440px, ~60px / ~75px on tablets, 24px / 28px on phones.
+   * Classes: rounded-tr-section, rounded-bl-section-lg, …
+   */
+  --radius-section: clamp(24px, calc(14.8vw - 53px), 160px);
+  --radius-section-lg: clamp(28px, calc(18.6vw - 68px), 200px);
+
+  /* Content never grows wider than this, so ultra-wide monitors get a centred column. */
+  --container-page: 1920px;
+
+  /* Info banner ticker on phones */
+  --animate-marquee: marquee 24s linear infinite;
+
+  @keyframes marquee {
+    to {
+      transform: translateX(-50%);
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@theme inline {
+  --font-display: var(--font-dynapuff), system-ui, sans-serif;
+  --font-body: var(--font-nunito-sans), system-ui, sans-serif;
+  --font-label: var(--font-dm-sans), system-ui, sans-serif;
+}
+
+/*
+ * Spacing system for sections. Phones and tablets use the same values everywhere; from 1024px sections
+ * may override them with their Figma measurements.
+ *   section-x / section-y   inner padding of a section (sides / top and bottom)
+ *   section-pt / section-pb only the top / bottom padding
+ *   stack                   gap between a section's header, content and call to action
+ */
+:root {
+  --space-section-x: 20px;
+  --space-section-y: 64px;
+  --space-stack: 32px;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --space-section-x: 40px;
+    --space-section-y: 88px;
+    --space-stack: 48px;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --space-section-x: clamp(48px, 7.5vw, 108px);
+    --space-section-y: 96px;
+    --space-stack: 56px;
+  }
+}
+
+@utility section-x {
+  padding-inline: var(--space-section-x);
+}
+
+@utility section-y {
+  padding-block: var(--space-section-y);
+}
+
+@utility section-pt {
+  padding-top: var(--space-section-y);
+}
+
+@utility section-pb {
+  padding-bottom: var(--space-section-y);
+}
+
+@utility stack {
+  gap: var(--space-stack);
+}
+
+/*
+ * Page-wide content column. The side inset is 64.5px in the 1440px Figma frame (4.48vw)
+ * and stops growing once the container reaches its max width.
+ */
+@utility page-container {
+  width: 100%;
+  max-width: var(--container-page);
+  margin-inline: auto;
+  padding-inline: clamp(20px, 4.48vw, 86px);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-page font-body text-white antialiased;
+    overflow-x: hidden;
+  }
+
+  :focus-visible {
+    @apply outline-3 outline-offset-4 outline-accent-highlights;
+  }
+}
+
+/*
+ * Animation setup (see SiteAnimations). With JavaScript on, animated elements start hidden so they
+ * don't flash before GSAP reveals them. Two safety nets: with "reduce motion" everything shows right
+ * away, and if the animation script never runs, the fallback keyframe makes everything visible after 2s.
+ */
+.js [data-animate],
+.js [data-hero-item],
+.js [data-nav-item] {
+  visibility: hidden;
+  animation: reveal-fallback 0s 2s forwards;
+}
+
+@keyframes reveal-fallback {
+  to {
+    visibility: visible;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .js [data-animate],
+  .js [data-hero-item],
+  .js [data-nav-item] {
+    visibility: visible;
+    animation: none;
+  }
 }
