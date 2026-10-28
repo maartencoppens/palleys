@@ -14,9 +14,20 @@ import { env } from "@/core/utils/env";
  */
 
 // Accepts "palleys", "palleys.myshopify.com" or "https://palleys.myshopify.com/".
+// Must be the permanent *.myshopify.com domain: a custom domain or an admin.shopify.com URL won't work,
+// and the handle in the admin URL isn't always the same as the myshopify subdomain.
 const shopDomain = (() => {
-  const raw = env.SHOPIFY_STORE_DOMAIN.replace(/^https?:\/\//, "").replace(/\/+$/, "");
-  return raw.includes(".") ? raw : `${raw}.myshopify.com`;
+  const raw = env.SHOPIFY_STORE_DOMAIN.trim()
+    .replace(/^https?:\/\//, "")
+    .replace(/\/.*$/, "")
+    .toLowerCase();
+  const domain = raw.includes(".") ? raw : `${raw}.myshopify.com`;
+  if (!/^[a-z0-9][a-z0-9-]*\.myshopify\.com$/.test(domain)) {
+    throw new Error(
+      `SHOPIFY_STORE_DOMAIN must be the store's *.myshopify.com domain, got "${env.SHOPIFY_STORE_DOMAIN}"`,
+    );
+  }
+  return domain;
 })();
 
 const TIMEOUT_MS = 15_000;
@@ -37,7 +48,7 @@ function toShopifyError(error: unknown, api: string) {
       (typeof body === "object" && body && ("errors" in body || "error" in body)
         ? JSON.stringify(body.errors ?? body.error)
         : error.message) ?? error.message;
-    return new ShopifyError(`Shopify ${api} request failed (${status}): ${message}`);
+    return new ShopifyError(`Shopify ${api} request to ${shopDomain} failed (${status}): ${message}`);
   }
   return error;
 }
