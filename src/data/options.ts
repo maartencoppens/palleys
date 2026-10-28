@@ -4,6 +4,9 @@
  * costs €27,99 and has SKU PAL-GP-{KEY|FIG}-{ANIMAL}. Labels are what the site shows; `shopifyValue`
  * is the exact option value in Shopify, `skuCode` the matching SKU part.
  */
+import type { AnimalType } from "./animals";
+import { ALLOWED_IMAGE_TYPES, MAX_PHOTOS_PER_PREVIEW, MAX_UPLOAD_BYTES } from "./uploads";
+
 export const SHOPIFY_PRODUCT_HANDLE = "gepersonaliseerde-palley";
 export const PALLEY_PRICE = 27.99;
 export const PALLEY_SIZE = "Ongeveer 3,7 cm aan de langste kant";
@@ -18,19 +21,20 @@ export const editions = [
 export type Edition = (typeof editions)[number]["value"];
 
 // Option2 "Dier", ordered by how common the pet is rather than as in the export.
+// `animalType` is the matching backoffice code (data/animals.ts), prefilled when the order is paid.
 export const animals = [
-  { value: "dog", label: "Hond", shopifyValue: "Hond", skuCode: "DOG" },
-  { value: "cat", label: "Kat", shopifyValue: "Kat", skuCode: "CAT" },
-  { value: "rabbit", label: "Konijn", shopifyValue: "Konijn", skuCode: "RABBIT" },
-  { value: "guinea-pig", label: "Cavia", shopifyValue: "Cavia", skuCode: "GUINEA_PIG" },
-  { value: "hamster", label: "Hamster", shopifyValue: "Hamster", skuCode: "HAMSTER" },
-  { value: "mouse", label: "Muis", shopifyValue: "Muis", skuCode: "MOUSE" },
-  { value: "rat", label: "Rat", shopifyValue: "Rat", skuCode: "RAT" },
-  { value: "hedgehog", label: "Egel", shopifyValue: "Egel", skuCode: "HEDGEHOG" },
-  { value: "turtle", label: "Schildpad", shopifyValue: "Schildpad", skuCode: "TURTLE" },
-  { value: "chameleon", label: "Kameleon", shopifyValue: "Kameleon", skuCode: "CHAMELEON" },
-  { value: "snake", label: "Slang", shopifyValue: "Slang", skuCode: "SNAKE" },
-] as const satisfies readonly Option<string>[];
+  { value: "dog", label: "Hond", shopifyValue: "Hond", skuCode: "DOG", animalType: "HOND" },
+  { value: "cat", label: "Kat", shopifyValue: "Kat", skuCode: "CAT", animalType: "KAT" },
+  { value: "rabbit", label: "Konijn", shopifyValue: "Konijn", skuCode: "RABBIT", animalType: "KONIJN" },
+  { value: "guinea-pig", label: "Cavia", shopifyValue: "Cavia", skuCode: "GUINEA_PIG", animalType: "CAVIA" },
+  { value: "hamster", label: "Hamster", shopifyValue: "Hamster", skuCode: "HAMSTER", animalType: "HAMSTER" },
+  { value: "mouse", label: "Muis", shopifyValue: "Muis", skuCode: "MOUSE", animalType: "MUIS" },
+  { value: "rat", label: "Rat", shopifyValue: "Rat", skuCode: "RAT", animalType: "RAT" },
+  { value: "hedgehog", label: "Egel", shopifyValue: "Egel", skuCode: "HEDGEHOG", animalType: "EGEL" },
+  { value: "turtle", label: "Schildpad", shopifyValue: "Schildpad", skuCode: "TURTLE", animalType: "SCHILDPAD" },
+  { value: "chameleon", label: "Kameleon", shopifyValue: "Kameleon", skuCode: "CHAMELEON", animalType: "KAMELEON" },
+  { value: "snake", label: "Slang", shopifyValue: "Slang", skuCode: "SNAKE", animalType: "SLANG" },
+] as const satisfies readonly (Option<string> & { animalType: AnimalType })[];
 export type Animal = (typeof animals)[number]["value"];
 
 export const findOption = <O extends Option<string>>(options: readonly O[], value: string | null) =>
@@ -50,10 +54,14 @@ export const getVariant = (edition: Edition, animal: Animal) => {
 export const RETURN_NOTE =
   "Elke Palley wordt speciaal voor jouw huisdier gemaakt, dus retourneren kan niet. Kwam hij beschadigd aan of is het niet wat je bestelde? Dan lossen we het op.";
 
-export const MAX_PHOTOS = 4;
-export const MAX_PHOTO_BYTES = 20 * 1024 * 1024;
-export const ACCEPTED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/heic", "image/heif"];
-export const ACCEPTED_PHOTO_EXTENSIONS = [".jpg", ".jpeg", ".png", ".heic", ".heif"];
+// Same limits as the upload API (data/uploads.ts), so the browser never accepts what the server refuses.
+// No HEIC: the AI pipeline can't read it. iPhones convert HEIC to JPEG when the picker doesn't accept it.
+export const MAX_PHOTOS = MAX_PHOTOS_PER_PREVIEW;
+export const MAX_PHOTO_BYTES = MAX_UPLOAD_BYTES;
+export const ACCEPTED_PHOTO_TYPES: readonly string[] = ALLOWED_IMAGE_TYPES;
+export const ACCEPTED_PHOTO_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
+export const ACCEPTED_PHOTO_LABEL = "JPG, PNG of WebP";
+export const MAX_PHOTO_SIZE_LABEL = `${MAX_UPLOAD_BYTES / 1024 / 1024} MB`;
 
 /** How sharp an uploaded photo looks, judged by its shortest side in pixels. */
 export type PhotoQuality = "great" | "ok" | "small" | "unknown";

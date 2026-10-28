@@ -11,7 +11,6 @@ import {
   animals,
   editions,
   findOption,
-  getVariant,
   PALLEY_PRICE,
   PALLEY_SIZE,
   RETURN_NOTE,
@@ -25,6 +24,7 @@ import Stepper from "@/components/design/Stepper";
 import Panel from "@/components/design/Panel";
 import ChoiceChips from "@/components/design/ChoiceChips";
 import { formatPrice } from "@/core/utils/format";
+import { useAddPalleyToCart } from "@/core/hooks/useAddPalleyToCart";
 
 const errorClassName = "font-label text-base font-semibold text-[#a3341a]";
 
@@ -42,7 +42,9 @@ export default function Configurator() {
   const [notes, setNotes] = useState("");
   const [consent, setConsent] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
-  const [added, setAdded] = useState(false);
+  const { addToCart, reset, status: cartStatus, error: cartError, busy } =
+    useAddPalleyToCart();
+  const added = cartStatus === "done";
 
   const chooseHeadingRef = useRef<HTMLHeadingElement>(null);
   const uploadHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -94,6 +96,7 @@ export default function Configurator() {
 
   const handleAddToCart = (event: React.FormEvent) => {
     event.preventDefault();
+    if (busy) return;
     if (activeStep) {
       setShowErrors(true);
       const headingRef = {
@@ -106,12 +109,8 @@ export default function Configurator() {
       heading?.focus({ preventScroll: true });
       return;
     }
-    // TODO: add this Shopify variant to the cart (with the photos uploaded to storage and the pet's name
-    // and notes as line item properties). Until that's connected, nothing is saved; the visitor only
-    // sees the confirmation below.
-    const variant = getVariant(edition, animal!);
-    console.info("[configurator] add to cart", variant.sku, variant.options);
-    setAdded(true);
+    // Uploads the photos to R2, then adds the matching Shopify variant with the preview ID and notes.
+    void addToCart({ animal: animal!, edition, photos, notes });
   };
 
   const startOver = () => {
@@ -124,7 +123,7 @@ export default function Configurator() {
     setNotes("");
     setConsent(false);
     setShowErrors(false);
-    setAdded(false);
+    reset();
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -295,13 +294,21 @@ export default function Configurator() {
                 <p className="text-base leading-[1.5] text-text-primary">
                   {`Je Palley (${animalLabel?.toLowerCase()}, ${editionLabel?.toLowerCase()}) staat klaar om af te rekenen.`}
                 </p>
-                <button
-                  type="button"
-                  onClick={startOver}
-                  className="font-label text-base font-bold text-medium-green underline underline-offset-4"
-                >
-                  Nog een Palley maken
-                </button>
+                <div className="flex flex-wrap items-center gap-4">
+                  <Link
+                    href="/cart"
+                    className="rounded-full bg-orange px-6 py-3 font-label text-base font-semibold text-off-white transition hover:bg-orange-hover"
+                  >
+                    Naar winkelmandje
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={startOver}
+                    className="font-label text-base font-bold text-medium-green underline underline-offset-4"
+                  >
+                    Nog een Palley maken
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -311,9 +318,15 @@ export default function Configurator() {
                 </p>
                 <button
                   type="submit"
-                  className="group flex items-center justify-center gap-3 self-stretch rounded-full bg-orange py-[18px] pr-6 pl-7 font-label text-lg leading-[normal] font-semibold text-off-white transition hover:bg-orange-hover active:scale-[0.98] sm:self-auto lg:order-first"
+                  disabled={busy}
+                  aria-busy={busy}
+                  className="group flex disabled:cursor-wait disabled:opacity-70 items-center justify-center gap-3 self-stretch rounded-full bg-orange py-[18px] pr-6 pl-7 font-label text-lg leading-[normal] font-semibold text-off-white transition hover:bg-orange-hover active:scale-[0.98] sm:self-auto lg:order-first"
                 >
-                  In winkelmandje
+                  {cartStatus === "uploading"
+                    ? "Foto’s uploaden…"
+                    : cartStatus === "adding"
+                      ? "Toevoegen…"
+                      : "In winkelmandje"}
                   <Image
                     className="transition-transform group-hover:translate-x-1"
                     src="/images/cta/arrow-right.svg"
@@ -324,6 +337,11 @@ export default function Configurator() {
                   />
                 </button>
               </div>
+            )}
+            {cartError && (
+              <p role="alert" className={errorClassName}>
+                {cartError}
+              </p>
             )}
           </Panel>
         </div>
