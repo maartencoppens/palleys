@@ -4,6 +4,8 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import {
   ACCEPTED_PHOTO_EXTENSIONS,
+  ACCEPTED_PHOTO_LABEL,
+  MAX_PHOTO_SIZE_LABEL,
   ACCEPTED_PHOTO_TYPES,
   MAX_PHOTO_BYTES,
   MAX_PHOTOS,
@@ -16,7 +18,7 @@ import { formatFileSize } from "@/core/utils/format";
 export type UploadedPhoto = {
   id: string;
   file: File;
-  /** Object URL for previews; null when the browser can't display the format (e.g. HEIC). */
+  /** Object URL for previews; null when the browser can't display the file. */
   previewUrl: string | null;
   quality: PhotoQuality;
 };
@@ -85,12 +87,12 @@ export default function PhotoUpload({
     const issues: string[] = [];
     const valid = files.filter((file) => {
       if (!isAccepted(file)) {
-        issues.push(`${file.name} is geen JPG-, PNG- of HEIC-foto.`);
+        issues.push(`${file.name} is geen JPG-, PNG- of WebP-foto.`);
         return false;
       }
       if (file.size > MAX_PHOTO_BYTES) {
         issues.push(
-          `${file.name} is ${formatFileSize(file.size)}; foto’s mogen maximaal 20 MB zijn.`,
+          `${file.name} is ${formatFileSize(file.size)}; foto’s mogen maximaal ${MAX_PHOTO_SIZE_LABEL} zijn.`,
         );
         return false;
       }
@@ -204,7 +206,8 @@ export default function PhotoUpload({
             id="photo-hint"
             className="text-base leading-[1.5] text-text-primary"
           >
-            JPG, PNG of HEIC · max. 20 MB per foto
+            {ACCEPTED_PHOTO_LABEL} · max. {MAX_PHOTO_SIZE_LABEL} per
+            foto
           </p>
         </div>
       ) : (
@@ -313,7 +316,8 @@ export default function PhotoUpload({
                 Nog een foto toevoegen
               </button>
               <p id="photo-hint-compact" className="sr-only">
-                JPG, PNG of HEIC, max. 20 MB per foto
+                {ACCEPTED_PHOTO_LABEL}, max. {MAX_PHOTO_SIZE_LABEL}{" "}
+                per foto
               </p>
             </div>
           )}
