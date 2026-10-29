@@ -15,10 +15,13 @@ function createClient() {
   const adapter = new PrismaPg({
     connectionString: url.toString(),
     max: 5,
-    ssl: {
-      ca: readFileSync(path.join(process.cwd(), "certs/aiven-ca.pem"), "utf8"),
-      rejectUnauthorized: true,
-    },
+    // Alleen SSL als er een CA-certificaat ingesteld is (externe database).
+    ...(env.DATABASE_SSL_CA && {
+      ssl: {
+        ca: readFileSync(path.join(process.cwd(), env.DATABASE_SSL_CA), "utf8"),
+        rejectUnauthorized: true,
+      },
+    }),
   });
   return new PrismaClient({ adapter });
 }
