@@ -12,7 +12,8 @@ import type { CartLineInput, ShopifyCart, ShopifyUserError } from "./types";
  * the cart is decided in service.ts. Every operation runs in the Belgian/Dutch market context.
  */
 
-const IN_CONTEXT = `@inContext(country: ${SHOPIFY_CONTEXT.country}, language: ${SHOPIFY_CONTEXT.language})`;
+// const IN_CONTEXT = `@inContext(country: ${SHOPIFY_CONTEXT.country}, language: ${SHOPIFY_CONTEXT.language})`;
+const IN_CONTEXT = "@inContext(country: BE, language: NL)";
 
 const CART_FIELDS = `
   fragment CartFields on Cart {
