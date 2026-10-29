@@ -1,5 +1,8 @@
 import "server-only";
-import { storefrontQuery, ShopifyError } from "@/core/networking/external/shopify-client";
+import {
+  storefrontQuery,
+  ShopifyError,
+} from "@/core/networking/external/shopify-client";
 import { SHOPIFY_PRODUCT_HANDLE } from "@/data/options";
 import { SHOPIFY_CONTEXT, VARIANT_CACHE_TTL_MS } from "@/data/shopify";
 import type { CartLineInput, ShopifyCart, ShopifyUserError } from "./types";
@@ -36,11 +39,15 @@ const CART_FIELDS = `
   }
 `;
 
-type CartMutationPayload = { cart: ShopifyCart | null; userErrors: ShopifyUserError[] };
+type CartMutationPayload = {
+  cart: ShopifyCart | null;
+  userErrors: ShopifyUserError[];
+};
 
 function unwrap(payload: CartMutationPayload, action: string): ShopifyCart {
   if (payload.userErrors.length > 0 || !payload.cart) {
-    const message = payload.userErrors.map((e) => e.message).join("; ") || "no cart returned";
+    const message =
+      payload.userErrors.map((e) => e.message).join("; ") || "no cart returned";
     throw new ShopifyError(`Shopify ${action} failed: ${message}`);
   }
   return payload.cart;
@@ -58,7 +65,10 @@ export async function fetchCart(cartId: string, options: Options = {}) {
   return data.cart;
 }
 
-export async function createCart(lines: CartLineInput[], options: Options = {}) {
+export async function createCart(
+  lines: CartLineInput[],
+  options: Options = {},
+) {
   const data = await storefrontQuery<{ cartCreate: CartMutationPayload }>(
     `mutation CartCreate($input: CartInput!) ${IN_CONTEXT} {
       cartCreate(input: $input) { cart { ...CartFields } userErrors { field message } }
@@ -74,7 +84,11 @@ export async function createCart(lines: CartLineInput[], options: Options = {}) 
   return unwrap(data.cartCreate, "cartCreate");
 }
 
-export async function addCartLines(cartId: string, lines: CartLineInput[], options: Options = {}) {
+export async function addCartLines(
+  cartId: string,
+  lines: CartLineInput[],
+  options: Options = {},
+) {
   const data = await storefrontQuery<{ cartLinesAdd: CartMutationPayload }>(
     `mutation CartLinesAdd($cartId: ID!, $lines: [CartLineInput!]!) ${IN_CONTEXT} {
       cartLinesAdd(cartId: $cartId, lines: $lines) { cart { ...CartFields } userErrors { field message } }
@@ -85,7 +99,11 @@ export async function addCartLines(cartId: string, lines: CartLineInput[], optio
   return unwrap(data.cartLinesAdd, "cartLinesAdd");
 }
 
-export async function removeCartLines(cartId: string, lineIds: string[], options: Options = {}) {
+export async function removeCartLines(
+  cartId: string,
+  lineIds: string[],
+  options: Options = {},
+) {
   const data = await storefrontQuery<{ cartLinesRemove: CartMutationPayload }>(
     `mutation CartLinesRemove($cartId: ID!, $lineIds: [ID!]!) ${IN_CONTEXT} {
       cartLinesRemove(cartId: $cartId, lineIds: $lineIds) { cart { ...CartFields } userErrors { field message } }
@@ -99,22 +117,39 @@ export async function removeCartLines(cartId: string, lineIds: string[], options
 // ---------- Variant lookup ----------
 
 type VariantInfo = { id: string; availableForSale: boolean };
-let variantCache: { bySku: Map<string, VariantInfo>; expiresAt: number } | null = null;
+let variantCache: {
+  bySku: Map<string, VariantInfo>;
+  expiresAt: number;
+} | null = null;
 
 /**
  * Variant GID for a SKU from data/options.ts (e.g. PAL-GP-KEY-DOG). The product has 22 variants,
  * so one query fetches them all; the result is cached in memory for a few minutes.
  */
-export async function getVariantBySku(sku: string): Promise<VariantInfo | null> {
+export async function getVariantBySku(
+  sku: string,
+): Promise<VariantInfo | null> {
   if (!variantCache || Date.now() > variantCache.expiresAt) {
     const data = await storefrontQuery<{
-      product: { variants: { nodes: { id: string; sku: string | null; availableForSale: boolean }[] } } | null;
+      product: {
+        variants: {
+          nodes: {
+            id: string;
+            sku: string | null;
+            availableForSale: boolean;
+          }[];
+        };
+      } | null;
     }>(
       `query ProductVariants($handle: String!) ${IN_CONTEXT} {
         product(handle: $handle) { variants(first: 100) { nodes { id sku availableForSale } } }
       }`,
       { handle: SHOPIFY_PRODUCT_HANDLE },
     );
+    console.info("[Shopify product lookup]", {
+      handle: SHOPIFY_PRODUCT_HANDLE,
+      productFound: Boolean(data.product),
+    });
     if (!data.product) {
       throw new ShopifyError(
         `Product "${SHOPIFY_PRODUCT_HANDLE}" not found. Is it published to the headless sales channel?`,
@@ -122,10 +157,19 @@ export async function getVariantBySku(sku: string): Promise<VariantInfo | null> 
     }
     const bySku = new Map<string, VariantInfo>();
     for (const variant of data.product.variants.nodes) {
-      if (variant.sku) bySku.set(variant.sku, { id: variant.id, availableForSale: variant.availableForSale });
+      if (variant.sku)
+        bySku.set(variant.sku, {
+          id: variant.id,
+          availableForSale: variant.availableForSale,
+        });
     }
     variantCache = { bySku, expiresAt: Date.now() + VARIANT_CACHE_TTL_MS };
   }
+  console.info("[Shopify SKU lookup]", {
+    requestedSku: sku,
+    matchedVariant: variantCache.bySku.get(sku) ?? null,
+    cachedSkus: [...variantCache.bySku.keys()],
+  });
   return variantCache.bySku.get(sku) ?? null;
 }
 

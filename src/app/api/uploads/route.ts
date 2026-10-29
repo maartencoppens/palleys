@@ -9,10 +9,10 @@ export async function POST(request: Request) {
     const result = await createPreview(input);
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
+    console.error(error);
     if (error instanceof ZodError) {
       return NextResponse.json({ error: "Invalid input" }, { status: 400 });
     }
-    console.error(error);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
