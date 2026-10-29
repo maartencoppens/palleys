@@ -5,9 +5,10 @@
  * is the exact option value in Shopify, `skuCode` the matching SKU part.
  */
 import type { AnimalType } from "./animals";
+import { buildSku, PRODUCT_HANDLE } from "./products";
 import { ALLOWED_IMAGE_TYPES, MAX_PHOTOS_PER_PREVIEW, MAX_UPLOAD_BYTES } from "./uploads";
 
-export const SHOPIFY_PRODUCT_HANDLE = "gepersonaliseerde-palley";
+export const SHOPIFY_PRODUCT_HANDLE = PRODUCT_HANDLE;
 export const PALLEY_PRICE = 27.99;
 export const PALLEY_SIZE = "Ongeveer 3,7 cm aan de langste kant";
 
@@ -23,17 +24,17 @@ export type Edition = (typeof editions)[number]["value"];
 // Option2 "Dier", ordered by how common the pet is rather than as in the export.
 // `animalType` is the matching backoffice code (data/animals.ts), prefilled when the order is paid.
 export const animals = [
-  { value: "dog", label: "Hond", shopifyValue: "Hond", skuCode: "DOG", animalType: "HOND" },
-  { value: "cat", label: "Kat", shopifyValue: "Kat", skuCode: "CAT", animalType: "KAT" },
-  { value: "rabbit", label: "Konijn", shopifyValue: "Konijn", skuCode: "RABBIT", animalType: "KONIJN" },
-  { value: "guinea-pig", label: "Cavia", shopifyValue: "Cavia", skuCode: "GUINEA_PIG", animalType: "CAVIA" },
+  { value: "dog", label: "Hond", shopifyValue: "Hond", skuCode: "HOND", animalType: "HOND" },
+  { value: "cat", label: "Kat", shopifyValue: "Kat", skuCode: "KAT", animalType: "KAT" },
+  { value: "rabbit", label: "Konijn", shopifyValue: "Konijn", skuCode: "KONIJN", animalType: "KONIJN" },
+  { value: "guinea-pig", label: "Cavia", shopifyValue: "Cavia", skuCode: "CAVIA", animalType: "CAVIA" },
   { value: "hamster", label: "Hamster", shopifyValue: "Hamster", skuCode: "HAMSTER", animalType: "HAMSTER" },
-  { value: "mouse", label: "Muis", shopifyValue: "Muis", skuCode: "MOUSE", animalType: "MUIS" },
+  { value: "mouse", label: "Muis", shopifyValue: "Muis", skuCode: "MUIS", animalType: "MUIS" },
   { value: "rat", label: "Rat", shopifyValue: "Rat", skuCode: "RAT", animalType: "RAT" },
-  { value: "hedgehog", label: "Egel", shopifyValue: "Egel", skuCode: "HEDGEHOG", animalType: "EGEL" },
-  { value: "turtle", label: "Schildpad", shopifyValue: "Schildpad", skuCode: "TURTLE", animalType: "SCHILDPAD" },
-  { value: "chameleon", label: "Kameleon", shopifyValue: "Kameleon", skuCode: "CHAMELEON", animalType: "KAMELEON" },
-  { value: "snake", label: "Slang", shopifyValue: "Slang", skuCode: "SNAKE", animalType: "SLANG" },
+  { value: "hedgehog", label: "Egel", shopifyValue: "Egel", skuCode: "EGEL", animalType: "EGEL" },
+  { value: "turtle", label: "Schildpad", shopifyValue: "Schildpad", skuCode: "SCHILDPAD", animalType: "SCHILDPAD" },
+  { value: "chameleon", label: "Kameleon", shopifyValue: "Kameleon", skuCode: "KAMELEON", animalType: "KAMELEON" },
+  { value: "snake", label: "Slang", shopifyValue: "Slang", skuCode: "SLANG", animalType: "SLANG" },
 ] as const satisfies readonly (Option<string> & { animalType: AnimalType })[];
 export type Animal = (typeof animals)[number]["value"];
 
@@ -45,7 +46,7 @@ export const getVariant = (edition: Edition, animal: Animal) => {
   const editionOption = findOption(editions, edition)!;
   const animalOption = findOption(animals, animal)!;
   return {
-    sku: `PAL-GP-${editionOption.skuCode}-${animalOption.skuCode}`,
+    sku: buildSku(edition === "keychain" ? "keychain" : "figurine", animal === "guinea-pig" ? "guinea_pig" : animal),
     options: { Uitvoering: editionOption.shopifyValue, Dier: animalOption.shopifyValue },
   };
 };
