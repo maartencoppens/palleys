@@ -14,6 +14,8 @@ export const orderPaidPayloadSchema = z.object({
     z.object({
       id: z.number(),
       sku: z.string().nullish(),
+      // Copies of the same Palley share one line (and one preview).
+      quantity: z.number().int().positive(),
       properties: z
         .array(z.object({ name: z.string(), value: z.unknown() }))
         .nullish(),

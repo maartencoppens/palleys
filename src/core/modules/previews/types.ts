@@ -63,6 +63,7 @@ export type AdminPreviewDetail = {
   email: string | null;
   error: string | null;
   shopifyOrderId: string | null;
+  quantity: number; // aantal exemplaren in de order
   createdAt: string; // ISO-string: Date gaat niet zuiver van server naar client
   photos: AdminPhoto[];
   canAddPhoto: boolean;

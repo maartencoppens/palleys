@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { animals, editions, type Animal, type Edition } from "@/data/options";
-import { MAX_NOTES_LENGTH } from "@/data/shopify";
+import { MAX_LINE_QUANTITY, MAX_NOTES_LENGTH } from "@/data/shopify";
 
 const animalValues = animals.map((a) => a.value) as [Animal, ...Animal[]];
 const editionValues = editions.map((e) => e.value) as [Edition, ...Edition[]];
@@ -16,8 +16,14 @@ export const removeFromCartSchema = z.object({
   lineId: z.string().min(1).max(300),
 });
 
+export const updateCartLineSchema = z.object({
+  lineId: z.string().min(1).max(300),
+  quantity: z.number().int().min(1).max(MAX_LINE_QUANTITY),
+});
+
 export type AddToCartInput = z.infer<typeof addToCartSchema>;
 export type RemoveFromCartInput = z.infer<typeof removeFromCartSchema>;
+export type UpdateCartLineInput = z.infer<typeof updateCartLineSchema>;
 
 /** What a shopper's request brings along to every cart call. */
 export type CartContext = { cartId: string | null; buyerIp: string | null };

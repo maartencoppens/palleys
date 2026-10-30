@@ -58,6 +58,21 @@
       transform: translateX(-50%);
     }
   }
+
+  /* Navbar cart badge when the count changes */
+  --animate-cart-badge: cart-badge-pop 0.4s ease-out;
+
+  @keyframes cart-badge-pop {
+    0% {
+      transform: scale(0.4);
+    }
+    60% {
+      transform: scale(1.2);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
 }
 
 @theme inline {

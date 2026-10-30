@@ -25,6 +25,8 @@ import Panel from "@/components/design/Panel";
 import ChoiceChips from "@/components/design/ChoiceChips";
 import { formatPrice } from "@/core/utils/format";
 import { useAddPalleyToCart } from "@/core/hooks/useAddPalleyToCart";
+import { publishCart } from "@/core/hooks/useCartSnapshot";
+import Button from "@/components/design/Button";
 
 const errorClassName = "font-label text-base font-semibold text-[#a3341a]";
 
@@ -42,9 +44,20 @@ export default function Configurator() {
   const [notes, setNotes] = useState("");
   const [consent, setConsent] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
-  const { addToCart, reset, status: cartStatus, error: cartError, busy } =
-    useAddPalleyToCart();
+  const {
+    addToCart,
+    reset,
+    status: cartStatus,
+    error: cartError,
+    busy,
+    cart,
+  } = useAddPalleyToCart();
   const added = cartStatus === "done";
+
+  // Updates the navbar's cart badge and opens the mini cart, so the visitor sees where their Palley went.
+  useEffect(() => {
+    if (added && cart) publishCart(cart, { reveal: true });
+  }, [added, cart]);
 
   const chooseHeadingRef = useRef<HTMLHeadingElement>(null);
   const uploadHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -286,25 +299,57 @@ export default function Configurator() {
             {added ? (
               <div
                 role="status"
-                className="flex flex-col items-start gap-4 rounded-2xl bg-off-white p-5 md:p-6"
+                className="flex flex-col gap-5 rounded-2xl bg-light-green/40 p-5 ring-2 ring-light-green ring-inset md:p-6"
               >
-                <p className="font-display text-2xl leading-[1.2] font-bold text-medium-green">
-                  Je Palley zit in je winkelmandje!
-                </p>
-                <p className="text-base leading-[1.5] text-text-primary">
-                  {`Je Palley (${animalLabel?.toLowerCase()}, ${editionLabel?.toLowerCase()}) staat klaar om af te rekenen.`}
-                </p>
-                <div className="flex flex-wrap items-center gap-4">
-                  <Link
-                    href="/cart"
-                    className="rounded-full bg-orange px-6 py-3 font-label text-base font-semibold text-off-white transition hover:bg-orange-hover"
+                <div className="flex items-start gap-3">
+                  <span
+                    className="grid size-10 shrink-0 place-items-center rounded-full bg-medium-green"
+                    aria-hidden
                   >
-                    Naar winkelmandje
-                  </Link>
+                    <Image
+                      src="/images/create/check.svg"
+                      width={19}
+                      height={14}
+                      alt=""
+                    />
+                  </span>
+                  <div className="flex flex-col gap-1">
+                    <p className="font-display text-2xl leading-[1.2] font-bold text-medium-green">
+                      Je Palley zit in je winkelmandje!
+                    </p>
+                    <p className="text-base leading-[1.5] text-text-primary">
+                      {`${animalLabel}, ${editionLabel?.toLowerCase()} · ${formatPrice(PALLEY_PRICE)}`}
+                      {cart && cart.totalQuantity > 1
+                        ? ` · ${cart.totalQuantity} Palleys in je mandje`
+                        : ""}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                  {/* Straight to Shopify's checkout: the shortest way to paying. */}
+                  {cart ? (
+                    <a
+                      href={cart.checkoutUrl}
+                      className="group flex items-center justify-center gap-3 rounded-pill bg-orange px-7 py-3.5 font-label text-base font-semibold text-off-white transition hover:bg-orange-hover active:scale-[0.98]"
+                    >
+                      Afrekenen
+                      <Image
+                        className="transition-transform group-hover:translate-x-1"
+                        src="/images/cta/arrow-right.svg"
+                        width={13.3333}
+                        height={13.3333}
+                        alt=""
+                        aria-hidden
+                      />
+                    </a>
+                  ) : null}
+                  <Button variant="secondary" href="/cart" className="py-3.5">
+                    Bekijk winkelmandje
+                  </Button>
                   <button
                     type="button"
                     onClick={startOver}
-                    className="font-label text-base font-bold text-medium-green underline underline-offset-4"
+                    className="py-2 font-label text-base font-bold text-medium-green underline underline-offset-4 hover:text-orange sm:ml-auto"
                   >
                     Nog een Palley maken
                   </button>

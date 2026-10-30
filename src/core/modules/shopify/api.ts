@@ -13,6 +13,11 @@ export async function postAddToCart(input: AddToCartInput) {
   return data.cart;
 }
 
+export async function patchCartLine(lineId: string, quantity: number) {
+  const { data } = await api.patch<{ cart: CartView | null }>("/cart", { lineId, quantity });
+  return data.cart;
+}
+
 export async function deleteCartLine(lineId: string) {
   const { data } = await api.delete<{ cart: CartView | null }>("/cart", { data: { lineId } });
   return data.cart;

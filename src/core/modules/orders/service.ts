@@ -8,7 +8,8 @@ import { orderPaidPayloadSchema, type OrderPaidResult } from "./types";
 import { animalTypeFromSku, previewIdOf } from "./utils";
 
 /*
- * orders/paid: links each paid line item back to its preview and moves it UPLOADED → PAID.
+ * orders/paid: links each paid line item back to its preview and moves it UPLOADED → PAID, together
+ * with how many copies were ordered.
  * Safe to receive twice (Shopify retries): a preview already paid for the same line is a no-op.
  * Anything that doesn't add up is logged and tagged on the order, so it shows up in the Shopify admin.
  */
@@ -36,6 +37,7 @@ export async function handleOrderPaidWebhook(input: {
         shopifyOrderId: orderId,
         shopifyOrderNumber: String(order.order_number),
         shopifyLineItemId: lineItemId,
+        quantity: line.quantity,
         email,
         paidAt,
         expiresAt: null, // paid previews no longer expire; photos go after shipping (photosDeleteAt)

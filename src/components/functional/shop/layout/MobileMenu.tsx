@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import Button from "@/components/design/Button";
+import { useCartSnapshot } from "@/core/hooks/useCartSnapshot";
 import { gsap, prefersReducedMotion, useGSAP } from "@/core/utils/gsap";
 
 type MobileMenuProps = {
@@ -41,6 +42,7 @@ export default function MobileMenu({
     onClose();
   };
 
+  const cartCount = useCartSnapshot().cart?.totalQuantity ?? 0;
   const rootRef = useRef<HTMLDivElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -184,7 +186,14 @@ export default function MobileMenu({
                     onClick={closeForNavigation}
                     className="group flex items-center justify-between py-4 font-display text-[28px] leading-[1.2] font-medium transition-colors hover:text-accent-highlights"
                   >
-                    {link.label}
+                    <span className="flex items-center gap-3">
+                      {link.label}
+                      {link.href === "/cart" && cartCount > 0 && (
+                        <span className="grid h-7 min-w-7 place-items-center rounded-full bg-accent-highlights px-2 font-label text-base font-extrabold text-medium-green">
+                          {cartCount}
+                        </span>
+                      )}
+                    </span>
                     <Image
                       className="transition-transform group-hover:translate-x-1"
                       src="/images/arrow-sm.svg"

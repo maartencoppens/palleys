@@ -14,6 +14,7 @@ import { buildPrintZip, saveFile } from "@/core/modules/previews/print-zip";
 type Model = {
   id: string;
   status: PreviewStatus;
+  quantity: number;
   createdAt: string;
   downloadedAt: string | null;
   downloadedBy: string | null;
@@ -77,6 +78,7 @@ export function ApprovedModelsTable({ models }: { models: Model[] }) {
             <tr>
               <th className="w-10 px-5 py-4" />
               <th className="px-5 py-4 font-semibold">Aangemaakt</th>
+              <th className="px-5 py-4 font-semibold">Aantal</th>
               <th className="px-5 py-4 font-semibold">Gedownload</th>
               <th className="px-5 py-4" />
             </tr>
@@ -95,6 +97,9 @@ export function ApprovedModelsTable({ models }: { models: Model[] }) {
                 </td>
                 <td className="px-5 py-4 tabular-nums">
                   {formatDateTime(m.createdAt)}
+                </td>
+                <td className="px-5 py-4">
+                  {m.quantity > 1 ? <Badge tone="waiting">{m.quantity}×</Badge> : "1"}
                 </td>
                 <td className="px-5 py-4">
                   {m.downloadedAt ? (

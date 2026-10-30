@@ -12,6 +12,7 @@ export const confirmPrintFileSchema = z.object({
 export type ProcessingItem = {
   id: string;
   baseName: string; // PAL-..., zelfde naam als de download uit Goedgekeurd
+  quantity: number; // aantal exemplaren om te printen
   downloadedAt: string | null;
   downloadedBy: string | null;
   processedAt: string | null;

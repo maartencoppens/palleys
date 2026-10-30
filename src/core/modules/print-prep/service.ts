@@ -27,6 +27,7 @@ const ITEM_SELECT = {
   id: true,
   shopifyOrderNumber: true,
   animalType: true,
+  quantity: true,
   paidAt: true,
   createdAt: true,
   downloadedAt: true,
@@ -39,6 +40,7 @@ type ItemRow = {
   id: string;
   shopifyOrderNumber: string | null;
   animalType: string | null;
+  quantity: number;
   paidAt: Date | null;
   createdAt: Date;
   downloadedAt: Date | null;
@@ -51,6 +53,7 @@ function toItem(row: ItemRow): ProcessingItem {
   return {
     id: row.id,
     baseName: printFileBaseName(row),
+    quantity: row.quantity,
     downloadedAt: row.downloadedAt?.toISOString() ?? null,
     downloadedBy: row.downloadedBy,
     processedAt: row.processedAt?.toISOString() ?? null,

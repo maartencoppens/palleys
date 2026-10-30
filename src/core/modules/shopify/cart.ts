@@ -115,6 +115,21 @@ export async function removeCartLines(
   return unwrap(data.cartLinesRemove, "cartLinesRemove");
 }
 
+export async function updateCartLines(
+  cartId: string,
+  lines: { id: string; quantity: number }[],
+  options: Options = {},
+) {
+  const data = await storefrontQuery<{ cartLinesUpdate: CartMutationPayload }>(
+    `mutation CartLinesUpdate($cartId: ID!, $lines: [CartLineUpdateInput!]!) ${IN_CONTEXT} {
+      cartLinesUpdate(cartId: $cartId, lines: $lines) { cart { ...CartFields } userErrors { field message } }
+    } ${CART_FIELDS}`,
+    { cartId, lines },
+    options,
+  );
+  return unwrap(data.cartLinesUpdate, "cartLinesUpdate");
+}
+
 // ---------- Variant lookup ----------
 
 type VariantInfo = { id: string; availableForSale: boolean };

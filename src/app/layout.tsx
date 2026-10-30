@@ -25,6 +25,13 @@ const dmSans = DM_Sans({
 export const metadata: Metadata = {
   title: "Palleys",
   description: "A Pal for your Keys",
+  // Light initial on a dark browser UI, dark initial on a light one.
+  icons: {
+    icon: [
+      { url: "/images/initial-dark.svg", type: "image/svg+xml", media: "(prefers-color-scheme: light)" },
+      { url: "/images/initial-light.svg", type: "image/svg+xml", media: "(prefers-color-scheme: dark)" },
+    ],
+  },
 };
 
 // The only root layout: <html> and <body> live here, so the shop and admin layouts below never nest a second one.

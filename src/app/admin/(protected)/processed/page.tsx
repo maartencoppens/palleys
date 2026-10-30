@@ -3,6 +3,7 @@ import { requireAdminPage } from "@/core/modules/auth/service";
 import { getProcessingOverview } from "@/core/modules/print-prep/service";
 import type { ProcessingItem } from "@/core/modules/print-prep/types";
 import { formatDateTime } from "@/core/utils/format";
+import { Badge } from "@/components/design/Badge";
 import { ProcessedFileActions } from "@/components/functional/admin/ProcessedFileActions";
 
 export default async function AdminProcessedPage() {
@@ -78,6 +79,7 @@ function ProcessingTable({
         <thead className="border-b-[1.5px] border-off-white-dark font-label text-text-muted">
           <tr>
             <th className="px-5 py-4 font-semibold">Bestandsnaam</th>
+            <th className="px-5 py-4 font-semibold">Aantal</th>
             <th className="px-5 py-4 font-semibold">{dateLabel}</th>
             <th className="px-5 py-4">
               <span className="sr-only">Acties</span>
@@ -96,6 +98,9 @@ function ProcessingTable({
                   >
                     {item.baseName}
                   </Link>
+                </td>
+                <td className="px-5 py-4">
+                  {item.quantity > 1 ? <Badge tone="waiting">{item.quantity}×</Badge> : "1"}
                 </td>
                 <td className="whitespace-nowrap px-5 py-4 text-text-muted">
                   {date ? `${byOf(item)} · ${formatDateTime(date)}` : "—"}

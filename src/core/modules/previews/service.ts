@@ -512,6 +512,7 @@ export async function getPreviewForAdmin(
       email: true,
       error: true,
       shopifyOrderId: true,
+      quantity: true,
       createdAt: true,
       poseImageKey: true,
       glbKey: true,
@@ -559,6 +560,7 @@ export async function getPreviewForAdmin(
     email: preview.email,
     error: preview.error,
     shopifyOrderId: preview.shopifyOrderId,
+    quantity: preview.quantity,
     createdAt: preview.createdAt.toISOString(),
     photos,
     canAddPhoto: photos.length < MAX_PHOTOS_PER_PREVIEW,
@@ -648,6 +650,7 @@ export async function listApprovedModels() {
     select: {
       id: true,
       status: true,
+      quantity: true,
       createdAt: true,
       downloadedAt: true,
       downloadedBy: true,
@@ -657,6 +660,7 @@ export async function listApprovedModels() {
   return previews.map((p) => ({
     id: p.id,
     status: p.status,
+    quantity: p.quantity,
     createdAt: p.createdAt.toISOString(),
     downloadedAt: p.downloadedAt?.toISOString() ?? null,
     downloadedBy: p.downloadedBy,

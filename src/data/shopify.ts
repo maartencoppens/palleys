@@ -14,6 +14,9 @@ export const LINE_ATTRIBUTES = {
 
 export const MAX_NOTES_LENGTH = 500;
 
+/** Most copies of one Palley a shopper can put in the cart. */
+export const MAX_LINE_QUANTITY = 10;
+
 /** httpOnly cookie that remembers the Shopify cart ID; the cart itself lives at Shopify. */
 export const CART_COOKIE = "palleys_cart";
 // Shopify keeps an untouched cart for about 10 days; the cookie doesn't need to outlive that.

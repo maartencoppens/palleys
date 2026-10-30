@@ -42,6 +42,7 @@ model Preview {
   paidAt            DateTime? // orderdatum, gezet door de Shopify-webhook
   animalType        String? // code uit src/data/animals.ts, gekozen door de admin
   shopifyLineItemId String?       @unique
+  quantity          Int           @default(1) // aantal exemplaren van deze Palley in de order, gezet door de Shopify-webhook
   createdAt         DateTime      @default(now())
   expiresAt         DateTime? // alleen voor niet-betaalde uploads, leeg na betaling
   photosDeleteAt    DateTime? // voor betaalde orders, na verzending

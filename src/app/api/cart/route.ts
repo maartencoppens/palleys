@@ -1,12 +1,18 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { ZodError } from "zod";
-import { addToCartSchema, removeFromCartSchema, type CartView } from "@/core/modules/shopify/types";
+import {
+  addToCartSchema,
+  removeFromCartSchema,
+  updateCartLineSchema,
+  type CartView,
+} from "@/core/modules/shopify/types";
 import {
   addPreviewToCart,
   CartError,
   getCart,
   removeFromCart,
+  updateCartLineQuantity,
   type CartErrorCode,
 } from "@/core/modules/shopify/service";
 import { getClientIp } from "@/core/utils/request";
@@ -67,6 +73,15 @@ export async function POST(request: Request) {
   try {
     const input = addToCartSchema.parse(await request.json());
     return respond(await addPreviewToCart(await context(request), input), 201);
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const input = updateCartLineSchema.parse(await request.json());
+    return respond(await updateCartLineQuantity(await context(request), input));
   } catch (error) {
     return handleError(error);
   }

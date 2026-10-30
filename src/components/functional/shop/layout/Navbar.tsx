@@ -9,6 +9,7 @@ import {
   ScrollTrigger,
   useGSAP,
 } from "@/core/utils/gsap";
+import CartMenu from "./CartMenu";
 import MobileMenu from "./MobileMenu";
 
 interface NavLink {
@@ -42,11 +43,19 @@ export default function Navbar() {
   const barRef = useRef<HTMLElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const menuOpenRef = useRef(false);
+  const cartOpenRef = useRef(false);
+  // Set inside the scroll setup below: slides the fixed bar into view when it's hidden.
+  const showBarRef = useRef<() => void>(() => {});
 
   const closeMenu = useCallback(() => {
     menuOpenRef.current = false;
     setMenuOpen(false);
   }, []);
+
+  const setCartOpen = useCallback((open: boolean) => {
+    cartOpenRef.current = open;
+  }, []);
+  const revealBar = useCallback(() => showBarRef.current(), []);
 
   useGSAP(() => {
     const slot = slotRef.current;
@@ -72,6 +81,10 @@ export default function Navbar() {
         duration,
         overwrite: true,
       });
+    };
+
+    showBarRef.current = () => {
+      if (isPinned) setShown(true);
     };
 
     const pin = () => {
@@ -109,8 +122,10 @@ export default function Navbar() {
           if (scrollY > slotBottom) pin();
           return;
         }
-        // Keep the bar in view while the mobile menu is open.
-        setShown(self.direction === -1 || menuOpenRef.current);
+        // Keep the bar in view while the mobile menu or the mini cart is open.
+        setShown(
+          self.direction === -1 || menuOpenRef.current || cartOpenRef.current,
+        );
       },
     });
 
@@ -131,7 +146,7 @@ export default function Navbar() {
         }
       >
         <div
-          className={`flex items-center justify-between ${pinned ? "page-container py-2" : ""}`}
+          className={`relative flex items-center justify-between ${pinned ? "page-container py-2" : ""}`}
         >
           <Link
             href="/"
@@ -150,7 +165,7 @@ export default function Navbar() {
           </Link>
 
           <nav
-            className="flex items-center gap-s md:gap-m md:px-5"
+            className="flex items-center gap-s md:gap-8 md:pl-5 lg:gap-12"
             aria-label="Hoofdmenu"
           >
             <ul className="hidden items-center gap-10 md:flex lg:gap-[70px]">
@@ -166,14 +181,18 @@ export default function Navbar() {
               ))}
             </ul>
 
-            <Link
-              href="/cart"
-              className="block rounded-lg transition-transform hover:scale-110 hover:-rotate-6"
-              aria-label="Winkelmandje"
+            {/* Separates the page links from the cart, so the cart reads as its own action. */}
+            <span
+              className="hidden h-7 w-px bg-text-secondary/30 md:block"
+              aria-hidden
               data-nav-item
-            >
-              <Image src="/images/cart.svg" width={44} height={44} alt="" />
-            </Link>
+            />
+
+            <CartMenu
+              pinned={pinned}
+              onOpenChange={setCartOpen}
+              onReveal={revealBar}
+            />
 
             <button
               ref={toggleRef}

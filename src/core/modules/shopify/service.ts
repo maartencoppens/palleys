@@ -4,7 +4,15 @@ import { createDownloadUrl, objectExists } from "@/core/networking/external/stor
 import { canTransition } from "@/core/modules/previews/status";
 import { animals, editions, getVariant } from "@/data/options";
 import { LINE_ATTRIBUTES } from "@/data/shopify";
-import { addCartLines, createCart, fetchCart, getVariantBySku, knownSkus, removeCartLines } from "./cart";
+import {
+  addCartLines,
+  createCart,
+  fetchCart,
+  getVariantBySku,
+  knownSkus,
+  removeCartLines,
+  updateCartLines,
+} from "./cart";
 import type {
   AddToCartInput,
   CartContext,
@@ -12,6 +20,7 @@ import type {
   CartView,
   RemoveFromCartInput,
   ShopifyCart,
+  UpdateCartLineInput,
 } from "./types";
 
 /*
@@ -166,7 +175,8 @@ export async function addPreviewToCart(
     { key: LINE_ATTRIBUTES.previewId, value: input.previewId },
   ];
   if (input.notes) attributes.push({ key: LINE_ATTRIBUTES.notes, value: input.notes });
-  // One line per preview, always quantity 1: every Palley is a different pet.
+  // One line per preview: every Palley is a different pet. Extra copies of the same one raise the
+  // quantity of that line (updateCartLineQuantity), so they all share the preview.
   const lines = [{ merchandiseId: variant.id, quantity: 1, attributes }];
 
   const existing = cartId ? await fetchCart(cartId, { buyerIp }) : null;
@@ -186,4 +196,13 @@ export async function removeFromCart(
 ): Promise<CartView | null> {
   if (!cartId) return null;
   return toView(await removeCartLines(cartId, [input.lineId], { buyerIp }));
+}
+
+/** More or fewer copies of the same Palley. Removing the line goes through removeFromCart. */
+export async function updateCartLineQuantity(
+  { cartId, buyerIp }: CartContext,
+  input: UpdateCartLineInput,
+): Promise<CartView | null> {
+  if (!cartId) return null;
+  return toView(await updateCartLines(cartId, [{ id: input.lineId, quantity: input.quantity }], { buyerIp }));
 }

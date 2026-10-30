@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireAdminPage } from "@/core/modules/auth/service";
 import { getPreviewForAdmin } from "@/core/modules/previews/service";
 import { formatDateTime } from "@/core/utils/format";
+import { Badge } from "@/components/design/Badge";
 import { ModelViewer } from "@/components/functional/admin/ModelViewer";
 import { ApprovePreviewButton } from "@/components/functional/admin/ApprovePreviewButton";
 import { PreviewStatusBadge } from "@/components/functional/admin/PreviewStatusBadge";
@@ -78,6 +79,16 @@ export default async function AdminPreviewDetailPage({
               <div>
                 <dt className="font-label font-semibold text-text-muted">Shopify-order</dt>
                 <dd>{preview.shopifyOrderId ?? "—"}</dd>
+              </div>
+              <div>
+                <dt className="font-label font-semibold text-text-muted">Aantal</dt>
+                <dd>
+                  {preview.quantity > 1 ? (
+                    <Badge tone="waiting">{preview.quantity}× printen</Badge>
+                  ) : (
+                    "1"
+                  )}
+                </dd>
               </div>
               <div>
                 <dt className="font-label font-semibold text-text-muted">Meshy-taak</dt>
