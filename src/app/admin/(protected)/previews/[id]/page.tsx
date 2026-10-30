@@ -32,18 +32,18 @@ export default async function AdminPreviewDetailPage({
     <main>
       <Link
         href="/admin"
-        className="rounded text-sm text-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
+        className="rounded font-label text-base font-bold text-medium-green underline underline-offset-4 transition-colors hover:text-orange"
       >
         Terug naar overzicht
       </Link>
 
       <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-        <h1 className="text-4xl font-semibold tracking-tight font-stretch-semi-condensed">
+        <h1 className="font-display text-[clamp(2rem,1.4rem+1.8vw,3rem)] leading-[1.22] font-medium text-medium-green">
           Preview
         </h1>
         <PreviewStatusBadge status={preview.status} />
       </div>
-      <p className="mt-1 break-all text-sm text-muted">{preview.id}</p>
+      <p className="mt-1 break-all font-mono text-sm text-text-muted">{preview.id}</p>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-8">
         {preview.glbUrl ? (
@@ -52,7 +52,7 @@ export default async function AdminPreviewDetailPage({
             alt={`3D-model van preview ${preview.id}`}
           />
         ) : (
-          <div className="flex h-[360px] items-center justify-center rounded-lg border border-dashed border-line text-sm text-muted sm:h-[480px]">
+          <div className="flex h-[360px] items-center justify-center rounded-3xl border-2 border-dashed border-medium-green/25 text-base text-text-muted sm:h-[480px]">
             Nog geen 3D-model voor deze preview.
           </div>
         )}
@@ -62,25 +62,25 @@ export default async function AdminPreviewDetailPage({
           history={preview.statusChanges}
         />
         <aside className="space-y-6 lg:row-span-2">
-          <section className="rounded-lg border border-line bg-surface p-5">
-            <h2 className="font-semibold">Gegevens</h2>
+          <section className="rounded-3xl bg-white p-6">
+            <h2 className="font-display text-xl font-medium text-medium-green">Gegevens</h2>
             <dl className="mt-3 space-y-3 text-sm">
               <div>
-                <dt className="text-muted">Aangemaakt</dt>
+                <dt className="font-label font-semibold text-text-muted">Aangemaakt</dt>
                 <dd className="tabular-nums">
                   {formatDateTime(preview.createdAt)}
                 </dd>
               </div>
               <div>
-                <dt className="text-muted">E-mail</dt>
+                <dt className="font-label font-semibold text-text-muted">E-mail</dt>
                 <dd className="break-words">{preview.email ?? "—"}</dd>
               </div>
               <div>
-                <dt className="text-muted">Shopify-order</dt>
+                <dt className="font-label font-semibold text-text-muted">Shopify-order</dt>
                 <dd>{preview.shopifyOrderId ?? "—"}</dd>
               </div>
               <div>
-                <dt className="text-muted">Meshy-taak</dt>
+                <dt className="font-label font-semibold text-text-muted">Meshy-taak</dt>
                 <dd className="break-all font-mono text-xs">
                   {preview.meshyTaskId ?? "—"}
                 </dd>
@@ -89,16 +89,16 @@ export default async function AdminPreviewDetailPage({
           </section>
 
           {preview.error && (
-            <section className="rounded-lg bg-danger-soft p-5 text-sm text-danger">
-              <h2 className="font-semibold">Fout in de pipeline</h2>
+            <section className="rounded-3xl bg-pink p-6 text-sm text-[#a3341a]">
+              <h2 className="font-display text-xl font-medium">Fout in de pipeline</h2>
               <p className="mt-1 break-words">{preview.error}</p>
             </section>
           )}
 
           {preview.canGeneratePose && (
-            <section className="rounded-lg border border-line bg-surface p-5">
-              <h2 className="font-semibold">Pose</h2>
-              <p className="mt-1 text-sm text-muted">
+            <section className="rounded-3xl bg-white p-6">
+              <h2 className="font-display text-xl font-medium text-medium-green">Pose</h2>
+              <p className="mt-1 text-sm leading-[1.5] text-text-muted">
                 {preview.poseImageUrl
                   ? "Niet tevreden met de pose? Genereer een nieuwe versie."
                   : "Genereer de pose-afbeelding op basis van de originele foto."}
@@ -111,16 +111,16 @@ export default async function AdminPreviewDetailPage({
             </section>
           )}
           {(preview.canStartModel || preview.canSyncModel) && (
-            <section className="rounded-lg border border-line bg-surface p-5">
-              <h2 className="font-semibold">3D-model</h2>
+            <section className="rounded-3xl bg-white p-6">
+              <h2 className="font-display text-xl font-medium text-medium-green">3D-model</h2>
               {preview.canSyncModel ? (
                 <>
-                  <p className="mt-1 text-sm text-muted">
+                  <p className="mt-1 text-sm leading-[1.5] text-text-muted">
                     Meshy maakt het model. Dit duurt enkele minuten. Ververs de
                     pagina of haal de status zelf op.
                   </p>
                   {preview.meshyProgress && (
-                    <p className="mt-2 text-sm font-medium tabular-nums">
+                    <p className="mt-2 font-label text-sm font-bold text-medium-green tabular-nums">
                       {meshyProgressLabel(preview.meshyProgress)}
                     </p>
                   )}
@@ -128,7 +128,7 @@ export default async function AdminPreviewDetailPage({
                 </>
               ) : (
                 <>
-                  <p className="mt-1 text-sm text-muted">
+                  <p className="mt-1 text-sm leading-[1.5] text-text-muted">
                     {preview.glbUrl
                       ? "Niet tevreden met het model? Laat een nieuw maken op basis van de huidige pose."
                       : "Is de pose goed? Dan maakt Meshy er een 3D-model van."}
@@ -141,9 +141,9 @@ export default async function AdminPreviewDetailPage({
               )}
             </section>
           )}
-          <section className="rounded-lg border border-line bg-surface p-5">
-            <h2 className="font-semibold">Diersoort</h2>
-            <p className="mt-1 text-sm text-muted">
+          <section className="rounded-3xl bg-white p-6">
+            <h2 className="font-display text-xl font-medium text-medium-green">Diersoort</h2>
+            <p className="mt-1 text-sm leading-[1.5] text-text-muted">
               Komt in de bestandsnaam van de print. Nodig om goed te keuren.
             </p>
             <AnimalTypePicker
@@ -152,9 +152,9 @@ export default async function AdminPreviewDetailPage({
             />
           </section>
           {preview.canApprove && (
-            <section className="rounded-lg border border-line bg-surface p-5">
-              <h2 className="font-semibold">Goedkeuren</h2>
-              <p className="mt-1 text-sm text-muted">
+            <section className="rounded-3xl bg-white p-6">
+              <h2 className="font-display text-xl font-medium text-medium-green">Goedkeuren</h2>
+              <p className="mt-1 text-sm leading-[1.5] text-text-muted">
                 Ziet het model er goed uit? Na goedkeuring gaat het naar de
                 printvoorbereiding.
               </p>
@@ -207,14 +207,14 @@ function Photo({ url, caption }: PhotoProps) {
         <img
           src={url}
           alt={caption}
-          className="aspect-[4/3] w-full rounded-lg border border-line bg-surface object-cover"
+          className="aspect-[4/3] w-full rounded-3xl bg-white object-cover"
         />
       ) : (
-        <div className="flex aspect-[4/3] w-full items-center justify-center rounded-lg border border-dashed border-line text-sm text-muted">
+        <div className="flex aspect-[4/3] w-full items-center justify-center rounded-3xl border-2 border-dashed border-medium-green/25 text-sm text-text-muted">
           Nog niet beschikbaar
         </div>
       )}
-      <figcaption className="mt-2 text-sm text-muted">{caption}</figcaption>
+      <figcaption className="mt-2 font-label text-sm font-semibold text-text-muted">{caption}</figcaption>
     </figure>
   );
 }

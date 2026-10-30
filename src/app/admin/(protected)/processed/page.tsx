@@ -11,13 +11,13 @@ export default async function AdminProcessedPage() {
 
   return (
     <main>
-      <h1 className="text-4xl font-semibold tracking-tight font-stretch-semi-condensed">
+      <h1 className="font-display text-[clamp(2rem,1.4rem+1.8vw,3rem)] leading-[1.22] font-medium text-medium-green">
         Processed
       </h1>
 
       <section className="mt-8">
-        <h2 className="text-lg font-semibold">In Blender ({inProgress.length})</h2>
-        <p className="mt-1 text-sm text-muted">
+        <h2 className="font-display text-xl font-medium text-medium-green">In Blender ({inProgress.length})</h2>
+        <p className="mt-1 text-base text-text-muted">
           Gedownload uit Goedgekeurd. Upload de zip zodra hij print ready is.
         </p>
         <ProcessingTable
@@ -31,7 +31,7 @@ export default async function AdminProcessedPage() {
       </section>
 
       <section className="mt-12">
-        <h2 className="text-lg font-semibold">
+        <h2 className="font-display text-xl font-medium text-medium-green">
           Klaar voor print ({printReady.length})
         </h2>
         <ProcessingTable
@@ -66,20 +66,20 @@ function ProcessingTable({
 }: ProcessingTableProps) {
   if (items.length === 0) {
     return (
-      <p className="mt-4 rounded-lg border border-dashed border-line px-6 py-8 text-center text-sm text-muted">
+      <p className="mt-4 rounded-3xl border-2 border-dashed border-medium-green/25 px-6 py-8 text-center text-base text-text-muted">
         {emptyText}
       </p>
     );
   }
 
   return (
-    <div className="mt-4 overflow-x-auto rounded-lg border border-line bg-surface">
+    <div className="mt-4 overflow-x-auto rounded-3xl bg-white">
       <table className="w-full text-left text-sm">
-        <thead className="border-b border-line text-muted">
+        <thead className="border-b-[1.5px] border-off-white-dark font-label text-text-muted">
           <tr>
-            <th className="px-4 py-3 font-medium">Bestandsnaam</th>
-            <th className="px-4 py-3 font-medium">{dateLabel}</th>
-            <th className="px-4 py-3">
+            <th className="px-5 py-4 font-semibold">Bestandsnaam</th>
+            <th className="px-5 py-4 font-semibold">{dateLabel}</th>
+            <th className="px-5 py-4">
               <span className="sr-only">Acties</span>
             </th>
           </tr>
@@ -88,19 +88,19 @@ function ProcessingTable({
           {items.map((item) => {
             const date = dateOf(item);
             return (
-              <tr key={item.id} className="border-b border-line last:border-0">
-                <td className="px-4 py-3">
+              <tr key={item.id} className="border-b border-off-white-dark last:border-0">
+                <td className="px-5 py-4">
                   <Link
                     href={`/admin/previews/${item.id}`}
-                    className="font-mono text-xs hover:underline"
+                    className="rounded font-mono text-xs font-semibold text-medium-green underline-offset-4 hover:underline"
                   >
                     {item.baseName}
                   </Link>
                 </td>
-                <td className="whitespace-nowrap px-4 py-3 text-muted">
+                <td className="whitespace-nowrap px-5 py-4 text-text-muted">
                   {date ? `${byOf(item)} · ${formatDateTime(date)}` : "—"}
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-5 py-4">
                   <ProcessedFileActions
                     previewId={item.id}
                     hasProcessedFile={hasProcessedFile}

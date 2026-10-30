@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { requireAdminPage } from "@/core/modules/auth/service";
 import { SignOutButton } from "@/components/functional/admin/SignOutButton";
@@ -8,35 +9,43 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   const { user } = await requireAdminPage();
   return (
     <>
-      <header className="border-b border-line bg-surface">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-8 gap-y-3 px-6 py-4">
+      <header className="bg-medium-green text-off-white">
+        <div className="page-container flex flex-wrap items-center gap-x-8 gap-y-3 py-4">
           <Link
             href="/admin"
-            className="text-lg font-semibold font-stretch-semi-condensed"
+            className="flex items-center gap-3 rounded-full font-display text-xl font-medium"
           >
-            Palleys admin
+            <Image
+              className="h-auto w-20"
+              src="/images/footer/palleys-logo.svg"
+              width={349}
+              height={188}
+              alt="Palleys"
+              priority
+            />
+            Admin
           </Link>
-          <nav className="flex gap-5 text-sm">
-            <Link href="/admin" className="text-muted hover:text-ink">
+          <nav className="flex flex-wrap gap-x-6 gap-y-2 font-label text-base font-bold">
+            <Link href="/admin" className="transition-colors hover:text-accent-highlights">
               Dashboard
             </Link>
-            <Link href="/admin/review" className="text-muted hover:text-ink">
+            <Link href="/admin/review" className="transition-colors hover:text-accent-highlights">
               Te reviewen
             </Link>
-            <Link href="/admin/approved" className="text-muted hover:text-ink">
+            <Link href="/admin/approved" className="transition-colors hover:text-accent-highlights">
               Goedgekeurd
             </Link>
-            <Link href="/admin/processed" className="text-muted hover:text-ink">
+            <Link href="/admin/processed" className="transition-colors hover:text-accent-highlights">
               Processed
             </Link>
           </nav>
-          <div className="ml-auto flex items-center gap-4">
-            <span className="text-sm text-muted">{user.email}</span>
+          <div className="flex min-w-0 items-center gap-4 sm:ml-auto">
+            <span className="truncate text-sm">{user.email}</span>
             <SignOutButton />
           </div>
         </div>
       </header>
-      <div className="mx-auto max-w-6xl px-6 py-10">{children}</div>
+      <div className="page-container py-10 md:py-14">{children}</div>
     </>
   );
 }

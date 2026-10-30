@@ -40,6 +40,7 @@ export function GenerateModelButton({
   return (
     <div className="mt-4">
       <Button
+        variant="primary"
         className="w-full"
         loading={loading}
         loadingText="Taak starten…"
@@ -48,7 +49,7 @@ export function GenerateModelButton({
         {hasModel ? "Model opnieuw genereren" : "Pose goedkeuren"}
       </Button>
       {error && (
-        <p role="alert" className="mt-3 text-sm text-danger">
+        <p role="alert" className="mt-3 text-sm text-[#a3341a]">
           {error}
         </p>
       )}

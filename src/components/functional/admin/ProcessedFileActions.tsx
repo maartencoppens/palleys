@@ -73,10 +73,11 @@ export function ProcessedFileActions({
   }
 
   return (
-    <div className="flex flex-col items-end gap-1">
+    <div className="flex flex-col items-end gap-2">
       <div className="flex gap-2">
         {hasProcessedFile && (
           <Button
+            variant="primary"
             loading={busy === "download"}
             loadingText="Bezig…"
             disabled={busy !== null}
@@ -103,7 +104,7 @@ export function ProcessedFileActions({
         />
       </div>
       {error && (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-sm text-[#a3341a]">
           {error}
         </p>
       )}

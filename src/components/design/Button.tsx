@@ -54,13 +54,15 @@ const variants = {
     },
     arrowHover: "group-hover:translate-x-0.5 group-hover:-translate-y-0.5",
   },
+  /* Compact pill, same look as the cart's checkout button. */
   primary: {
     className:
-      "bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60",
+      "bg-orange px-6 py-3 font-label text-base font-semibold text-off-white hover:bg-orange-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100",
   },
+  /* Outlined pill, same look as an unselected chip (ChoiceChips). */
   secondary: {
     className:
-      "border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-60",
+      "border-[1.5px] border-medium-green bg-white px-6 py-3 font-label text-base font-semibold text-medium-green hover:bg-off-white disabled:cursor-not-allowed disabled:opacity-60",
   },
 } as const;
 

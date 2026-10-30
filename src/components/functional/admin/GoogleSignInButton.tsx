@@ -13,6 +13,7 @@ export function GoogleSignInButton({ className }: GoogleSignInButtonProps) {
 
   return (
     <Button
+      variant="primary"
       className={className}
       loading={loading}
       onClick={async () => {

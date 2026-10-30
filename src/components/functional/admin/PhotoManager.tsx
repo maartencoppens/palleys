@@ -71,9 +71,9 @@ export function PhotoManager({
   return (
     <section>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-semibold">
+        <h2 className="font-display text-xl font-medium text-medium-green">
           Foto&apos;s van het dier{" "}
-          <span className="text-sm font-normal text-muted">
+          <span className="font-label text-sm font-semibold text-text-muted">
             {photos.length}/{MAX_PHOTOS_PER_PREVIEW}
           </span>
         </h2>
@@ -100,7 +100,7 @@ export function PhotoManager({
       </div>
 
       {error && (
-        <p role="alert" className="mt-3 text-sm text-danger">
+        <p role="alert" className="mt-3 text-sm text-[#a3341a]">
           {error}
         </p>
       )}
@@ -114,9 +114,9 @@ export function PhotoManager({
             <img
               src={photo.url}
               alt={`Foto ${index + 1}`}
-              className="aspect-square w-full rounded-lg border border-line bg-surface object-cover"
+              className="aspect-square w-full rounded-3xl bg-white object-cover"
             />
-            <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted">
+            <div className="mt-2 flex items-center justify-between gap-2 text-xs text-text-muted">
               <span className="truncate">
                 {photo.uploadedBy ? `Door ${photo.uploadedBy}` : "Klant"}
               </span>
@@ -125,7 +125,7 @@ export function PhotoManager({
                   type="button"
                   onClick={() => handleDelete(photo.id)}
                   disabled={busy !== null}
-                  className="rounded font-semibold text-danger hover:underline focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-60"
+                  className="rounded font-label font-bold text-[#a3341a] underline underline-offset-4 disabled:opacity-60"
                 >
                   {busy === photo.id ? "Bezig…" : "Verwijderen"}
                 </button>
@@ -135,7 +135,7 @@ export function PhotoManager({
         ))}
       </ul>
       {!canDelete && photos.length === 1 && (
-        <p className="mt-2 text-xs text-muted">
+        <p className="mt-2 text-xs text-text-muted">
           De laatste foto kan niet weg. Upload eerst een nieuwe.
         </p>
       )}

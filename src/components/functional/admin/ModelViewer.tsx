@@ -92,7 +92,7 @@ export function ModelViewer({ src, alt }: ModelViewerProps) {
   }, [src]);
 
   return (
-    <div className="relative h-[360px] overflow-hidden rounded-lg border border-line bg-surface sm:h-[480px]">
+    <div className="relative h-[360px] overflow-hidden rounded-3xl bg-white sm:h-[480px]">
       <div
         ref={containerRef}
         role="img"
@@ -102,7 +102,7 @@ export function ModelViewer({ src, alt }: ModelViewerProps) {
       {status !== "ready" && (
         <p
           role={status === "error" ? "alert" : undefined}
-          className={`absolute inset-0 flex items-center justify-center text-sm ${status === "error" ? "text-danger" : "text-muted"}`}
+          className={`absolute inset-0 flex items-center justify-center text-sm ${status === "error" ? "text-[#a3341a]" : "text-text-muted"}`}
         >
           {status === "loading"
             ? "3D-model laden…"
@@ -110,7 +110,7 @@ export function ModelViewer({ src, alt }: ModelViewerProps) {
         </p>
       )}
       {status === "ready" && (
-        <p className="pointer-events-none absolute bottom-3 left-4 text-xs text-muted">
+        <p className="pointer-events-none absolute bottom-3 left-4 text-xs text-text-muted">
           Slepen om te draaien, scrollen om te zoomen
         </p>
       )}

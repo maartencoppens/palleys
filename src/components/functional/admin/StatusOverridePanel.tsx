@@ -49,22 +49,22 @@ export function StatusOverridePanel({
   }
 
   return (
-    <details className="rounded-lg border border-line bg-surface p-5">
-      <summary className="cursor-pointer font-semibold">
+    <details className="rounded-3xl bg-white p-6">
+      <summary className="cursor-pointer font-display text-xl font-medium text-medium-green">
         Status handmatig aanpassen
       </summary>
-      <p className="mt-2 text-sm text-muted">
+      <p className="mt-2 text-sm text-text-muted">
         Alleen als er iets is misgelopen. Bestanden en Meshy-taken blijven zoals
         ze zijn.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-4 space-y-3 text-sm">
         <label className="block">
-          <span className="text-muted">Nieuwe status</span>
+          <span className="font-label font-semibold text-text-muted">Nieuwe status</span>
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value as PreviewStatus)}
-            className="mt-1 w-full rounded-md border border-line bg-surface px-3 py-2"
+            className="mt-1 h-12 w-full rounded-[15px] bg-off-white-dark px-4 font-label font-semibold text-medium-green outline-none focus-visible:ring-3 focus-visible:ring-accent-highlights"
           >
             {ADMIN_SETTABLE_STATUSES.map((option) => (
               <option key={option} value={option}>
@@ -75,7 +75,7 @@ export function StatusOverridePanel({
           </select>
         </label>
         <label className="block">
-          <span className="text-muted">Reden</span>
+          <span className="font-label font-semibold text-text-muted">Reden</span>
           <textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
@@ -84,7 +84,7 @@ export function StatusOverridePanel({
             minLength={3}
             maxLength={500}
             placeholder="bv. Meshy-webhook kwam nooit binnen"
-            className="mt-1 w-full rounded-md border border-line bg-surface px-3 py-2"
+            className="mt-1 w-full resize-none rounded-[15px] bg-off-white-dark px-4 py-3 font-label font-semibold text-medium-green placeholder:text-placeholder outline-none focus-visible:ring-3 focus-visible:ring-accent-highlights"
           />
         </label>
         <Button
@@ -97,21 +97,21 @@ export function StatusOverridePanel({
           Status aanpassen
         </Button>
         {error && (
-          <p role="alert" className="text-danger">
+          <p role="alert" className="text-[#a3341a]">
             {error}
           </p>
         )}
       </form>
 
       {history.length > 0 && (
-        <ul className="mt-5 space-y-3 border-t border-line pt-4 text-xs">
+        <ul className="mt-5 space-y-3 border-t border-off-white-dark pt-4 text-xs">
           {history.map((change) => (
             <li key={change.createdAt}>
-              <p className="font-medium">
+              <p className="font-label font-bold text-medium-green">
                 {previewStatusLabel(change.fromStatus)} →{" "}
                 {previewStatusLabel(change.toStatus)}
               </p>
-              <p className="text-muted">
+              <p className="text-text-muted">
                 {change.changedBy} · {formatDateTime(change.createdAt)}
               </p>
               <p className="mt-0.5">{change.reason}</p>

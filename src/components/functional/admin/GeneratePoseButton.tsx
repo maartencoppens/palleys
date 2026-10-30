@@ -37,6 +37,7 @@ export function GeneratePoseButton({
   return (
     <div className="mt-4 space-y-2">
       <Button
+        variant="primary"
         className="w-full"
         loading={loading}
         loadingText="Bezig met genereren…"
@@ -45,13 +46,13 @@ export function GeneratePoseButton({
       >
         {hasPose ? "Pose opnieuw genereren" : "Pose genereren"}
       </Button>
-      <p className="text-sm text-muted">
+      <p className="text-sm text-text-muted">
         {attemptsLeft > 0
           ? `Nog ${attemptsLeft} ${attemptsLeft === 1 ? "poging" : "pogingen"}`
           : "Maximum aantal pogingen bereikt"}
       </p>
       {error && (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-sm text-[#a3341a]">
           {error}
         </p>
       )}

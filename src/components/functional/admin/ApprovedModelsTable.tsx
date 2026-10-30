@@ -51,11 +51,12 @@ export function ApprovedModelsTable({ models }: { models: Model[] }) {
 
   return (
     <div className="mt-8">
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3">
         <Button variant="secondary" onClick={() => setSelected(newIds)}>
           Selecteer nieuwe ({newIds.length})
         </Button>
         <Button
+          variant="primary"
           loading={loading}
           loadingText="Downloaden…"
           disabled={selected.length === 0}
@@ -65,48 +66,49 @@ export function ApprovedModelsTable({ models }: { models: Model[] }) {
         </Button>
       </div>
       {error && (
-        <p role="alert" className="mt-3 text-sm text-danger">
+        <p role="alert" className="mt-3 text-sm text-[#a3341a]">
           {error}
         </p>
       )}
 
-      <div className="mt-4 overflow-x-auto rounded-lg border border-line bg-surface">
+      <div className="mt-4 overflow-x-auto rounded-3xl bg-white">
         <table className="w-full text-left text-sm">
-          <thead className="border-b border-line text-muted">
+          <thead className="border-b-[1.5px] border-off-white-dark font-label text-text-muted">
             <tr>
-              <th className="w-10 px-4 py-3" />
-              <th className="px-4 py-3 font-medium">Aangemaakt</th>
-              <th className="px-4 py-3 font-medium">Gedownload</th>
-              <th className="px-4 py-3" />
+              <th className="w-10 px-5 py-4" />
+              <th className="px-5 py-4 font-semibold">Aangemaakt</th>
+              <th className="px-5 py-4 font-semibold">Gedownload</th>
+              <th className="px-5 py-4" />
             </tr>
           </thead>
           <tbody>
             {models.map((m) => (
-              <tr key={m.id} className="border-b border-line last:border-0">
-                <td className="px-4 py-3">
+              <tr key={m.id} className="border-b border-off-white-dark last:border-0">
+                <td className="px-5 py-4">
                   <input
                     type="checkbox"
+                    className="size-5 accent-medium-green"
                     checked={selected.includes(m.id)}
                     onChange={() => toggle(m.id)}
                     aria-label={`Selecteer ${m.id}`}
                   />
                 </td>
-                <td className="px-4 py-3 tabular-nums">
+                <td className="px-5 py-4 tabular-nums">
                   {formatDateTime(m.createdAt)}
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-5 py-4">
                   {m.downloadedAt ? (
-                    <span className="text-muted">
+                    <span className="text-text-muted">
                       {m.downloadedBy} · {formatDateTime(m.downloadedAt)}
                     </span>
                   ) : (
                     <Badge tone="waiting">Nieuw</Badge>
                   )}
                 </td>
-                <td className="px-4 py-3 text-right">
+                <td className="px-5 py-4 text-right">
                   <Link
                     href={`/admin/previews/${m.id}`}
-                    className="font-semibold text-accent hover:underline"
+                    className="rounded font-label font-bold text-medium-green underline underline-offset-4 transition-colors hover:text-orange"
                   >
                     Bekijken
                   </Link>

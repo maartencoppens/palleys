@@ -40,7 +40,7 @@ export function AnimalTypePicker({ previewId, value }: AnimalTypePickerProps) {
         {ANIMAL_TYPES.map((option) => (
           <Button
             key={option.code}
-            variant={value === option.code ? "orange" : "bare"}
+            variant={value === option.code ? "primary" : "secondary"}
             aria-pressed={value === option.code}
             aria-disabled={saving !== null}
             onClick={() => saving === null && handleChoose(option.code)}
@@ -50,7 +50,7 @@ export function AnimalTypePicker({ previewId, value }: AnimalTypePickerProps) {
         ))}
       </div>
       {error && (
-        <p role="alert" className="mt-3 text-sm text-danger">
+        <p role="alert" className="mt-3 text-sm text-[#a3341a]">
           {error}
         </p>
       )}

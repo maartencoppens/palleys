@@ -31,11 +31,16 @@ export function ApprovePreviewButton({ previewId }: ApprovePreviewButtonProps) {
 
   return (
     <div className="mt-4">
-      <Button className="w-full" loading={loading} onClick={handleApprove}>
+      <Button
+        variant="primary"
+        className="w-full"
+        loading={loading}
+        onClick={handleApprove}
+      >
         Model goedkeuren
       </Button>
       {error && (
-        <p role="alert" className="mt-3 text-sm text-danger">
+        <p role="alert" className="mt-3 text-sm text-[#a3341a]">
           {error}
         </p>
       )}

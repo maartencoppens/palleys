@@ -38,7 +38,7 @@ export function SyncModelButton({ previewId }: SyncModelButtonProps) {
         Status ophalen
       </Button>
       {error && (
-        <p role="alert" className="mt-3 text-sm text-danger">
+        <p role="alert" className="mt-3 text-sm text-[#a3341a]">
           {error}
         </p>
       )}
