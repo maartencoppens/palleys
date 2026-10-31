@@ -30,4 +30,4 @@ export const prisma = globalForPrisma.prisma ?? createClient();
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 
-export { PreviewStatus } from "./generated/client";
+export { PreviewStatus, OrderStatus, PaymentStatus } from "./generated/client";

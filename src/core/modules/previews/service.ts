@@ -512,9 +512,17 @@ export async function getPreviewForAdmin(
       email: true,
       error: true,
       shopifyOrderId: true,
+      orderNumber: true,
       quantity: true,
       createdAt: true,
       poseImageKey: true,
+      // De betaalde order van deze preview (eigen checkout), voor de link en de opmerking van de klant.
+      orderItems: {
+        where: { order: { paidAt: { not: null } } },
+        orderBy: { order: { paidAt: "desc" } },
+        take: 1,
+        select: { notes: true, order: { select: { id: true, number: true } } },
+      },
       glbKey: true,
       poseAttempts: true,
       animalType: true,
@@ -560,6 +568,10 @@ export async function getPreviewForAdmin(
     email: preview.email,
     error: preview.error,
     shopifyOrderId: preview.shopifyOrderId,
+    order: preview.orderItems[0]
+      ? { ...preview.orderItems[0].order, notes: preview.orderItems[0].notes }
+      : null,
+    orderNumber: preview.orderNumber,
     quantity: preview.quantity,
     createdAt: preview.createdAt.toISOString(),
     photos,
@@ -611,6 +623,8 @@ export async function listPreviewsForReview(): Promise<ReviewListItem[]> {
       email: true,
       error: true,
       createdAt: true,
+      orderNumber: true,
+      quantity: true,
       photos: { orderBy: { createdAt: "asc" }, select: { key: true } },
     },
   });
@@ -624,6 +638,8 @@ export async function listPreviewsForReview(): Promise<ReviewListItem[]> {
       email: preview.email,
       error: preview.error,
       createdAt: preview.createdAt.toISOString(),
+      orderNumber: preview.orderNumber,
+      quantity: preview.quantity,
       photoUrls: await Promise.all(
         preview.photos.map((photo) => createDownloadUrl(photo.key)),
       ),
@@ -683,7 +699,7 @@ export async function downloadModels(
       objKey: true,
       mtlKey: true,
       textureKey: true,
-      shopifyOrderNumber: true,
+      orderNumber: true,
       animalType: true,
       paidAt: true,
       createdAt: true,
@@ -738,7 +754,7 @@ export async function getAdminDashboard(query = ""): Promise<AdminDashboard> {
   };
 }
 
-// Zoekt op preview-id (exact), e-mail of Shopify-ordernummer (deel van).
+// Zoekt op preview-id (exact), e-mail, ordernummer of Shopify-order-id (deel van).
 async function searchPreviews(q: string): Promise<AdminPreviewListItem[]> {
   const isId = z.uuid().safeParse(q).success;
 
@@ -749,6 +765,7 @@ async function searchPreviews(q: string): Promise<AdminPreviewListItem[]> {
           OR: [
             { email: { contains: q, mode: "insensitive" } },
             { shopifyOrderId: { contains: q } },
+            { orderNumber: { contains: q, mode: "insensitive" } },
           ],
         },
     orderBy: { createdAt: "desc" },

@@ -47,7 +47,7 @@ const socials = [
 
 const legalLinks = [
   { label: "Privacy", href: "/privacy" },
-  { label: "Gebruiksvoorwaarden", href: "/terms" },
+  { label: "Algemene voorwaarden", href: "/algemene-voorwaarden" },
   { label: "Cookiebeleid", href: "/cookies" },
   { label: "Cookie-instellingen", href: "/cookies#settings" },
 ];

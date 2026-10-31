@@ -26,24 +26,25 @@ enum PreviewStatus {
 }
 
 model Preview {
-  id                String        @id @default(uuid())
-  status            PreviewStatus @default(UPLOADED)
+  id                String                @id @default(uuid())
+  status            PreviewStatus         @default(UPLOADED)
   poseImageKey      String?
   glbKey            String? // voor de 3D-viewer in de backoffice
   objKey            String? // printbestanden voor full color resin:
   mtlKey            String? //   OBJ + MTL + PNG-textuur, altijd samen
   textureKey        String?
-  meshyTaskId       String?       @unique
+  meshyTaskId       String?               @unique
   email             String?
-  poseAttempts      Int           @default(0)
+  poseAttempts      Int                   @default(0)
   error             String?
   shopifyOrderId    String?
-  shopifyOrderNumber String? // zoals in Shopify-admin, bv. "1042"
-  paidAt            DateTime? // orderdatum, gezet door de Shopify-webhook
+  // Ordernummer in de printbestandsnaam: PAL-2026-00042, of het Shopify-nummer (bv. "1042") voor oude orders.
+  orderNumber       String?               @map("shopifyOrderNumber")
+  paidAt            DateTime? // orderdatum, gezet bij betaling (Bancontact-callback of statuscheck)
   animalType        String? // code uit src/data/animals.ts, gekozen door de admin
-  shopifyLineItemId String?       @unique
-  quantity          Int           @default(1) // aantal exemplaren van deze Palley in de order, gezet door de Shopify-webhook
-  createdAt         DateTime      @default(now())
+  shopifyLineItemId String?               @unique
+  quantity          Int                   @default(1) // aantal exemplaren van deze Palley in de order, gezet bij betaling
+  createdAt         DateTime              @default(now())
   expiresAt         DateTime? // alleen voor niet-betaalde uploads, leeg na betaling
   photosDeleteAt    DateTime? // voor betaalde orders, na verzending
   downloadedAt      DateTime?
@@ -53,6 +54,8 @@ model Preview {
   processedBy       String?
   photos            PreviewPhoto[]
   statusChanges     PreviewStatusChange[]
+  orderItems        OrderItem[]
+  cartLines         CartLine[]
 
   @@index([status, expiresAt])
 }
@@ -130,28 +133,215 @@ model RateLimit {
   @@map("rateLimit")
 }
 
-  // Foto's van het dier, maximaal MAX_PHOTOS_PER_PREVIEW (src/data/uploads.ts).
-  model PreviewPhoto {
-    id         String   @id @default(uuid())
-    previewId  String
-    preview    Preview  @relation(fields: [previewId], references: [id], onDelete: Cascade)
-    key        String   @unique // R2-key, nooit de foto zelf
-    uploadedBy String? // null = klant, anders de naam van de admin
-    createdAt  DateTime @default(now())
+// Foto's van het dier, maximaal MAX_PHOTOS_PER_PREVIEW (src/data/uploads.ts).
+model PreviewPhoto {
+  id         String   @id @default(uuid())
+  previewId  String
+  preview    Preview  @relation(fields: [previewId], references: [id], onDelete: Cascade)
+  key        String   @unique // R2-key, nooit de foto zelf
+  uploadedBy String? // null = klant, anders de naam van de admin
+  createdAt  DateTime @default(now())
 
-    @@index([previewId])
-  }
+  @@index([previewId])
+}
 
-  // Logboek van handmatige statuswijzigingen door een admin (de noodknop).
-  model PreviewStatusChange {
-    id         String        @id @default(uuid())
-    previewId  String
-    preview    Preview       @relation(fields: [previewId], references: [id], onDelete: Cascade)
-    fromStatus PreviewStatus
-    toStatus   PreviewStatus
-    reason     String
-    changedBy  String
-    createdAt  DateTime      @default(now())
+// Logboek van handmatige statuswijzigingen door een admin (de noodknop).
+model PreviewStatusChange {
+  id         String        @id @default(uuid())
+  previewId  String
+  preview    Preview       @relation(fields: [previewId], references: [id], onDelete: Cascade)
+  fromStatus PreviewStatus
+  toStatus   PreviewStatus
+  reason     String
+  changedBy  String
+  createdAt  DateTime      @default(now())
 
-    @@index([previewId])
-  }
+  @@index([previewId])
+}
+
+// ---------- Shop: cart, orders, payments (eigen checkout met Bancontact Pro) ----------
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  IN_PRODUCTION
+  SHIPPED
+  CANCELLED
+  EXPIRED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  OPEN
+  PENDING
+  AUTHORIZED
+  PAID
+  CANCELED
+  EXPIRED
+  FAILED
+}
+
+// Winkelmandje van een bezoeker. De cookie bevat een willekeurig token, hier staat alleen de hash.
+model Cart {
+  id        String     @id @default(uuid())
+  tokenHash String     @unique
+  expiresAt DateTime
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  lines     CartLine[]
+
+  @@index([expiresAt])
+}
+
+// Eén lijn per preview (elk huisdier is anders). Geen prijs: die wordt altijd uit src/data/pricing.ts berekend.
+model CartLine {
+  id        String   @id @default(uuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  previewId String
+  preview   Preview  @relation(fields: [previewId], references: [id], onDelete: Cascade)
+  edition   String // waarde uit src/data/options.ts (keychain | figure)
+  animal    String // waarde uit src/data/options.ts (dog, cat, ...)
+  size      String   @default("M")
+  notes     String?
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+
+  @@unique([cartId, previewId])
+  @@index([previewId])
+}
+
+model Order {
+  id                 String              @id @default(uuid())
+  number             String              @unique // PAL-2026-00042, sequentieel per jaar
+  status             OrderStatus         @default(PENDING_PAYMENT)
+  email              String
+  firstName          String
+  lastName           String
+  phone              String?
+  street             String
+  houseNumber        String
+  postalCode         String
+  city               String
+  country            String // ISO-2
+  currency           String              @default("EUR")
+  subtotalCents      Int
+  shippingCents      Int
+  vatCents           Int // btw inbegrepen in totalCents
+  totalCents         Int
+  termsVersion       String // versie van de voorwaarden die aanvaard werd
+  termsAcceptedAt    DateTime
+  locale             String              @default("nl")
+  marketingOptIn     Boolean             @default(false)
+  statusTokenHash    String // sha256 van het token in de return-URL; het token zelf bewaren we niet
+  attentionReason    String? // iets klopte niet (bedrag, preview al betaald, ...): opvolgen in de backoffice
+  confirmationSentAt DateTime?
+  paidAt             DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  items              OrderItem[]
+  payments           Payment[]
+  shipment           Shipment?
+  statusChanges      OrderStatusChange[]
+
+  @@index([status, createdAt])
+  @@index([email])
+}
+
+model OrderItem {
+  id           String  @id @default(uuid())
+  orderId      String
+  order        Order   @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  previewId    String
+  preview      Preview @relation(fields: [previewId], references: [id], onDelete: Restrict)
+  sku          String
+  size         String
+  edition      String
+  animal       String
+  title        String // zoals de klant het zag, bv. "Palley Hond · Met sleutelhanger"
+  notes        String?
+  quantity     Int     @default(1)
+  unitCents    Int
+  withdrawable Boolean @default(false) // gepersonaliseerd = uitzondering op het herroepingsrecht (art. VI.53, 3° WER)
+
+  @@index([orderId])
+  @@index([previewId])
+}
+
+model Payment {
+  id                String        @id @default(uuid())
+  orderId           String
+  order             Order         @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  provider          String        @default("bancontact")
+  providerPaymentId String        @unique // Bancontact paymentId (24 tekens)
+  mode              String? // test (preprod) | live (production)
+  method            String? // bancontact
+  status            PaymentStatus @default(OPEN)
+  amountCents       Int
+  refundedCents     Int           @default(0)
+  chargedBackCents  Int           @default(0)
+  checkoutUrl       String?
+  rawLastStatus     Json? // veilige selectie uit het laatste payment-object (zonder naam/IBAN van de betaler)
+  lastSyncedAt      DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([orderId])
+}
+
+model Shipment {
+  id                   String    @id @default(uuid())
+  orderId              String    @unique
+  order                Order     @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  provider             String // static | sendcloud
+  deliveryOptionId     String
+  deliveryType         String // HOME | SERVICE_POINT
+  carrier              String // bpost, postnl, ...
+  label                String // zoals de klant de optie zag
+  priceCents           Int
+  checkoutIdentifier   String? // Sendcloud Dynamic Checkout, nodig om later de zending aan te maken
+  servicePointId       String?
+  servicePointSnapshot Json?
+  providerShipmentId   String?
+  trackingCode         String?
+  trackingUrl          String?
+  labelKey             String? // R2-key van het label (signed URL in de admin)
+  shippedAt            DateTime?
+}
+
+// Ordernummers zonder gaten: de teller stijgt in dezelfde transactie als de order.
+model OrderCounter {
+  year Int @id
+  last Int @default(0)
+}
+
+// Logboek van elke statuswijziging van een order: wie of wat (webhook, cron, admin) en wanneer.
+model OrderStatusChange {
+  id         String       @id @default(uuid())
+  orderId    String
+  order      Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fromStatus OrderStatus?
+  toStatus   OrderStatus
+  source     String // webhook | return-page | cron | admin:<naam> | checkout
+  note       String?
+  createdAt  DateTime     @default(now())
+
+  @@index([orderId])
+}
+
+// Winkelinstellingen die een admin in /admin/settings aanpast. Altijd één rij (id = 1).
+model ShopSettings {
+  id                    Int      @id @default(1)
+  checkoutEnabled       Boolean  @default(true)
+  checkoutClosedMessage String?
+  shippingOverrides     Json? // { [deliveryOptionId]: { priceCents, enabled } }
+  updatedBy             String?
+  updatedAt             DateTime @updatedAt
+}
+
+// Rate limiting per IP (gehasht) en route, vast venster.
+model RequestLimit {
+  key         String   @id
+  count       Int
+  windowStart DateTime
+}

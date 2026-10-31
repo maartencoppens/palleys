@@ -1,20 +1,19 @@
-import { z } from "zod";
-import { animals } from "@/data/options";
-import { LINE_ATTRIBUTES } from "@/data/shopify";
-import type { AnimalType } from "@/data/animals";
-import type { OrderPaidPayload } from "./types";
+import { ORDER_NUMBER_DIGITS, ORDER_NUMBER_PREFIX } from "@/data/checkout";
 
-type LineProperties = OrderPaidPayload["line_items"][number]["properties"];
-
-/** The preview ID we put on the cart line as a hidden attribute, if it's a valid UUID. */
-export function previewIdOf(properties: LineProperties): string | null {
-  const value = properties?.find((p) => p.name === LINE_ATTRIBUTES.previewId)?.value;
-  const parsed = z.uuid().safeParse(value);
-  return parsed.success ? parsed.data : null;
+/** 2026, 42 → "PAL-2026-00042". Sorts correctly as text within a year. */
+export function formatOrderNumber(year: number, sequence: number) {
+  if (!Number.isInteger(sequence) || sequence < 1) throw new Error(`Invalid order sequence ${sequence}`);
+  return `${ORDER_NUMBER_PREFIX}-${year}-${String(sequence).padStart(ORDER_NUMBER_DIGITS, "0")}`;
 }
 
-/** PAL-GP-KEY-DOG → "HOND" (backoffice code), or null for an unknown SKU. */
-export function animalTypeFromSku(sku: string | null | undefined): AnimalType | null {
-  const skuCode = sku?.split("-").slice(3).join("-");
-  return animals.find((a) => a.skuCode === skuCode)?.animalType ?? null;
+/** The year an order number counts in: Brussels time, so an order at 00:30 on 1 January belongs to the new year. */
+export function orderYear(date: Date = new Date()) {
+  return Number(new Intl.DateTimeFormat("en-CA", { year: "numeric", timeZone: "Europe/Brussels" }).format(date));
+}
+
+/** Hides most of an e-mail address for logs: "jan.peeters@gmail.com" → "ja***@gmail.com". */
+export function maskEmail(email: string) {
+  const [local, domain] = email.split("@");
+  if (!domain) return "***";
+  return `${local.slice(0, 2)}***@${domain}`;
 }

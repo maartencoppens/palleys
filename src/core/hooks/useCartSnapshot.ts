@@ -1,7 +1,7 @@
 "use client";
 import { useSyncExternalStore } from "react";
-import { fetchCart } from "@/core/modules/shopify/api";
-import type { CartView } from "@/core/modules/shopify/types";
+import { fetchCart } from "@/core/modules/cart/api";
+import type { CartView } from "@/core/modules/cart/types";
 
 /*
  * The last cart the browser saw, shared between the navbar's mini cart, the cart page and the

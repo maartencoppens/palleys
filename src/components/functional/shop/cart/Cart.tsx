@@ -7,8 +7,8 @@ import { Badge } from "@/components/design/Badge";
 import Button from "@/components/design/Button";
 import { palleyCount } from "@/components/functional/shop/layout/CartMenu";
 import { loadCart, publishCart } from "@/core/hooks/useCartSnapshot";
-import { deleteCartLine, patchCartLine } from "@/core/modules/shopify/api";
-import type { CartView } from "@/core/modules/shopify/types";
+import { deleteCartLine, patchCartLine } from "@/core/modules/cart/api";
+import type { CartView } from "@/core/modules/cart/types";
 import { formatPrice } from "@/core/utils/format";
 import { RETURN_NOTE } from "@/data/options";
 import CartLinePhoto from "./CartLinePhoto";
@@ -16,16 +16,16 @@ import QuantityStepper from "./QuantityStepper";
 
 type State = { status: "loading" } | { status: "error" } | { status: "ready"; cart: CartView | null };
 
-// What happens after "Afrekenen", so the hand-off to Shopify doesn't feel like the end of the road.
+// What happens after "Afrekenen", so the checkout doesn't feel like the end of the road.
 const nextSteps = [
-  { title: "Veilig afrekenen", text: "Je vult je adres in en betaalt via de beveiligde kassa van Shopify." },
+  { title: "Veilig afrekenen", text: "Je vult je adres in en betaalt met Bancontact: via de QR-code of je bankapp." },
   { title: "Wij gaan aan de slag", text: "Ons team in Gent werkt het 3D-model van je huisdier met de hand bij en print het." },
   { title: "In je bus", text: "Binnen 2–3 weken valt je Palley in je brievenbus." },
 ];
 
 /*
- * Cart page: reads the Shopify cart through our API (the cart ID lives in an httpOnly cookie) and hands
- * off to Shopify's hosted checkout. Expired uploads are already removed server-side before we get here.
+ * Cart page: reads the cart through our API (the cart token lives in an httpOnly cookie) and leads to our
+ * checkout. Expired uploads are already removed server-side before we get here.
  * Every change is shared with the navbar's mini cart through useCartSnapshot.
  */
 export default function Cart() {
@@ -45,7 +45,7 @@ export default function Cart() {
     };
   }, []);
 
-  // Coming back from Shopify with the back button restores this page as it was: undo "Even geduld…".
+  // Coming back with the back button restores this page as it was: undo "Even geduld…".
   useEffect(() => {
     const onPageShow = () => setRedirecting(false);
     window.addEventListener("pageshow", onPageShow);
@@ -141,8 +141,8 @@ export default function Cart() {
   }
 
   const checkout = (
-    <a
-      href={cart.checkoutUrl}
+    <Link
+      href="/checkout"
       onClick={() => setRedirecting(true)}
       aria-busy={redirecting}
       className="group flex items-center justify-center gap-3 rounded-pill bg-orange py-[18px] font-label text-lg leading-[normal] font-semibold text-off-white transition hover:bg-orange-hover active:scale-[0.98] aria-busy:opacity-80"
@@ -156,7 +156,7 @@ export default function Cart() {
         alt=""
         aria-hidden
       />
-    </a>
+    </Link>
   );
 
   return (
@@ -289,12 +289,12 @@ export default function Cart() {
           <p className="text-sm leading-[1.5] text-text-primary">Incl. btw · verzendkosten bij het afrekenen</p>
         </div>
 
-        {/* Shopify's hosted checkout: payments, taxes and shipping are handled there. On phones the sticky bar below takes over. */}
+        {/* Leads to our checkout (address, delivery, then Bancontact). On phones the sticky bar below takes over. */}
         <div className="hidden flex-col gap-3 lg:flex">
           {checkout}
           <p className="flex items-center justify-center gap-2 text-sm text-text-primary">
             <LockIcon />
-            Veilig afrekenen via Shopify
+            Veilig betalen met Bancontact
           </p>
         </div>
 

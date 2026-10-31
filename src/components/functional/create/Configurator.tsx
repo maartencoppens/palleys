@@ -25,6 +25,7 @@ import Panel from "@/components/design/Panel";
 import ChoiceChips from "@/components/design/ChoiceChips";
 import { formatPrice } from "@/core/utils/format";
 import { useAddPalleyToCart } from "@/core/hooks/useAddPalleyToCart";
+import { TERMS_URL } from "@/data/checkout";
 import { publishCart } from "@/core/hooks/useCartSnapshot";
 import Button from "@/components/design/Button";
 
@@ -122,7 +123,7 @@ export default function Configurator() {
       heading?.focus({ preventScroll: true });
       return;
     }
-    // Uploads the photos to R2, then adds the matching Shopify variant with the preview ID and notes.
+    // Uploads the photos to R2, then adds the preview with the chosen variant and notes to the cart.
     void addToCart({ animal: animal!, edition, photos, notes });
   };
 
@@ -263,7 +264,7 @@ export default function Configurator() {
                   Ik bevestig dat ik deze foto’s mag gebruiken en ga akkoord met
                   de{" "}
                   <Link
-                    href="/terms"
+                    href={TERMS_URL}
                     className="font-semibold text-medium-green underline underline-offset-2"
                   >
                     algemene voorwaarden
@@ -326,10 +327,10 @@ export default function Configurator() {
                   </div>
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-                  {/* Straight to Shopify's checkout: the shortest way to paying. */}
+                  {/* Straight to the checkout: the shortest way to paying. */}
                   {cart ? (
-                    <a
-                      href={cart.checkoutUrl}
+                    <Link
+                      href="/checkout"
                       className="group flex items-center justify-center gap-3 rounded-pill bg-orange px-7 py-3.5 font-label text-base font-semibold text-off-white transition hover:bg-orange-hover active:scale-[0.98]"
                     >
                       Afrekenen
@@ -341,7 +342,7 @@ export default function Configurator() {
                         alt=""
                         aria-hidden
                       />
-                    </a>
+                    </Link>
                   ) : null}
                   <Button variant="secondary" href="/cart" className="py-3.5">
                     Bekijk winkelmandje

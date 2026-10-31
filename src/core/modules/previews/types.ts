@@ -63,6 +63,9 @@ export type AdminPreviewDetail = {
   email: string | null;
   error: string | null;
   shopifyOrderId: string | null;
+  // Order uit de eigen checkout (null voor testpreviews en oude Shopify-orders).
+  order: { id: string; number: string; notes: string | null } | null;
+  orderNumber: string | null;
   quantity: number; // aantal exemplaren in de order
   createdAt: string; // ISO-string: Date gaat niet zuiver van server naar client
   photos: AdminPhoto[];
@@ -91,6 +94,8 @@ export type AdminPreviewListItem = {
 
 export type ReviewListItem = AdminPreviewListItem & {
   photoUrls: string[];
+  orderNumber: string | null;
+  quantity: number;
 };
 
 export type PreviewActionResult = {

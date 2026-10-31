@@ -1,0 +1,29 @@
+# Local development database. Never point .env at production while developing.
+#   docker compose -f docker-compose.dev.yml up -d
+#   npx prisma migrate dev          # only ever locally
+# Production runs `prisma migrate deploy` (see `npm run start:prod`), never `migrate dev` or `reset`.
+#
+# Same container name and volume as the hand-made `palleys-db` container, so existing local data stays.
+# If that container still exists outside compose, remove it first: `docker rm -f palleys-db` (the volume is kept).
+services:
+  db:
+    image: postgres:18
+    container_name: palleys-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-palleys}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-palleys}
+      POSTGRES_DB: ${POSTGRES_DB:-palleys}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - palleys-db:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-palleys} -d ${POSTGRES_DB:-palleys}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  palleys-db:
+    external: true

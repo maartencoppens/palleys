@@ -77,9 +77,29 @@ export default async function AdminPreviewDetailPage({
                 <dd className="break-words">{preview.email ?? "—"}</dd>
               </div>
               <div>
-                <dt className="font-label font-semibold text-text-muted">Shopify-order</dt>
-                <dd>{preview.shopifyOrderId ?? "—"}</dd>
+                <dt className="font-label font-semibold text-text-muted">Order</dt>
+                <dd>
+                  {preview.order ? (
+                    <Link
+                      href={`/admin/orders/${preview.order.id}`}
+                      className="font-semibold text-medium-green underline underline-offset-4 hover:text-orange"
+                    >
+                      {preview.order.number}
+                    </Link>
+                  ) : (
+                    (preview.orderNumber ?? "—")
+                  )}
+                  {preview.shopifyOrderId && (
+                    <span className="block text-xs text-text-muted">Shopify {preview.shopifyOrderId}</span>
+                  )}
+                </dd>
               </div>
+              {preview.order?.notes && (
+                <div>
+                  <dt className="font-label font-semibold text-text-muted">Opmerking klant</dt>
+                  <dd className="break-words italic">“{preview.order.notes}”</dd>
+                </div>
+              )}
               <div>
                 <dt className="font-label font-semibold text-text-muted">Aantal</dt>
                 <dd>

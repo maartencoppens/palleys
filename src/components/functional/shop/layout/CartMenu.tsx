@@ -1,13 +1,14 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Button from "@/components/design/Button";
 import CartLinePhoto from "@/components/functional/shop/cart/CartLinePhoto";
 import QuantityStepper from "@/components/functional/shop/cart/QuantityStepper";
 import { loadCart, publishCart, useCartSnapshot } from "@/core/hooks/useCartSnapshot";
-import { deleteCartLine, patchCartLine } from "@/core/modules/shopify/api";
+import { deleteCartLine, patchCartLine } from "@/core/modules/cart/api";
 import { formatPrice } from "@/core/utils/format";
 
 type CartMenuProps = {
@@ -244,9 +245,10 @@ export default function CartMenu({ pinned, onOpenChange, onReveal }: CartMenuPro
                   <p className="font-label text-2xl font-extrabold">{formatPrice(cart!.subtotal.amount)}</p>
                 </div>
                 <p className="-mt-2 text-sm">Incl. btw · verzendkosten bij het afrekenen</p>
-                {/* Shopify's hosted checkout: payments, taxes and shipping are handled there. */}
-                <a
-                  href={cart!.checkoutUrl}
+                {/* Our checkout: address and delivery, then Bancontact for the payment. */}
+                <Link
+                  href="/checkout"
+                  onClick={closeForNavigation}
                   className="group flex items-center justify-center gap-3 rounded-pill bg-orange py-3.5 font-label text-base font-semibold text-off-white transition hover:bg-orange-hover active:scale-[0.98]"
                 >
                   Afrekenen
@@ -258,7 +260,7 @@ export default function CartMenu({ pinned, onOpenChange, onReveal }: CartMenuPro
                     alt=""
                     aria-hidden
                   />
-                </a>
+                </Link>
                 <Button variant="secondary" href="/cart" onClick={closeForNavigation} className="w-full">
                   Bekijk winkelmandje
                 </Button>

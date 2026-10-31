@@ -1,4 +1,4 @@
-import { MAX_LINE_QUANTITY } from "@/data/shopify";
+import { MAX_LINE_QUANTITY } from "@/data/pricing";
 
 type QuantityStepperProps = {
   quantity: number;

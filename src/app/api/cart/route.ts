@@ -1,12 +1,6 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { ZodError } from "zod";
-import {
-  addToCartSchema,
-  removeFromCartSchema,
-  updateCartLineSchema,
-  type CartView,
-} from "@/core/modules/shopify/types";
+import { addToCartSchema, removeFromCartSchema, updateCartLineSchema } from "@/core/modules/cart/types";
 import {
   addPreviewToCart,
   CartError,
@@ -14,56 +8,45 @@ import {
   removeFromCart,
   updateCartLineQuantity,
   type CartErrorCode,
-} from "@/core/modules/shopify/service";
-import { getClientIp } from "@/core/utils/request";
-import { CART_COOKIE, CART_COOKIE_MAX_AGE_SECONDS } from "@/data/shopify";
+} from "@/core/modules/cart/service";
+import { clearCartToken, readCartToken, writeCartToken } from "@/core/modules/cart/cookie";
+import { assertRateLimit, RateLimitError } from "@/core/utils/rate-limit";
+import { assertSameOrigin, CrossOriginError } from "@/core/utils/request";
 
 const CART_ERROR_STATUS: Record<CartErrorCode, number> = {
   preview_not_found: 404,
   preview_not_orderable: 409,
   photos_missing: 409,
-  variant_unavailable: 409,
+  line_not_found: 404,
+  cart_full: 409,
 };
 
-async function context(request: Request) {
-  const cookieStore = await cookies();
-  return {
-    cartId: cookieStore.get(CART_COOKIE)?.value ?? null,
-    buyerIp: getClientIp(request.headers),
-  };
-}
-
-// The cookie follows the cart: set when there is one, cleared when Shopify no longer knows it.
-async function respond(cart: CartView | null, status = 200) {
-  const cookieStore = await cookies();
-  if (cart) {
-    cookieStore.set(CART_COOKIE, cart.id, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: CART_COOKIE_MAX_AGE_SECONDS,
-    });
-  } else {
-    cookieStore.delete(CART_COOKIE);
-  }
-  return NextResponse.json({ cart }, { status });
-}
-
 function handleError(error: unknown) {
-  if (error instanceof ZodError) {
-    return NextResponse.json({ error: "Invalid input" }, { status: 400 });
-  }
+  if (error instanceof ZodError) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   if (error instanceof CartError) {
     return NextResponse.json({ error: error.code }, { status: CART_ERROR_STATUS[error.code] });
   }
+  if (error instanceof RateLimitError) {
+    return NextResponse.json(
+      { error: "rate_limited" },
+      { status: 429, headers: { "Retry-After": String(error.retryAfterSeconds) } },
+    );
+  }
+  if (error instanceof CrossOriginError) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   console.error("Cart request failed:", error instanceof Error ? error.message : error);
   return NextResponse.json({ error: "Internal error" }, { status: 500 });
 }
 
-export async function GET(request: Request) {
+async function guard(request: Request) {
+  assertSameOrigin(request);
+  await assertRateLimit("cart", request.headers);
+}
+
+export async function GET() {
   try {
-    return respond(await getCart(await context(request)));
+    const cart = await getCart(await readCartToken());
+    if (!cart) await clearCartToken();
+    return NextResponse.json({ cart });
   } catch (error) {
     return handleError(error);
   }
@@ -71,8 +54,11 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const input = addToCartSchema.parse(await request.json());
-    return respond(await addPreviewToCart(await context(request), input), 201);
+    await guard(request);
+    const input = addToCartSchema.parse(await request.json().catch(() => null));
+    const { cart, token } = await addPreviewToCart(await readCartToken(), input);
+    await writeCartToken(token);
+    return NextResponse.json({ cart }, { status: 201 });
   } catch (error) {
     return handleError(error);
   }
@@ -80,8 +66,9 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const input = updateCartLineSchema.parse(await request.json());
-    return respond(await updateCartLineQuantity(await context(request), input));
+    await guard(request);
+    const input = updateCartLineSchema.parse(await request.json().catch(() => null));
+    return NextResponse.json({ cart: await updateCartLineQuantity(await readCartToken(), input) });
   } catch (error) {
     return handleError(error);
   }
@@ -89,8 +76,9 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const input = removeFromCartSchema.parse(await request.json());
-    return respond(await removeFromCart(await context(request), input));
+    await guard(request);
+    const input = removeFromCartSchema.parse(await request.json().catch(() => null));
+    return NextResponse.json({ cart: await removeFromCart(await readCartToken(), input) });
   } catch (error) {
     return handleError(error);
   }

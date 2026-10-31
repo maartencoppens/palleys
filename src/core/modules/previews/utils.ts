@@ -71,12 +71,12 @@ export function modelKeys(previewId: string, taskId: string) {
 // de aanmaakdatum. Alles wat geen letter of cijfer is, gaat eruit ("#1042").
 export function printFileBaseName(preview: {
   id: string;
-  shopifyOrderNumber: string | null;
+  orderNumber: string | null;
   animalType: string | null;
   paidAt: Date | null;
   createdAt: Date;
 }) {
-  const order = preview.shopifyOrderNumber?.replace(/[^a-zA-Z0-9]/g, "");
+  const order = preview.orderNumber?.replace(/[^a-zA-Z0-9]/g, "");
   return [
     PRINT_NAME_PREFIX,
     order || NO_ORDER_LABEL,

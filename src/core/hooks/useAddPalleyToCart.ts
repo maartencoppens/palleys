@@ -2,8 +2,8 @@
 import { useCallback, useRef, useState } from "react";
 import axios from "axios";
 import { uploadCustomerPhotos } from "@/core/modules/previews/api";
-import { postAddToCart } from "@/core/modules/shopify/api";
-import type { CartView } from "@/core/modules/shopify/types";
+import { postAddToCart } from "@/core/modules/cart/api";
+import type { CartView } from "@/core/modules/cart/types";
 import type { Animal, Edition } from "@/data/options";
 
 type Photo = { id: string; file: File };
@@ -14,7 +14,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   photos_missing: "Je foto’s zijn niet goed aangekomen. Probeer het nog eens.",
   preview_not_orderable: "Deze upload is verlopen. Voeg je foto’s opnieuw toe.",
   preview_not_found: "Deze upload is verlopen. Voeg je foto’s opnieuw toe.",
-  variant_unavailable: "Deze Palley is even niet beschikbaar. Kies een andere uitvoering of probeer later opnieuw.",
+  cart_full: "Je winkelmandje zit vol. Reken eerst af of verwijder een Palley.",
+  rate_limited: "Even rustig aan: probeer het over een paar minuten opnieuw.",
 };
 const FALLBACK_ERROR = "Er ging iets mis bij het toevoegen. Probeer het nog eens.";
 
@@ -27,7 +28,7 @@ function messageFor(error: unknown) {
 }
 
 /**
- * Upload → preview → Shopify cart, as one action for the configurator.
+ * Upload → preview → cart, as one action for the configurator.
  * The upload is remembered for the same set of photos, so retrying after a failed cart call
  * doesn't upload (and store) the photos a second time.
  */

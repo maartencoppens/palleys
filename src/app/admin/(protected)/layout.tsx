@@ -29,6 +29,9 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
             <Link href="/admin" className="transition-colors hover:text-accent-highlights">
               Dashboard
             </Link>
+            <Link href="/admin/orders" className="transition-colors hover:text-accent-highlights">
+              Orders
+            </Link>
             <Link href="/admin/review" className="transition-colors hover:text-accent-highlights">
               Te reviewen
             </Link>
@@ -37,6 +40,9 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
             </Link>
             <Link href="/admin/processed" className="transition-colors hover:text-accent-highlights">
               Processed
+            </Link>
+            <Link href="/admin/settings" className="transition-colors hover:text-accent-highlights">
+              Instellingen
             </Link>
           </nav>
           <div className="flex min-w-0 items-center gap-4 sm:ml-auto">

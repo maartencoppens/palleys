@@ -9,7 +9,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "start:prod": "prisma migrate deploy && next start",
+    "lint": "eslint",
+    "test": "vitest run",
+    "db:up": "docker compose -f docker-compose.dev.yml up -d",
+    "db:migrate": "prisma migrate dev",
+    "test:integration": "vitest run --config vitest.integration.config.mts",
+    "dev:https": "next dev --experimental-https"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1142.0",
@@ -24,6 +30,7 @@
     "gsap": "^3.15.0",
     "next": "16.3.6",
     "pg": "^8.23.0",
+    "prisma": "^7.10.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "server-only": "^0.0.1",
@@ -40,8 +47,8 @@
     "@types/three": "^0.186.0",
     "eslint": "^9",
     "eslint-config-next": "16.3.6",
-    "prisma": "^7.10.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.12"
   }
 }

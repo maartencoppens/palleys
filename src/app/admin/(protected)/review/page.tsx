@@ -39,6 +39,7 @@ export default async function AdminReviewPage() {
             <thead className="border-b-[1.5px] border-off-white-dark font-label text-text-muted">
               <tr>
                 <th className="px-5 py-4 font-semibold">Foto&apos;s</th>
+                <th className="px-5 py-4 font-semibold">Order</th>
                 <th className="px-5 py-4 font-semibold">Aangemaakt</th>
                 <th className="px-5 py-4 font-semibold">Status</th>
                 <th className="px-5 py-4 font-semibold">E-mail</th>
@@ -68,6 +69,12 @@ export default async function AdminReviewPage() {
                         />
                       ))}
                     </div>
+                  </td>
+                  <td className="whitespace-nowrap px-5 py-4 font-semibold tabular-nums">
+                    {preview.orderNumber ?? "—"}
+                    {preview.quantity > 1 && (
+                      <span className="ml-2 font-normal text-text-muted">{preview.quantity}×</span>
+                    )}
                   </td>
                   <td className="whitespace-nowrap px-5 py-4 tabular-nums">
                     {formatDateTime(preview.createdAt)}

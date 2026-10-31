@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { handleOrderPaidWebhook } from "@/core/modules/orders/service";
+import { handleOrderPaidWebhook } from "@/core/modules/shopify/webhook";
 import { ShopifyWebhookAuthError } from "@/core/networking/external/shopify-client";
 
 // Shopify expects a 2xx within a few seconds and retries otherwise, so we only do DB work here.

@@ -25,7 +25,7 @@ const UPLOADABLE_STATUSES: PreviewStatus[] = [
 
 const ITEM_SELECT = {
   id: true,
-  shopifyOrderNumber: true,
+  orderNumber: true,
   animalType: true,
   quantity: true,
   paidAt: true,
@@ -38,7 +38,7 @@ const ITEM_SELECT = {
 
 type ItemRow = {
   id: string;
-  shopifyOrderNumber: string | null;
+  orderNumber: string | null;
   animalType: string | null;
   quantity: number;
   paidAt: Date | null;
