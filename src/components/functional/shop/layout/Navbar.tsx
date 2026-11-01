@@ -25,6 +25,7 @@ interface ScrollUpdateContext {
 const links: NavLink[] = [
   { label: "Home", href: "/" },
   { label: "Maak je Palley", href: "/create" },
+  { label: "Collectie", href: "/shop" },
   { label: "Over ons", href: "/about" },
 ];
 

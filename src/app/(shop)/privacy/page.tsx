@@ -1,8 +1,17 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
+import { Suspense } from "react";
 import LegalPage from "@/components/functional/shop/legal/LegalPage";
+import { getSiteSettings } from "@/core/modules/settings/service";
 import { COMPANY } from "@/data/company";
 
 export const metadata: Metadata = { title: "Privacybeleid | Palleys" };
+
+async function LiveCompanyEmail() {
+  await connection();
+  const { company } = await getSiteSettings();
+  return company.email;
+}
 
 // LEGAL-REVIEW: concept. Must match docs/gdpr/register.md and docs/gdpr/subprocessors.md once those exist.
 export default function PrivacyPage() {
@@ -37,7 +46,11 @@ export default function PrivacyPage() {
       </p>
       <h2>Je rechten</h2>
       <p>
-        Je kunt je gegevens opvragen, laten verbeteren of laten wissen via {COMPANY.email}. Je kunt ook klacht indienen bij
+        Je kunt je gegevens opvragen, laten verbeteren of laten wissen via{" "}
+        <Suspense fallback={COMPANY.email}>
+          <LiveCompanyEmail />
+        </Suspense>
+        . Je kunt ook klacht indienen bij
         de Gegevensbeschermingsautoriteit.
       </p>
     </LegalPage>

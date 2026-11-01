@@ -10,17 +10,22 @@ import { loadCart, publishCart } from "@/core/hooks/useCartSnapshot";
 import { deleteCartLine, patchCartLine } from "@/core/modules/cart/api";
 import type { CartView } from "@/core/modules/cart/types";
 import { formatPrice } from "@/core/utils/format";
-import { RETURN_NOTE } from "@/data/options";
+import { COLLECTIBLE_RETURN_NOTE } from "@/data/collectibles";
 import CartLinePhoto from "./CartLinePhoto";
 import QuantityStepper from "./QuantityStepper";
 
 type State = { status: "loading" } | { status: "error" } | { status: "ready"; cart: CartView | null };
 
 // What happens after "Afrekenen", so the checkout doesn't feel like the end of the road.
-const nextSteps = [
+const nextSteps = (deliveryTime: string, personalized: boolean) => [
   { title: "Veilig afrekenen", text: "Je vult je adres in en betaalt met Bancontact: via de QR-code of je bankapp." },
-  { title: "Wij gaan aan de slag", text: "Ons team in Gent werkt het 3D-model van je huisdier met de hand bij en print het." },
-  { title: "In je bus", text: "Binnen 2–3 weken valt je Palley in je brievenbus." },
+  {
+    title: "Wij gaan aan de slag",
+    text: personalized
+      ? "Ons team in Gent werkt het 3D-model van je huisdier met de hand bij en print het."
+      : "Ons team in Gent maakt je bestelling klaar en pakt ze zorgvuldig in.",
+  },
+  { title: "In je bus", text: `Binnen ${deliveryTime} valt je bestelling in je brievenbus.` },
 ];
 
 /*
@@ -28,7 +33,7 @@ const nextSteps = [
  * checkout. Expired uploads are already removed server-side before we get here.
  * Every change is shared with the navbar's mini cart through useCartSnapshot.
  */
-export default function Cart() {
+export default function Cart({ deliveryTime, returnNote }: { deliveryTime: string; returnNote: string }) {
   const [state, setState] = useState<State>({ status: "loading" });
   const [removing, setRemoving] = useState<string | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
@@ -78,24 +83,7 @@ export default function Cart() {
     }
   };
 
-  if (state.status === "loading") {
-    return (
-      <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-12" role="status" aria-label="Winkelmandje laden">
-        <div className="flex flex-1 animate-pulse flex-col gap-6 rounded-3xl bg-white p-5 md:rounded-[32px] md:p-8">
-          {[0, 1].map((key) => (
-            <div key={key} className="flex items-center gap-4 md:gap-6">
-              <div className="size-24 shrink-0 rounded-2xl bg-off-white-dark md:size-28" />
-              <div className="flex flex-1 flex-col gap-3">
-                <div className="h-5 w-1/2 rounded-full bg-off-white-dark" />
-                <div className="h-4 w-1/3 rounded-full bg-off-white-dark" />
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="h-72 animate-pulse rounded-3xl bg-white md:rounded-[32px] lg:w-[420px]" />
-      </div>
-    );
-  }
+  if (state.status === "loading") return <CartSkeleton />;
   if (state.status === "error") {
     return (
       <div role="alert" className="flex flex-col items-start gap-4 rounded-3xl bg-white p-6 md:rounded-[32px] md:p-8">
@@ -113,6 +101,8 @@ export default function Cart() {
   }
 
   const cart = state.cart;
+  const hasPersonalized = cart?.lines.some((line) => !line.withdrawable) ?? false;
+  const hasCollectible = cart?.lines.some((line) => line.withdrawable) ?? false;
   if (!cart || cart.lines.length === 0) {
     return (
       <div className="flex flex-col items-center gap-6 rounded-3xl bg-white px-6 py-10 text-center md:rounded-[32px] md:py-14">
@@ -243,7 +233,7 @@ export default function Cart() {
             Zo gaat het verder
           </h2>
           <ol className="grid gap-4 md:grid-cols-3 md:gap-6">
-            {nextSteps.map((step, index) => (
+            {nextSteps(deliveryTime, hasPersonalized).map((step, index) => (
               <li key={step.title} className="flex gap-3 md:flex-col">
                 <span
                   className="grid size-9 shrink-0 place-items-center rounded-full bg-medium-green font-display text-base font-bold text-off-white"
@@ -306,7 +296,8 @@ export default function Cart() {
             50% van onze winst gaat naar de bescherming van dieren en hun leefgebied.
           </p>
         </div>
-        <p className="text-sm leading-[1.5] text-text-muted">{RETURN_NOTE}</p>
+        {hasPersonalized && <p className="text-sm leading-[1.5] text-text-muted">{returnNote}</p>}
+        {hasCollectible && <p className="text-sm leading-[1.5] text-text-muted">{COLLECTIBLE_RETURN_NOTE}</p>}
       </aside>
 
       {/* Phones: total and checkout stay in reach while scrolling, and settle below the summary. */}
@@ -319,6 +310,25 @@ export default function Cart() {
         </div>
         <div className="flex-1 sm:max-w-xs">{checkout}</div>
       </div>
+    </div>
+  );
+}
+
+export function CartSkeleton() {
+  return (
+    <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-12" role="status" aria-label="Winkelmandje laden">
+      <div className="flex flex-1 animate-pulse flex-col gap-6 rounded-3xl bg-white p-5 md:rounded-[32px] md:p-8">
+        {[0, 1].map((key) => (
+          <div key={key} className="flex items-center gap-4 md:gap-6">
+            <div className="size-24 shrink-0 rounded-2xl bg-off-white-dark md:size-28" />
+            <div className="flex flex-1 flex-col gap-3">
+              <div className="h-5 w-1/2 rounded-full bg-off-white-dark" />
+              <div className="h-4 w-1/3 rounded-full bg-off-white-dark" />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="h-72 animate-pulse rounded-3xl bg-white md:rounded-[32px] lg:w-[420px]" />
     </div>
   );
 }

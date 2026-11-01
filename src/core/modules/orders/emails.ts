@@ -2,6 +2,7 @@ import { formatPrice } from "@/core/utils/format";
 import { vatIncluded } from "@/core/modules/catalog/utils";
 import { COMPANY } from "@/data/company";
 import { TERMS_URL } from "@/data/checkout";
+import { DEFAULT_SITE_CONTENT } from "@/data/site-content";
 
 /*
  * Order confirmation mail: the "durable medium" consumer law asks for (order, totals, company details, terms
@@ -13,18 +14,24 @@ export type ConfirmationOrder = {
   number: string;
   firstName: string;
   lastName: string;
-  street: string;
-  houseNumber: string;
-  postalCode: string;
-  city: string;
+  street: string | null;
+  houseNumber: string | null;
+  postalCode: string | null;
+  city: string | null;
   country: string;
   subtotalCents: number;
   shippingCents: number;
   vatCents: number;
   totalCents: number;
-  termsVersion: string;
-  items: { title: string; quantity: number; unitCents: number; notes: string | null }[];
-  shipment: { label: string } | null;
+  /** Null when an admin added the order: the customer never saw the checkbox. */
+  termsVersion: string | null;
+  items: { title: string; quantity: number; unitCents: number; notes: string | null; withdrawable: boolean }[];
+  shipment: { label: string; deliveryType: string } | null;
+};
+
+type ConfirmationSettings = {
+  company?: Pick<typeof COMPANY, "legalName" | "address" | "enterpriseNumber" | "vatNumber" | "email">;
+  deliveryTime?: string;
 };
 
 const escapeHtml = (value: string) =>
@@ -32,16 +39,41 @@ const escapeHtml = (value: string) =>
 
 const euro = (cents: number) => formatPrice(cents / 100);
 
-// LEGAL-REVIEW: wording of the withdrawal exception and the legal guarantee.
-const WITHDRAWAL_NOTE =
-  "Je Palley wordt op maat gemaakt op basis van jouw foto. Daarom geldt het herroepingsrecht niet (art. VI.53, 3° WER). " +
-  "De wettelijke garantie van 2 jaar blijft gelden: is er iets mis met je Palley, laat het ons weten.";
+const GUARANTEE_NOTE = "De wettelijke garantie van 2 jaar blijft gelden: is er iets mis met je Palley, laat het ons weten.";
 
-export function buildOrderConfirmation(order: ConfirmationOrder, appUrl: string) {
-  const termsLink = `${appUrl}${TERMS_URL}?versie=${encodeURIComponent(order.termsVersion)}`;
+// LEGAL-REVIEW: wording of the withdrawal exception, the right of withdrawal and the legal guarantee.
+function withdrawalNote(items: ConfirmationOrder["items"]) {
+  const personalized = items.some((item) => !item.withdrawable);
+  const collectible = items.some((item) => item.withdrawable);
+  return [
+    personalized && "Je Palley wordt op maat gemaakt op basis van jouw foto. Daarom geldt het herroepingsrecht niet (art. VI.53, 3° WER).",
+    collectible && "Collectibles zijn niet op maat gemaakt: die mag je binnen 14 dagen na ontvangst zonder reden herroepen en terugsturen. Mail ons dan met je bestelnummer.",
+    GUARANTEE_NOTE,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+export function buildOrderConfirmation(
+  order: ConfirmationOrder,
+  appUrl: string,
+  { company = COMPANY, deliveryTime = DEFAULT_SITE_CONTENT.deliveryTime }: ConfirmationSettings = {},
+) {
+  const termsLink = `${appUrl}${TERMS_URL}${order.termsVersion ? `?versie=${encodeURIComponent(order.termsVersion)}` : ""}`;
   const subject = `Bedankt voor je bestelling ${order.number}`;
-  const address = `${order.street} ${order.houseNumber}, ${order.postalCode} ${order.city}, ${order.country}`;
+  const address = order.street ? `${order.street} ${order.houseNumber}, ${order.postalCode} ${order.city}, ${order.country}` : null;
+  const handover = order.shipment?.deliveryType === "HANDOVER";
   const vatOfTotal = order.vatCents || vatIncluded(order.totalCents);
+  const note = withdrawalNote(order.items);
+  const allCollectibles = order.items.every((item) => item.withdrawable);
+  const delivery = handover
+    ? "We laten je weten wanneer je bestelling klaar is, dan overhandigen we ze persoonlijk."
+    : allCollectibles
+      ? `Binnen ${deliveryTime} valt je bestelling in je bus.`
+      : `Elke Palley wordt met de hand gemodelleerd en geprint. Binnen ${deliveryTime} valt hij in je bus.`;
+  const termsLine = order.termsVersion
+    ? `Je ging akkoord met onze algemene voorwaarden (versie ${order.termsVersion})`
+    : "Op je bestelling gelden onze algemene voorwaarden";
 
   const rows = order.items
     .map(
@@ -68,15 +100,14 @@ export function buildOrderConfirmation(order: ConfirmationOrder, appUrl: string)
     <tr><td style="padding:0 0 8px;color:#666;font-size:13px">waarvan btw (21%)</td>
         <td style="padding:0 0 8px;text-align:right;color:#666;font-size:13px">${euro(vatOfTotal)}</td></tr>
   </table>
-  <p><strong>Leveradres:</strong><br>${escapeHtml(`${order.firstName} ${order.lastName}`)}<br>${escapeHtml(address)}</p>
-  <p>Elke Palley wordt met de hand gemodelleerd en geprint. Binnen 2–3 weken valt hij in je bus.</p>
-  <p style="font-size:13px;color:#444">${WITHDRAWAL_NOTE}</p>
-  <p style="font-size:13px;color:#444">Je ging akkoord met onze <a href="${escapeHtml(termsLink)}">algemene voorwaarden</a>
-    (versie ${escapeHtml(order.termsVersion)}).</p>
+  ${address ? `<p><strong>Leveradres:</strong><br>${escapeHtml(`${order.firstName} ${order.lastName}`)}<br>${escapeHtml(address)}</p>` : ""}
+  <p>${escapeHtml(delivery)}</p>
+  <p style="font-size:13px;color:#444">${escapeHtml(note)}</p>
+  <p style="font-size:13px;color:#444"><a href="${escapeHtml(termsLink)}">${escapeHtml(termsLine)}</a>.</p>
   <hr style="border:none;border-top:1px solid #ddd">
-  <p style="font-size:12px;color:#666">${escapeHtml(COMPANY.legalName)} · ${escapeHtml(COMPANY.address)}<br>
-    Ondernemingsnummer ${escapeHtml(COMPANY.enterpriseNumber)} · btw ${escapeHtml(COMPANY.vatNumber)}<br>
-    ${escapeHtml(COMPANY.email)}</p>
+  <p style="font-size:12px;color:#666">${escapeHtml(company.legalName)} · ${escapeHtml(company.address)}<br>
+    Ondernemingsnummer ${escapeHtml(company.enterpriseNumber)} · btw ${escapeHtml(company.vatNumber)}<br>
+    ${escapeHtml(company.email)}</p>
 </body></html>`;
 
   const text = [
@@ -89,12 +120,13 @@ export function buildOrderConfirmation(order: ConfirmationOrder, appUrl: string)
     `Verzending${order.shipment ? ` (${order.shipment.label})` : ""}: ${euro(order.shippingCents)}`,
     `Totaal: ${euro(order.totalCents)} (waarvan btw ${euro(vatOfTotal)})`,
     "",
-    `Leveradres: ${order.firstName} ${order.lastName}, ${address}`,
+    ...(address ? [`Leveradres: ${order.firstName} ${order.lastName}, ${address}`, ""] : []),
+    delivery,
     "",
-    WITHDRAWAL_NOTE,
-    `Algemene voorwaarden (versie ${order.termsVersion}): ${termsLink}`,
+    note,
+    `${termsLine}: ${termsLink}`,
     "",
-    `${COMPANY.legalName} · ${COMPANY.address} · ondernemingsnummer ${COMPANY.enterpriseNumber} · btw ${COMPANY.vatNumber} · ${COMPANY.email}`,
+    `${company.legalName} · ${company.address} · ondernemingsnummer ${company.enterpriseNumber} · btw ${company.vatNumber} · ${company.email}`,
   ].join("\n");
 
   return { subject, html, text };

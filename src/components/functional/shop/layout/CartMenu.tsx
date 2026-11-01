@@ -212,7 +212,7 @@ export default function CartMenu({ pinned, onOpenChange, onReveal }: CartMenuPro
                       <p className="truncate font-label text-base font-bold">
                         {line.animal ? `Palley · ${line.animal}` : line.productTitle}
                       </p>
-                      <p className="truncate text-sm">{line.edition}</p>
+                      {line.edition && <p className="truncate text-sm">{line.edition}</p>}
                       <div className="mt-1.5">
                         <QuantityStepper
                           size="small"

@@ -3,24 +3,37 @@ import { prisma } from "@/db/client";
 import { canTransition } from "@/core/modules/previews/status";
 import { createDownloadUrl, objectExists } from "@/core/networking/external/storage-client";
 import { DEFAULT_SIZE, getVariant, isSize, priceFor, variantFor, variantLabel } from "@/core/modules/catalog/utils";
+import { findOrderableCollectible } from "@/core/modules/collectibles/service";
+import { collectibleImageUrl } from "@/core/modules/collectibles/utils";
+import { getShopSettings } from "@/core/modules/settings/service";
+import type { CatalogSettings } from "@/core/modules/settings/types";
 import { createToken, hashToken } from "@/core/utils/tokens";
 import { CART_TTL_MS } from "@/data/checkout";
-import { CURRENCY, MAX_ORDER_LINES } from "@/data/pricing";
+import { CURRENCY, MAX_LINE_QUANTITY, MAX_ORDER_LINES } from "@/data/pricing";
 import type { Animal, Edition } from "@/data/options";
 import type { KeychainSize } from "@/data/sizes";
 import { animalSchema, editionSchema } from "./types";
-import type { AddToCartInput, CartLineView, CartView, RemoveFromCartInput, UpdateCartLineInput } from "./types";
+import type {
+  AddCollectibleToCartInput,
+  AddToCartInput,
+  CartLineView,
+  CartView,
+  RemoveFromCartInput,
+  UpdateCartLineInput,
+} from "./types";
 
 /*
- * Our own cart. The browser holds a random token in an httpOnly cookie; we store only its hash. Lines refer to
- * previews and a configurator choice, never to a price: prices come from src/data/pricing.ts every time.
- * A line whose preview can no longer be bought (paid, expired, deleted) silently drops out, which is also how
- * the cart empties itself after a successful payment.
+ * Our own cart. The browser holds a random token in an httpOnly cookie; we store only its hash. A line is either a
+ * preview with a configurator choice or a collectible, and never holds a price: prices come from the settings and the
+ * collectible every time. A line that can no longer be bought (paid, expired or deleted preview; hidden or sold-out
+ * collectible) silently drops out, which is also how the cart empties itself after a successful payment.
  */
 
 export type CartErrorCode =
   | "preview_not_found"
   | "preview_not_orderable"
+  | "option_unavailable"
+  | "collectible_unavailable"
   | "photos_missing"
   | "line_not_found"
   | "cart_full";
@@ -41,40 +54,78 @@ const LINE_SELECT = {
   quantity: true,
   createdAt: true,
   preview: { select: { status: true, expiresAt: true } },
+  collectible: {
+    select: {
+      id: true,
+      name: true,
+      sku: true,
+      priceCents: true,
+      imageKey: true,
+      published: true,
+      soldOut: true,
+      archivedAt: true,
+    },
+  },
 } as const;
 
 type StoredLine = {
   id: string;
-  previewId: string;
-  edition: string;
-  animal: string;
+  previewId: string | null;
+  edition: string | null;
+  animal: string | null;
   size: string;
   notes: string | null;
   quantity: number;
-  preview: { status: Parameters<typeof canTransition>[0]; expiresAt: Date | null };
+  preview: { status: Parameters<typeof canTransition>[0]; expiresAt: Date | null } | null;
+  collectible: {
+    id: string;
+    name: string;
+    sku: string;
+    priceCents: number;
+    imageKey: string | null;
+    published: boolean;
+    soldOut: boolean;
+    archivedAt: Date | null;
+  } | null;
 };
 
 /** A cart line resolved against the catalog: what checkout needs. */
 export type ResolvedCartLine = {
   id: string;
-  previewId: string;
-  edition: Edition;
-  animal: Animal;
   size: KeychainSize;
   sku: string;
   title: string;
-  animalLabel: string;
-  editionLabel: string;
   notes: string | null;
   quantity: number;
   unitCents: number;
-};
+} & (
+  | {
+      kind: "personalized";
+      previewId: string;
+      collectibleId: null;
+      edition: Edition;
+      animal: Animal;
+      animalLabel: string;
+      editionLabel: string;
+      imageUrl: null;
+    }
+  | {
+      kind: "collectible";
+      previewId: null;
+      collectibleId: string;
+      edition: null;
+      animal: null;
+      animalLabel: null;
+      editionLabel: null;
+      imageUrl: string | null;
+    }
+);
 
 function isExpired(expiresAt: Date | null) {
   return expiresAt !== null && expiresAt.getTime() <= Date.now();
 }
 
-export function isPreviewOrderable(preview: StoredLine["preview"]) {
+export function isPreviewOrderable(preview: NonNullable<StoredLine["preview"]>) {
   return canTransition(preview.status, "PAID") && !isExpired(preview.expiresAt);
 }
 
@@ -91,7 +142,30 @@ export async function assertPreviewCanBeOrdered(previewId: string) {
   if (present.length === 0 || present.includes(false)) throw new CartError("photos_missing");
 }
 
-function resolveLine(line: StoredLine): ResolvedCartLine | null {
+function resolveLine(line: StoredLine, catalog: CatalogSettings): ResolvedCartLine | null {
+  if (line.collectible) {
+    const collectible = line.collectible;
+    if (!collectible.published || collectible.soldOut || collectible.archivedAt) return null;
+    return {
+      id: line.id,
+      kind: "collectible",
+      previewId: null,
+      collectibleId: collectible.id,
+      edition: null,
+      animal: null,
+      size: DEFAULT_SIZE,
+      sku: collectible.sku,
+      title: collectible.name,
+      animalLabel: null,
+      editionLabel: null,
+      notes: null,
+      quantity: line.quantity,
+      unitCents: collectible.priceCents,
+      imageUrl: collectibleImageUrl(collectible.imageKey),
+    };
+  }
+
+  if (!line.previewId || !line.preview || !isPreviewOrderable(line.preview)) return null;
   const edition = editionSchema.safeParse(line.edition);
   const animal = animalSchema.safeParse(line.animal);
   if (!edition.success || !animal.success || !isSize(line.size)) return null;
@@ -100,7 +174,9 @@ function resolveLine(line: StoredLine): ResolvedCartLine | null {
   const labels = variantLabel(edition.data, animal.data);
   return {
     id: line.id,
+    kind: "personalized",
     previewId: line.previewId,
+    collectibleId: null,
     edition: edition.data,
     animal: animal.data,
     size: line.size,
@@ -110,7 +186,8 @@ function resolveLine(line: StoredLine): ResolvedCartLine | null {
     editionLabel: labels.edition,
     notes: line.notes,
     quantity: line.quantity,
-    unitCents: priceFor(variant),
+    unitCents: priceFor(variant, catalog.prices),
+    imageUrl: null,
   };
 }
 
@@ -131,10 +208,11 @@ async function loadLines(cartId: string): Promise<ResolvedCartLine[]> {
     orderBy: { createdAt: "asc" },
     select: LINE_SELECT,
   });
+  const { catalog } = await getShopSettings();
   const resolved: ResolvedCartLine[] = [];
   const stale: string[] = [];
   for (const line of lines) {
-    const ok = isPreviewOrderable(line.preview) ? resolveLine(line) : null;
+    const ok = resolveLine(line, catalog);
     if (ok) resolved.push(ok);
     else stale.push(line.id);
   }
@@ -161,18 +239,19 @@ async function photoUrlsFor(previewIds: string[]) {
 const money = (cents: number) => ({ amount: cents / 100, currencyCode: CURRENCY });
 
 async function toView(lines: ResolvedCartLine[]): Promise<CartView> {
-  const photoUrls = await photoUrlsFor(lines.map((line) => line.previewId));
+  const photoUrls = await photoUrlsFor(lines.flatMap((line) => line.previewId ?? []));
   const views: CartLineView[] = lines.map((line) => ({
     id: line.id,
-    previewId: line.previewId,
-    productTitle: `Palley ${line.animalLabel}`,
+    kind: line.kind,
+    productTitle: line.kind === "personalized" ? `Palley ${line.animalLabel}` : line.title,
     animal: line.animalLabel,
     edition: line.editionLabel,
     notes: line.notes,
     quantity: line.quantity,
     unitCents: line.unitCents,
     total: money(line.unitCents * line.quantity),
-    photoUrl: photoUrls.get(line.previewId) ?? null,
+    photoUrl: line.kind === "personalized" ? (photoUrls.get(line.previewId) ?? null) : line.imageUrl,
+    withdrawable: line.kind === "collectible",
   }));
   const subtotalCents = lines.reduce((sum, line) => sum + line.unitCents * line.quantity, 0);
   return {
@@ -199,6 +278,18 @@ export async function getCheckoutLines(token: string | null): Promise<ResolvedCa
   return cart ? loadLines(cart.id) : [];
 }
 
+/** The visitor's cart, or a new one (with its new token, which the route puts in the cookie). */
+async function findOrCreateCart(token: string | null) {
+  const cart = await findCart(token);
+  if (cart && token) return { cart, cartToken: token };
+  const cartToken = createToken();
+  const created = await prisma.cart.create({
+    data: { tokenHash: hashToken(cartToken), expiresAt: nextExpiry() },
+    select: { id: true, expiresAt: true },
+  });
+  return { cart: created, cartToken };
+}
+
 /** Adds a preview. Returns a new token when a cart had to be created (the route sets the cookie). */
 export async function addPreviewToCart(
   token: string | null,
@@ -206,15 +297,12 @@ export async function addPreviewToCart(
 ): Promise<{ cart: CartView; token: string }> {
   await assertPreviewCanBeOrdered(input.previewId);
 
-  let cart = await findCart(token);
-  let cartToken = token;
-  if (!cart || !cartToken) {
-    cartToken = createToken();
-    cart = await prisma.cart.create({
-      data: { tokenHash: hashToken(cartToken), expiresAt: nextExpiry() },
-      select: { id: true, expiresAt: true },
-    });
+  const { catalog } = await getShopSettings();
+  if (catalog.disabledAnimals.includes(input.animal) || catalog.disabledEditions.includes(input.edition)) {
+    throw new CartError("option_unavailable");
   }
+
+  const { cart, cartToken } = await findOrCreateCart(token);
 
   const lineCount = await prisma.cartLine.count({ where: { cartId: cart.id } });
   if (lineCount >= MAX_ORDER_LINES) throw new CartError("cart_full");
@@ -233,6 +321,31 @@ export async function addPreviewToCart(
     },
     update: {},
   });
+  await prisma.cart.update({ where: { id: cart.id }, data: { expiresAt: nextExpiry() } });
+  return { cart: await toView(await loadLines(cart.id)), token: cartToken };
+}
+
+/** Adds a collectible. Adding the same one again is one more copy, up to the line's maximum. */
+export async function addCollectibleToCart(
+  token: string | null,
+  input: AddCollectibleToCartInput,
+): Promise<{ cart: CartView; token: string }> {
+  if (!(await findOrderableCollectible(input.collectibleId))) throw new CartError("collectible_unavailable");
+
+  const { cart, cartToken } = await findOrCreateCart(token);
+  const key = { cartId: cart.id, collectibleId: input.collectibleId };
+  const existing = await prisma.cartLine.findUnique({ where: { cartId_collectibleId: key }, select: { quantity: true } });
+
+  if (existing) {
+    await prisma.cartLine.update({
+      where: { cartId_collectibleId: key },
+      data: { quantity: Math.min(existing.quantity + 1, MAX_LINE_QUANTITY) },
+    });
+  } else {
+    const lineCount = await prisma.cartLine.count({ where: { cartId: cart.id } });
+    if (lineCount >= MAX_ORDER_LINES) throw new CartError("cart_full");
+    await prisma.cartLine.create({ data: { ...key, size: DEFAULT_SIZE } });
+  }
   await prisma.cart.update({ where: { id: cart.id }, data: { expiresAt: nextExpiry() } });
   return { cart: await toView(await loadLines(cart.id)), token: cartToken };
 }

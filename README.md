@@ -41,8 +41,46 @@ Cron op de VPS (elke 10 minuten), sluit onbetaalde orders en ruimt winkelmandjes
 curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" https://palleys.be/api/cron/expire-orders
 ```
 
-Backoffice: `/admin/orders` (orders, betaalstatus, problemen), `/admin/settings` (checkout aan/uit, verzendprijzen,
-status van de koppelingen). Juridische to-do's: `docs/legal/go-live-checklist.md`.
+Juridische to-do's: `docs/legal/go-live-checklist.md`.
+
+## Backoffice
+
+De backoffice heeft twee delen, zo staat het ook in de navigatie:
+
+**Orders: de check-in per order** (`/admin`, `/admin/orders`, `/admin/review`, `/admin/approved`, `/admin/processed`).
+`/admin` toont alle betaalde orders die nog weg moeten, met de volgende stap. Een gepersonaliseerde Palley gaat eerst door
+de pipeline (Te reviewen → Goedgekeurd → Processed); een collectible slaat die over. Op de orderpagina vinkt een admin elk
+item af zodra het gecontroleerd en klaar is, en pas als alles afgevinkt is, kan de order op verzonden of overhandigd.
+
+**Website-instellingen** (`/admin/settings`). Elke sectie heeft een eigen pagina en wordt apart opgeslagen:
+
+| Sectie | Wat | Waar het staat |
+| --- | --- | --- |
+| Bestellen | checkout aan/uit, boodschap | `ShopSettings` |
+| Gepersonaliseerde Palley | prijzen, uitvoeringen, dieren | `ShopSettings.catalog` |
+| Collectibles | producten toevoegen, aanpassen, verwijderen | tabel `Collectible` |
+| Verzending | prijs en aan/uit per optie | `ShopSettings.shippingOverrides` |
+| Teksten | infobanner, levertijd, retourtekst, FAQ | `ShopSettings.siteContent` |
+| Bedrijf & sociale media | wettelijke gegevens, profiel-URL's | `ShopSettings.company` |
+| Koppelingen | status van Bancontact, mail, cron (alleen-lezen) | `.env` |
+
+`src/data` bevat de startwaarden; die gelden tot de eerste keer opslaan, en als opgeslagen JSON niet meer klopt. Een instelling
+toevoegen: schema in `core/modules/settings/types.ts`, startwaarde in `settings/service.ts`, veld in het formulier van de sectie.
+
+Openbare pagina's lezen instellingen en collectibles in een `<Suspense>`-blok met `await connection()`, zodat `next build`
+geen database nodig heeft. Wat in zo'n blok binnenkomt, krijgt geen `data-animate` (tenzij `SiteAnimations` in hetzelfde blok
+staat, zoals op `/create`).
+
+**Collectibles** zijn kant-en-klare modellen zonder foto: `/shop`, `/shop/<slug>` en de homepage (de eerste vier). Foto's gaan
+via onze server (omgezet naar WebP) naar R2 en zijn publiek via `/api/collectibles/images/<bestand>`. Verwijderen archiveert:
+oude orders verwijzen er nog naar en terugzetten kan. Ze zijn niet op maat gemaakt, dus er geldt wel 14 dagen herroepingsrecht
+(`OrderItem.withdrawable`).
+
+**Order toevoegen** (`/admin/orders/new`), bv. voor een vriend: gewoon ordernummer, zelfde tabellen en zelfde verdere stappen,
+gemarkeerd met `Order.createdBy`. E-mail en adres zijn optioneel (overhandigen), de prijs per lijn kan aangepast worden en de
+voorwaarden blijven leeg omdat de klant ze niet online aanvaardde. Betalen kan op drie manieren: Bancontact-betaallink (de klant
+scant de QR met de app; kan zodra Bancontact Pro gekoppeld is), al betaald (contant, overschrijving, geschenk) of later. Zo'n
+order blijft open tot ze betaald of geannuleerd is: de cron sluit ze niet, en een verlopen betaallink kan opnieuw gemaakt worden.
 
 ## Shopify (headless, wordt uitgefaseerd)
 

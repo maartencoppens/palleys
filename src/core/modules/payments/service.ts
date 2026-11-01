@@ -1,16 +1,21 @@
 import "server-only";
+import { randomUUID } from "node:crypto";
 import { prisma } from "@/db/client";
 import type { OrderStatus, PaymentStatus } from "@/db/generated/enums";
 import { env } from "@/core/utils/env";
+import { createToken, hashToken } from "@/core/utils/tokens";
 import { sendEmail } from "@/core/networking/external/email-client";
 import { statusesThatCanTransitionTo } from "@/core/modules/previews/status";
 import { buildOrderConfirmation } from "@/core/modules/orders/emails";
 import { canTransitionOrder, orderStatusesThatCanTransitionTo } from "@/core/modules/orders/status";
 import { maskEmail } from "@/core/modules/orders/utils";
+import { getShopSettings } from "@/core/modules/settings/service";
 import { animals } from "@/data/options";
+import { MANUAL_PAYMENT_PROVIDER, type ManualPaymentMethod } from "@/data/payment-methods";
 import { CURRENCY } from "@/data/pricing";
 import { PAYMENT_SYNC_MIN_INTERVAL_MS, PENDING_ORDER_MAX_AGE_MS } from "@/data/checkout";
 import { paymentProvider } from "./providers";
+import { BANCONTACT_CALLBACK_PATH } from "./providers/bancontact";
 import type { ProviderPayment } from "./providers/types";
 
 /*
@@ -25,6 +30,8 @@ import type { ProviderPayment } from "./providers/types";
 
 export type ProcessSource = "webhook" | "return-page" | "cron" | `admin:${string}`;
 
+export class ManualPaymentNotAllowedError extends Error {}
+
 export type ProcessResult =
   | { outcome: "unknown_payment" }
   | { outcome: "mismatch"; orderId: string }
@@ -35,6 +42,61 @@ const FAILED_PAYMENT_TO_ORDER: Partial<Record<PaymentStatus, OrderStatus>> = {
   FAILED: "CANCELLED",
   EXPIRED: "EXPIRED",
 };
+
+function isPublicHttps(url: string) {
+  const { hostname, protocol } = new URL(url);
+  const local = hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".local") || hostname.endsWith(".localhost");
+  return protocol === "https:" && !local;
+}
+
+// Bancontact can't reach localhost: no callback there, the return page asks Bancontact instead.
+function callbackUrl() {
+  return isPublicHttps(env.APP_URL) ? `${env.APP_URL}${BANCONTACT_CALLBACK_PATH}` : null;
+}
+
+export class InvalidProviderPaymentError extends Error {
+  constructor(public readonly paymentId: string, message: string) {
+    super(message);
+  }
+}
+
+/** Creates a Bancontact payment for an order and stores it. The status token ends up in the return URL. */
+export async function createOrderPayment(order: { id: string; number: string; totalCents: number }, statusToken: string) {
+  const returnUrl = new URL("/checkout/return", env.APP_URL);
+  returnUrl.searchParams.set("order", order.id);
+  returnUrl.searchParams.set("t", statusToken);
+
+  const payment = await paymentProvider.createPayment({
+    amountCents: order.totalCents,
+    reference: order.number,
+    description: `Palleys bestelling ${order.number}`,
+    // Bancontact only accepts https here; locally that means `npm run dev:https`.
+    returnUrl: returnUrl.toString(),
+    callbackUrl: callbackUrl(),
+  });
+  if (!payment.checkoutUrl || !paymentProvider.isCheckoutUrl(payment.checkoutUrl)) {
+    throw new InvalidProviderPaymentError(payment.id, `Unexpected checkout URL for ${payment.id}`);
+  }
+  if (payment.amountCents !== order.totalCents) {
+    throw new InvalidProviderPaymentError(payment.id, `Payment ${payment.id} amount ${payment.amountCents} != order ${order.totalCents}`);
+  }
+
+  await prisma.payment.create({
+    data: {
+      orderId: order.id,
+      provider: paymentProvider.name,
+      providerPaymentId: payment.id,
+      mode: payment.mode,
+      method: payment.method,
+      status: payment.status,
+      amountCents: payment.amountCents,
+      checkoutUrl: payment.checkoutUrl,
+      rawLastStatus: payment.snapshot as object,
+      // Not synced yet: the return page's first poll asks Bancontact straight away.
+    },
+  });
+  return { id: payment.id, mode: payment.mode, checkoutUrl: payment.checkoutUrl };
+}
 
 /** Callback entry point, after the signature was checked. Only the id is used; unknown ids are ignored. */
 export async function handlePaymentWebhook(paymentId: string): Promise<ProcessResult> {
@@ -58,7 +120,7 @@ export async function syncOrderPayment(
   { minIntervalMs = PAYMENT_SYNC_MIN_INTERVAL_MS }: { minIntervalMs?: number } = {},
 ): Promise<ProcessResult | null> {
   const payment = await prisma.payment.findFirst({
-    where: { orderId },
+    where: { orderId, provider: paymentProvider.name },
     orderBy: { createdAt: "desc" },
     select: { id: true, providerPaymentId: true, lastSyncedAt: true },
   });
@@ -144,7 +206,7 @@ export async function processPayment(payment: ProviderPayment, source: ProcessSo
 }
 
 /** Conditional status change with a log row. Returns false when the order wasn't in a status that allows it. */
-async function moveOrder(orderId: string, to: OrderStatus, source: ProcessSource, note?: string) {
+export async function moveOrder(orderId: string, to: OrderStatus, source: ProcessSource, note?: string) {
   const from = await prisma.order.findUnique({ where: { id: orderId }, select: { status: true } });
   if (!from || !canTransitionOrder(from.status, to)) return false;
   return prisma.$transaction(async (tx) => {
@@ -163,12 +225,14 @@ async function closeUnpaidOrder(orderId: string, paymentId: string, to: OrderSta
     select: { providerPaymentId: true },
   });
   if (latest?.providerPaymentId !== paymentId) return;
-  const order = await prisma.order.findUnique({ where: { id: orderId }, select: { status: true } });
+  const order = await prisma.order.findUnique({ where: { id: orderId }, select: { status: true, createdBy: true } });
   if (order?.status !== "PENDING_PAYMENT") return;
+  // An order an admin added stays open when a payment link lapses: they make a new link or cancel it themselves.
+  if (order.createdBy) return;
   await moveOrder(orderId, to, source, `Betaalstatus van ${paymentId}`);
 }
 
-const animalTypeOf = (animal: string) => animals.find((a) => a.value === animal)?.animalType ?? null;
+const animalTypeOf = (animal: string | null) => animals.find((a) => a.value === animal)?.animalType ?? null;
 
 async function markOrderPaid(orderId: string, orderNumber: string, source: ProcessSource) {
   const conflicts = await prisma.$transaction(async (tx) => {
@@ -187,6 +251,7 @@ async function markOrderPaid(orderId: string, orderNumber: string, source: Proce
 
     const problems: string[] = [];
     for (const item of order.items) {
+      if (!item.previewId) continue; // a collectible has no pipeline to start
       // Same fields the Shopify webhook set; the review list and the print file name read these.
       const updated = await tx.preview.updateMany({
         where: { id: item.previewId, status: { in: statusesThatCanTransitionTo("PAID") } },
@@ -237,12 +302,18 @@ async function sendConfirmationOnce(orderId: string) {
   const order = await prisma.order.findUniqueOrThrow({
     where: { id: orderId },
     include: {
-      items: { select: { title: true, quantity: true, unitCents: true, notes: true } },
-      shipment: { select: { label: true } },
+      items: { select: { title: true, quantity: true, unitCents: true, notes: true, withdrawable: true } },
+      shipment: { select: { label: true, deliveryType: true } },
     },
   });
+  // A manually added order can come without an e-mail address: nobody to send it to.
+  if (!order.email) {
+    await prisma.order.update({ where: { id: orderId }, data: { confirmationSentAt: null } });
+    return;
+  }
   try {
-    const mail = buildOrderConfirmation(order, env.APP_URL);
+    const { company, content } = await getShopSettings();
+    const mail = buildOrderConfirmation(order, env.APP_URL, { company, deliveryTime: content.deliveryTime });
     const sent = await sendEmail({ to: order.email, ...mail, idempotencyKey: `order-confirmation-${order.id}` });
     if (!sent) {
       console.warn(`[payments] confirmation for ${order.number} not sent: e-mail is not configured`);
@@ -256,6 +327,58 @@ async function sendConfirmationOnce(orderId: string) {
     await prisma.order.update({ where: { id: orderId }, data: { confirmationSentAt: null } });
     await flagOrder(orderId, "Bevestigingsmail kon niet verstuurd worden");
   }
+}
+
+/**
+ * Admin records money that reached us outside the checkout (cash, a transfer, a gift). Only on orders an admin added
+ * themself: a website order is only ever paid through Bancontact. Goes through the same markOrderPaid as a real payment,
+ * so previews land in "Te reviewen" the same way.
+ */
+export async function recordManualPayment(
+  orderId: string,
+  method: ManualPaymentMethod,
+  adminName: string,
+  { sendConfirmation }: { sendConfirmation: boolean },
+) {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: { number: true, status: true, totalCents: true, createdBy: true },
+  });
+  if (!order) return null;
+  if (!order.createdBy || order.status !== "PENDING_PAYMENT") throw new ManualPaymentNotAllowedError(orderId);
+
+  await prisma.payment.create({
+    data: {
+      orderId,
+      provider: MANUAL_PAYMENT_PROVIDER,
+      providerPaymentId: `manual-${randomUUID()}`,
+      method,
+      status: "PAID",
+      amountCents: order.totalCents,
+    },
+  });
+  await markOrderPaid(orderId, order.number, `admin:${adminName}`);
+  if (sendConfirmation) await sendConfirmationOnce(orderId);
+  return { orderId };
+}
+
+/**
+ * A (new) Bancontact payment link for an order an admin added. Links lapse after 20 minutes, so this can be repeated.
+ * The status token in the return URL is replaced each time; only its hash is stored, so the old one can't be reused.
+ */
+export async function createManualOrderPaymentLink(orderId: string) {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: { id: true, number: true, status: true, totalCents: true, createdBy: true },
+  });
+  if (!order) return null;
+  if (!order.createdBy || order.status !== "PENDING_PAYMENT" || order.totalCents <= 0) {
+    throw new ManualPaymentNotAllowedError(orderId);
+  }
+  const statusToken = createToken();
+  await prisma.order.update({ where: { id: orderId }, data: { statusTokenHash: hashToken(statusToken) } });
+  const payment = await createOrderPayment(order, statusToken);
+  return { checkoutUrl: payment.checkoutUrl };
 }
 
 /** Admin action: send the confirmation mail again (e.g. after configuring Resend). */
@@ -279,7 +402,8 @@ export async function expireStaleOrders() {
   const cutoff = new Date(Date.now() - PENDING_ORDER_MAX_AGE_MS);
   const hardCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const stale = await prisma.order.findMany({
-    where: { status: "PENDING_PAYMENT", createdAt: { lt: cutoff } },
+    // Only website orders: one an admin added stays open until it's paid or they cancel it.
+    where: { status: "PENDING_PAYMENT", createdAt: { lt: cutoff }, createdBy: null },
     orderBy: { createdAt: "asc" },
     take: 50,
     select: { id: true, createdAt: true },

@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { addToCartSchema, removeFromCartSchema, updateCartLineSchema } from "@/core/modules/cart/types";
 import {
+  addCollectibleToCartSchema,
+  addToCartSchema,
+  removeFromCartSchema,
+  updateCartLineSchema,
+} from "@/core/modules/cart/types";
+import {
+  addCollectibleToCart,
   addPreviewToCart,
   CartError,
   getCart,
@@ -16,6 +22,8 @@ import { assertSameOrigin, CrossOriginError } from "@/core/utils/request";
 const CART_ERROR_STATUS: Record<CartErrorCode, number> = {
   preview_not_found: 404,
   preview_not_orderable: 409,
+  option_unavailable: 409,
+  collectible_unavailable: 409,
   photos_missing: 409,
   line_not_found: 404,
   cart_full: 409,
@@ -55,8 +63,11 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     await guard(request);
-    const input = addToCartSchema.parse(await request.json().catch(() => null));
-    const { cart, token } = await addPreviewToCart(await readCartToken(), input);
+    const body = await request.json().catch(() => null);
+    const cartToken = await readCartToken();
+    const { cart, token } = body?.collectibleId
+      ? await addCollectibleToCart(cartToken, addCollectibleToCartSchema.parse(body))
+      : await addPreviewToCart(cartToken, addToCartSchema.parse(body));
     await writeCartToken(token);
     return NextResponse.json({ cart }, { status: 201 });
   } catch (error) {

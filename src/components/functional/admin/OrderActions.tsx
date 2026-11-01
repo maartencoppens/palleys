@@ -9,12 +9,13 @@ import { Textarea } from "@/components/design/form";
 
 type OrderActionsProps = {
   orderId: string;
+  canSyncPayment: boolean;
   canResendConfirmation: boolean;
   attentionReason: string | null;
 };
 
 /* Order actions in the backoffice: ask Bancontact for the latest status, resend the mail, close a flagged problem. */
-export function OrderActions({ orderId, canResendConfirmation, attentionReason }: OrderActionsProps) {
+export function OrderActions({ orderId, canSyncPayment, canResendConfirmation, attentionReason }: OrderActionsProps) {
   const router = useRouter();
   const [busy, setBusy] = useState<"sync" | "mail" | "resolve" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -35,19 +36,23 @@ export function OrderActions({ orderId, canResendConfirmation, attentionReason }
     }
   }
 
+  if (!canSyncPayment && !canResendConfirmation && !attentionReason) return null;
+
   return (
     <section className="rounded-3xl bg-white p-6">
       <h2 className="font-display text-xl font-medium text-medium-green">Acties</h2>
       <div className="mt-4 flex flex-col gap-3">
-        <Button
-          variant="secondary"
-          className="w-full"
-          loading={busy === "sync"}
-          loadingText="Ophalen bij Bancontact…"
-          onClick={() => run("sync", async () => `Status: ${(await postSyncOrderPayment(orderId)).status}`)}
-        >
-          Betaalstatus ophalen bij Bancontact
-        </Button>
+        {canSyncPayment && (
+          <Button
+            variant="secondary"
+            className="w-full"
+            loading={busy === "sync"}
+            loadingText="Ophalen bij Bancontact…"
+            onClick={() => run("sync", async () => `Status: ${(await postSyncOrderPayment(orderId)).status}`)}
+          >
+            Betaalstatus ophalen bij Bancontact
+          </Button>
+        )}
         {canResendConfirmation && (
           <Button
             variant="secondary"

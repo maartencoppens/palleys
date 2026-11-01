@@ -193,44 +193,74 @@ model Cart {
   @@index([expiresAt])
 }
 
-// Eén lijn per preview (elk huisdier is anders). Geen prijs: die wordt altijd uit src/data/pricing.ts berekend.
+// Eén lijn per preview (elk huisdier is anders) of per collectible, nooit allebei (check in de migratie).
+// Geen prijs: die wordt altijd op de server berekend uit de instellingen of de collectible.
 model CartLine {
-  id        String   @id @default(uuid())
-  cartId    String
-  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  previewId String
-  preview   Preview  @relation(fields: [previewId], references: [id], onDelete: Cascade)
-  edition   String // waarde uit src/data/options.ts (keychain | figure)
-  animal    String // waarde uit src/data/options.ts (dog, cat, ...)
-  size      String   @default("M")
-  notes     String?
-  quantity  Int      @default(1)
-  createdAt DateTime @default(now())
+  id            String       @id @default(uuid())
+  cartId        String
+  cart          Cart         @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  previewId     String?
+  preview       Preview?     @relation(fields: [previewId], references: [id], onDelete: Cascade)
+  collectibleId String?
+  collectible   Collectible? @relation(fields: [collectibleId], references: [id], onDelete: Cascade)
+  edition       String? // waarde uit src/data/options.ts (keychain | figure), alleen bij een preview
+  animal        String? // waarde uit src/data/options.ts (dog, cat, ...), alleen bij een preview
+  size          String       @default("M")
+  notes         String?
+  quantity      Int          @default(1)
+  createdAt     DateTime     @default(now())
 
   @@unique([cartId, previewId])
+  @@unique([cartId, collectibleId])
   @@index([previewId])
+  @@index([collectibleId])
+}
+
+// Kant-en-klare modellen die niet gepersonaliseerd zijn. Beheerd in /admin/settings/collectibles.
+// Verwijderen = archivedAt zetten: oude orders blijven ernaar verwijzen en herstellen kan altijd.
+model Collectible {
+  id          String      @id @default(uuid())
+  slug        String      @unique // in de URL (/shop/<slug>), verandert niet na het aanmaken
+  sku         String      @unique // PAL-COL-<SLUG>
+  name        String
+  description String?
+  tag         String? // label op de kaart, bv. "Bestseller"
+  priceCents  Int // incl. btw
+  imageKey    String? // R2-key onder collectibles/, publiek via /api/collectibles/images
+  published   Boolean     @default(false) // zichtbaar op de website
+  soldOut     Boolean     @default(false)
+  sortOrder   Int         @default(0)
+  archivedAt  DateTime?
+  updatedBy   String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  cartLines   CartLine[]
+  orderItems  OrderItem[]
+
+  @@index([published, archivedAt, sortOrder])
 }
 
 model Order {
   id                 String              @id @default(uuid())
   number             String              @unique // PAL-2026-00042, sequentieel per jaar
   status             OrderStatus         @default(PENDING_PAYMENT)
-  email              String
+  createdBy          String? // null = via de website, anders de admin die de order toevoegde
+  email              String? // alleen leeg bij een handmatige order
   firstName          String
   lastName           String
   phone              String?
-  street             String
-  houseNumber        String
-  postalCode         String
-  city               String
+  street             String? // adres alleen leeg bij een handmatige order die overhandigd wordt
+  houseNumber        String?
+  postalCode         String?
+  city               String?
   country            String // ISO-2
   currency           String              @default("EUR")
   subtotalCents      Int
   shippingCents      Int
   vatCents           Int // btw inbegrepen in totalCents
   totalCents         Int
-  termsVersion       String // versie van de voorwaarden die aanvaard werd
-  termsAcceptedAt    DateTime
+  termsVersion       String? // versie van de voorwaarden die aanvaard werd, leeg bij een handmatige order
+  termsAcceptedAt    DateTime?
   locale             String              @default("nl")
   marketingOptIn     Boolean             @default(false)
   statusTokenHash    String // sha256 van het token in de return-URL; het token zelf bewaren we niet
@@ -249,23 +279,28 @@ model Order {
 }
 
 model OrderItem {
-  id           String  @id @default(uuid())
-  orderId      String
-  order        Order   @relation(fields: [orderId], references: [id], onDelete: Restrict)
-  previewId    String
-  preview      Preview @relation(fields: [previewId], references: [id], onDelete: Restrict)
-  sku          String
-  size         String
-  edition      String
-  animal       String
-  title        String // zoals de klant het zag, bv. "Palley Hond · Met sleutelhanger"
-  notes        String?
-  quantity     Int     @default(1)
-  unitCents    Int
-  withdrawable Boolean @default(false) // gepersonaliseerd = uitzondering op het herroepingsrecht (art. VI.53, 3° WER)
+  id            String       @id @default(uuid())
+  orderId       String
+  order         Order        @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  previewId     String? // gepersonaliseerd: gaat door de AI-pipeline
+  preview       Preview?     @relation(fields: [previewId], references: [id], onDelete: Restrict)
+  collectibleId String? // kant-en-klaar: slaat de pipeline over
+  collectible   Collectible? @relation(fields: [collectibleId], references: [id], onDelete: Restrict)
+  sku           String
+  size          String
+  edition       String?
+  animal        String?
+  title         String // zoals de klant het zag, bv. "Palley Hond · Met sleutelhanger"
+  notes         String?
+  quantity      Int          @default(1)
+  unitCents     Int
+  withdrawable  Boolean      @default(false) // gepersonaliseerd = uitzondering op het herroepingsrecht (art. VI.53, 3° WER)
+  checkedInAt   DateTime? // een admin heeft dit item gecontroleerd en klaargelegd
+  checkedInBy   String?
 
   @@index([orderId])
   @@index([previewId])
+  @@index([collectibleId])
 }
 
 model Payment {
@@ -335,6 +370,10 @@ model ShopSettings {
   checkoutEnabled       Boolean  @default(true)
   checkoutClosedMessage String?
   shippingOverrides     Json? // { [deliveryOptionId]: { priceCents, enabled } }
+  // Secties uit core/modules/settings/types.ts. Leeg of ongeldig = de startwaarden uit src/data.
+  catalog               Json? // prijzen en beschikbare opties van de gepersonaliseerde Palley
+  siteContent           Json? // teksten op de website
+  company               Json? // bedrijfsgegevens en sociale media
   updatedBy             String?
   updatedAt             DateTime @updatedAt
 }

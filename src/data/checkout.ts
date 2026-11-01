@@ -2,7 +2,7 @@
 
 // LEGAL-REVIEW: bump this whenever the terms change, and keep every published version reachable
 // (Order.termsVersion records which one a customer accepted).
-export const TERMS_VERSION = "2026-10-31-concept";
+export const TERMS_VERSION = "2026-11-01-concept";
 export const TERMS_URL = "/algemene-voorwaarden";
 export const PRIVACY_URL = "/privacy";
 

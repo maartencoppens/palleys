@@ -1,13 +1,18 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdminPage } from "@/core/modules/auth/service";
+import { itemStage, nextStepLabel, OPEN_ORDER_STATUSES, summarizeCheckIn } from "@/core/modules/orders/check-in";
 import { getOrderForAdmin } from "@/core/modules/orders/service";
+import { paymentProvider } from "@/core/modules/payments/providers";
 import { formatDateTime, formatPrice } from "@/core/utils/format";
-import { PAYMENT_METHOD_LABELS } from "@/data/payment-methods";
+import { MANUAL_PAYMENT_PROVIDER, PAYMENT_METHOD_LABELS } from "@/data/payment-methods";
+import { Badge } from "@/components/design/Badge";
 import { OrderActions } from "@/components/functional/admin/OrderActions";
+import { ItemCheckInButton } from "@/components/functional/admin/orders/ItemCheckInButton";
+import { OrderPaymentPanel } from "@/components/functional/admin/orders/OrderPaymentPanel";
+import { OrderProgressPanel } from "@/components/functional/admin/orders/OrderProgressPanel";
 import { OrderStatusBadge, orderStatusLabel, PaymentStatusBadge } from "@/components/functional/admin/OrderStatusBadge";
 import { PreviewStatusBadge } from "@/components/functional/admin/PreviewStatusBadge";
-import type { PreviewStatus } from "@/db/client";
 
 const euro = (cents: number) => formatPrice(cents / 100);
 
@@ -18,6 +23,13 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
   if (!order) notFound();
 
   const confirmable = ["PAID", "IN_PRODUCTION", "SHIPPED"].includes(order.status);
+  const open = OPEN_ORDER_STATUSES.includes(order.status);
+  const checkInItems = order.items.map((item) => ({ previewStatus: item.previewStatus, checkedInAt: item.checkedInAt }));
+  const summary = summarizeCheckIn(checkInItems);
+  const handover = order.shipment?.deliveryType === "HANDOVER";
+  const paidManually = order.payments.some((payment) => payment.provider === MANUAL_PAYMENT_PROVIDER && payment.status === "PAID");
+  const hasProviderPayment = order.payments.some((payment) => payment.provider !== MANUAL_PAYMENT_PROVIDER);
+  const openPaymentLink = order.payments.find((payment) => payment.checkoutUrl)?.checkoutUrl ?? null;
 
   return (
     <main>
@@ -33,6 +45,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
           {order.number}
         </h1>
         <OrderStatusBadge status={order.status} />
+        {order.createdBy && <Badge>Handmatig toegevoegd door {order.createdBy}</Badge>}
       </div>
       <p className="mt-1 text-sm text-text-muted">
         Besteld {formatDateTime(order.createdAt)}
@@ -49,14 +62,18 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
       <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8">
         <div className="flex min-w-0 flex-col gap-6">
           <section className="rounded-3xl bg-white p-6">
-            <h2 className="font-display text-xl font-medium text-medium-green">Palleys</h2>
+            <h2 className="font-display text-xl font-medium text-medium-green">Producten</h2>
             <ul className="mt-4 divide-y divide-off-white-dark">
               {order.items.map((item) => (
                 <li key={item.id} className="flex flex-wrap items-start gap-4 py-4 first:pt-0 last:pb-0">
                   {item.photoUrl ? (
                     /* Bewust <img>, niet next/image: klantfoto's (GDPR). */
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={item.photoUrl} alt="" className="size-16 rounded-xl bg-off-white-dark object-cover" />
+                    <img
+                      src={item.photoUrl}
+                      alt=""
+                      className={`size-16 rounded-xl bg-off-white-dark ${item.kind === "collectible" ? "object-contain" : "object-cover"}`}
+                    />
                   ) : (
                     <div className="size-16 rounded-xl bg-off-white-dark" />
                   )}
@@ -69,14 +86,30 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
                     </p>
                     {item.notes && <p className="text-sm italic">“{item.notes}”</p>}
                     <div className="mt-1 flex flex-wrap items-center gap-3">
-                      <PreviewStatusBadge status={item.previewStatus as PreviewStatus} />
-                      <Link
-                        href={`/admin/previews/${item.previewId}`}
-                        className="font-label text-sm font-bold text-medium-green underline underline-offset-4 hover:text-orange"
-                      >
-                        Naar preview
-                      </Link>
+                      {item.previewId && item.previewStatus ? (
+                        <>
+                          <PreviewStatusBadge status={item.previewStatus} />
+                          <Link
+                            href={`/admin/previews/${item.previewId}`}
+                            className="font-label text-sm font-bold text-medium-green underline underline-offset-4 hover:text-orange"
+                          >
+                            {item.photoUrl ? "Naar preview" : "Foto's toevoegen"}
+                          </Link>
+                        </>
+                      ) : (
+                        <Badge tone="success">Collectible, geen pipeline</Badge>
+                      )}
                     </div>
+                    {open ? (
+                      <div className="mt-2">
+                        <ItemCheckInButton orderId={order.id} itemId={item.id} stage={itemStage(item)} />
+                      </div>
+                    ) : null}
+                    {item.checkedInAt && (
+                      <p className="text-xs text-text-muted">
+                        Afgevinkt door {item.checkedInBy} op {formatDateTime(item.checkedInAt)}
+                      </p>
+                    )}
                   </div>
                   <p className="font-semibold tabular-nums">{euro(item.unitCents * item.quantity)}</p>
                 </li>
@@ -111,17 +144,20 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
                 {order.payments.map((payment) => (
                   <li key={payment.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-3">
                     <PaymentStatusBadge status={payment.status} />
-                    <span className="font-mono text-xs">{payment.providerPaymentId}</span>
+                    {payment.provider !== MANUAL_PAYMENT_PROVIDER && <span className="font-mono text-xs">{payment.providerPaymentId}</span>}
                     <span>{payment.method ? (PAYMENT_METHOD_LABELS[payment.method] ?? payment.method) : "methode nog niet gekozen"}</span>
+                    {payment.provider === MANUAL_PAYMENT_PROVIDER && <span className="text-xs text-text-muted">door een admin geregistreerd</span>}
                     {payment.mode === "test" && <span className="text-xs font-bold text-banner-text">TESTMODUS</span>}
                     <span className="tabular-nums">{euro(payment.amountCents)}</span>
                     {payment.refundedCents > 0 && <span className="text-[#a3341a]">terugbetaald {euro(payment.refundedCents)}</span>}
                     {payment.chargedBackCents > 0 && (
                       <span className="text-[#a3341a]">chargeback {euro(payment.chargedBackCents)}</span>
                     )}
-                    <span className="text-xs text-text-muted">
-                      laatst gecontroleerd {payment.lastSyncedAt ? formatDateTime(payment.lastSyncedAt) : "—"}
-                    </span>
+                    {payment.provider !== MANUAL_PAYMENT_PROVIDER && (
+                      <span className="text-xs text-text-muted">
+                        laatst gecontroleerd {payment.lastSyncedAt ? formatDateTime(payment.lastSyncedAt) : "—"}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -148,9 +184,29 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
         </div>
 
         <aside className="flex flex-col gap-6">
+          {order.status === "PENDING_PAYMENT" && order.createdBy && (
+            <OrderPaymentPanel
+              orderId={order.id}
+              checkoutUrl={openPaymentLink}
+              paymentsAvailable={paymentProvider.isConfigured()}
+              canSendConfirmation={Boolean(order.email)}
+              free={order.totalCents === 0}
+            />
+          )}
+          {(open || (order.status === "SHIPPED" && paidManually)) && (
+            <OrderProgressPanel
+              orderId={order.id}
+              status={order.status}
+              summary={summary}
+              nextStep={nextStepLabel(order.status, summary, { handover })}
+              handover={handover}
+              canMarkRefunded={paidManually}
+            />
+          )}
           <OrderActions
             orderId={order.id}
-            canResendConfirmation={confirmable}
+            canSyncPayment={hasProviderPayment}
+            canResendConfirmation={confirmable && Boolean(order.email)}
             attentionReason={order.attentionReason}
           />
 
@@ -159,16 +215,20 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
             <p className="mt-3 font-semibold">
               {order.firstName} {order.lastName}
             </p>
-            <p className="break-words">{order.email}</p>
+            {order.email && <p className="break-words">{order.email}</p>}
             {order.phone && <p>{order.phone}</p>}
-            <h3 className="mt-4 font-label font-semibold text-text-muted">Leveradres</h3>
-            <p>
-              {order.address.street} {order.address.houseNumber}
-              <br />
-              {order.address.postalCode} {order.address.city}
-              <br />
-              {order.address.country}
-            </p>
+            {order.address && (
+              <>
+                <h3 className="mt-4 font-label font-semibold text-text-muted">Leveradres</h3>
+                <p>
+                  {order.address.street} {order.address.houseNumber}
+                  <br />
+                  {order.address.postalCode} {order.address.city}
+                  <br />
+                  {order.address.country}
+                </p>
+              </>
+            )}
             {order.shipment && (
               <>
                 <h3 className="mt-4 font-label font-semibold text-text-muted">Levering</h3>
@@ -180,7 +240,9 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
             )}
             <h3 className="mt-4 font-label font-semibold text-text-muted">Overige</h3>
             <p>
-              Voorwaarden {order.termsVersion} aanvaard op {formatDateTime(order.termsAcceptedAt)}
+              {order.termsAcceptedAt
+                ? `Voorwaarden ${order.termsVersion} aanvaard op ${formatDateTime(order.termsAcceptedAt)}`
+                : "Voorwaarden niet online aanvaard (handmatig toegevoegd)"}
             </p>
             <p>Nieuwsbrief: {order.marketingOptIn ? "ja" : "nee"}</p>
             <p>

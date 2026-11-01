@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
-import Cart from "@/components/functional/shop/cart/Cart";
+import { connection } from "next/server";
+import { Suspense } from "react";
+import Cart, { CartSkeleton } from "@/components/functional/shop/cart/Cart";
+import { getSiteSettings } from "@/core/modules/settings/service";
 import Footer from "@/components/functional/shop/layout/Footer";
 import InfoBanner from "@/components/functional/shop/home/InfoBanner";
 import Navbar from "@/components/functional/shop/layout/Navbar";
@@ -8,6 +11,12 @@ export const metadata: Metadata = {
   title: "Winkelmandje | Palleys",
   robots: { index: false },
 };
+
+async function LiveCart() {
+  await connection();
+  const { content } = await getSiteSettings();
+  return <Cart deliveryTime={content.deliveryTime} returnNote={content.returnNote} />;
+}
 
 export default function CartPage() {
   return (
@@ -29,7 +38,9 @@ export default function CartPage() {
               Bijna klaar! Kijk je Palleys na en reken veilig af.
             </p>
           </div>
-          <Cart />
+          <Suspense fallback={<CartSkeleton />}>
+            <LiveCart />
+          </Suspense>
         </div>
       </main>
 

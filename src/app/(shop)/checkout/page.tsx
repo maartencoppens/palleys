@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
+import { Suspense } from "react";
+import { getSiteSettings } from "@/core/modules/settings/service";
 import CheckoutForm from "@/components/functional/shop/checkout/CheckoutForm";
 import Footer from "@/components/functional/shop/layout/Footer";
 import InfoBanner from "@/components/functional/shop/home/InfoBanner";
@@ -8,6 +11,12 @@ export const metadata: Metadata = {
   title: "Afrekenen | Palleys",
   robots: { index: false },
 };
+
+async function LiveCheckoutForm() {
+  await connection();
+  const { content } = await getSiteSettings();
+  return <CheckoutForm deliveryTime={content.deliveryTime} />;
+}
 
 export default function CheckoutPage() {
   return (
@@ -27,7 +36,9 @@ export default function CheckoutPage() {
               Nog één stap: vul je gegevens in en betaal veilig met Bancontact.
             </p>
           </div>
-          <CheckoutForm />
+          <Suspense fallback={<div className="h-96 animate-pulse rounded-3xl bg-white md:rounded-[32px]" role="status" aria-label="Laden" />}>
+            <LiveCheckoutForm />
+          </Suspense>
         </div>
       </main>
 

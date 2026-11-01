@@ -1,6 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
+import { connection } from "next/server";
+import { Suspense } from "react";
 import CtaCard from "@/components/design/CtaCard";
+import { getSiteSettings } from "@/core/modules/settings/service";
+import { SOCIAL_LINKS } from "@/data/company";
 
 const navigation = [
   {
@@ -23,27 +27,40 @@ const navigation = [
   },
 ];
 
-// TODO: replace with the real Palleys profile URLs.
-const socials = [
-  {
-    label: "Instagram",
-    href: "https://www.instagram.com/",
-    icon: "/images/footer/instagram.svg",
-    size: 56,
-  },
-  {
-    label: "TikTok",
-    href: "https://www.tiktok.com/",
-    icon: "/images/footer/tiktok.svg",
-    size: 50,
-  },
-  {
-    label: "Facebook",
-    href: "https://www.facebook.com/",
-    icon: "/images/footer/facebook.svg",
-    size: 56,
-  },
-];
+const socialIcons = [
+  { key: "instagram", label: "Instagram", icon: "/images/footer/instagram.svg", size: 56 },
+  { key: "tiktok", label: "TikTok", icon: "/images/footer/tiktok.svg", size: 50 },
+  { key: "facebook", label: "Facebook", icon: "/images/footer/facebook.svg", size: 56 },
+] as const;
+
+/* The profile URLs come from /admin/settings/company; an empty one hides its icon. */
+function Socials({ urls }: { urls: Record<(typeof socialIcons)[number]["key"], string> }) {
+  return (
+    <ul className="flex items-center gap-[38px]">
+      {socialIcons
+        .filter((social) => urls[social.key])
+        .map((social) => (
+          <li key={social.key}>
+            <a
+              href={urls[social.key]}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Palleys op ${social.label}`}
+              className="grid size-[50px] place-items-center rounded-lg transition-transform hover:scale-110"
+            >
+              <Image className="max-w-none" src={social.icon} width={social.size} height={social.size} alt="" />
+            </a>
+          </li>
+        ))}
+    </ul>
+  );
+}
+
+async function LiveSocials() {
+  await connection();
+  const { company } = await getSiteSettings();
+  return <Socials urls={company.socials} />;
+}
 
 const legalLinks = [
   { label: "Privacy", href: "/privacy" },
@@ -151,27 +168,9 @@ export default function Footer({
                 </p>
               </div>
 
-              <ul className="flex items-center gap-[38px]">
-                {socials.map((social) => (
-                  <li key={social.label}>
-                    <a
-                      href={social.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={`Palleys op ${social.label}`}
-                      className="grid size-[50px] place-items-center rounded-lg transition-transform hover:scale-110"
-                    >
-                      <Image
-                        className="max-w-none"
-                        src={social.icon}
-                        width={social.size}
-                        height={social.size}
-                        alt=""
-                      />
-                    </a>
-                  </li>
-                ))}
-              </ul>
+              <Suspense fallback={<Socials urls={SOCIAL_LINKS} />}>
+                <LiveSocials />
+              </Suspense>
             </div>
 
             {/* Link columns */}

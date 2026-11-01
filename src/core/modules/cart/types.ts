@@ -17,6 +17,8 @@ export const addToCartSchema = z.object({
   notes: z.string().trim().max(MAX_NOTES_LENGTH).optional(),
 });
 
+export const addCollectibleToCartSchema = z.object({ collectibleId: z.uuid() });
+
 export const removeFromCartSchema = z.object({ lineId: z.uuid() });
 
 export const updateCartLineSchema = z.object({
@@ -25,6 +27,7 @@ export const updateCartLineSchema = z.object({
 });
 
 export type AddToCartInput = z.infer<typeof addToCartSchema>;
+export type AddCollectibleToCartInput = z.infer<typeof addCollectibleToCartSchema>;
 export type RemoveFromCartInput = z.infer<typeof removeFromCartSchema>;
 export type UpdateCartLineInput = z.infer<typeof updateCartLineSchema>;
 
@@ -33,16 +36,19 @@ export type Money = { amount: number; currencyCode: string };
 /** Cart line as the frontend sees it. Amounts in euros for display; the server works in cents. */
 export type CartLineView = {
   id: string;
-  previewId: string;
+  kind: "personalized" | "collectible";
   productTitle: string;
-  animal: string;
-  edition: string;
+  /** Null for a collectible. */
+  animal: string | null;
+  edition: string | null;
   notes: string | null;
   quantity: number;
   unitCents: number;
   total: Money;
-  /** Short-lived signed URL of the shopper's first photo, null when unavailable. */
+  /** Short-lived signed URL of the shopper's first photo or the collectible's image, null when unavailable. */
   photoUrl: string | null;
+  /** May be sent back within 14 days. A personalised Palley may not (art. VI.53, 3° WER). */
+  withdrawable: boolean;
 };
 
 export type CartView = {

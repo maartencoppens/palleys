@@ -1,5 +1,6 @@
 import { api } from "@/core/networking/api";
 import type { OrderStatusView } from "@/core/modules/checkout/types";
+import type { ManualOrderRequest, ManualOrderResult, OrderStatusActionInput } from "./types";
 
 export async function fetchOrderStatus(orderId: string, token: string) {
   const { data } = await api.get<OrderStatusView>(`/orders/${encodeURIComponent(orderId)}/status`, {
@@ -20,5 +21,34 @@ export async function postResendConfirmation(orderId: string) {
 
 export async function postResolveAttention(orderId: string, note: string) {
   const { data } = await api.post<{ orderId: string }>(`/admin/orders/${orderId}/resolve`, { note });
+  return data;
+}
+
+export async function postManualOrder(input: ManualOrderRequest) {
+  const { data } = await api.post<ManualOrderResult>("/admin/orders", input);
+  return data;
+}
+
+export async function postOrderStatus(orderId: string, input: OrderStatusActionInput) {
+  const { data } = await api.post<{ status: string }>(`/admin/orders/${orderId}/status`, input);
+  return data;
+}
+
+export async function postItemCheckIn(orderId: string, itemId: string, checked: boolean) {
+  const { data } = await api.post<{ checked: boolean }>(`/admin/orders/${orderId}/items/${itemId}/check-in`, { checked });
+  return data;
+}
+
+export async function postManualPayment(orderId: string, method: string, sendConfirmation: boolean) {
+  const { data } = await api.post<{ orderId: string }>(`/admin/orders/${orderId}/payment`, {
+    type: "paid",
+    method,
+    sendConfirmation,
+  });
+  return data;
+}
+
+export async function postPaymentLink(orderId: string) {
+  const { data } = await api.post<{ checkoutUrl: string }>(`/admin/orders/${orderId}/payment`, { type: "bancontact" });
   return data;
 }

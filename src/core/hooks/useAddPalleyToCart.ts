@@ -14,6 +14,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   photos_missing: "Je foto’s zijn niet goed aangekomen. Probeer het nog eens.",
   preview_not_orderable: "Deze upload is verlopen. Voeg je foto’s opnieuw toe.",
   preview_not_found: "Deze upload is verlopen. Voeg je foto’s opnieuw toe.",
+  option_unavailable: "Deze keuze is even niet beschikbaar. Kies een ander dier of een andere uitvoering.",
   cart_full: "Je winkelmandje zit vol. Reken eerst af of verwijder een Palley.",
   rate_limited: "Even rustig aan: probeer het over een paar minuten opnieuw.",
 };

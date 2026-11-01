@@ -7,6 +7,7 @@ import Button from "@/components/design/Button";
 import { Input, Label } from "@/components/design/form";
 import { Badge } from "@/components/design/Badge";
 import CartLinePhoto from "@/components/functional/shop/cart/CartLinePhoto";
+import { COLLECTIBLE_RETURN_NOTE } from "@/data/collectibles";
 import { loadCart, useCartSnapshot } from "@/core/hooks/useCartSnapshot";
 import { fetchCheckoutConfig, postCheckout, postDeliveryOptions } from "@/core/modules/checkout/api";
 import type { CheckoutConfig, DeliveryOptionView } from "@/core/modules/checkout/types";
@@ -89,7 +90,7 @@ function clientErrors(fields: Fields, deliveryOptionId: string | null, acceptTer
  * Checkout: details, delivery and a clear "order with obligation to pay" step, then Bancontact's hosted page.
  * Only details and choices are sent; the server computes every amount again and refuses anything stale.
  */
-export default function CheckoutForm() {
+export default function CheckoutForm({ deliveryTime }: { deliveryTime: string }) {
   const { cart, loaded } = useCartSnapshot();
   const [cartFailed, setCartFailed] = useState(false);
   const [config, setConfig] = useState<CheckoutConfig | null>(null);
@@ -337,9 +338,11 @@ export default function CheckoutForm() {
                 <p className="font-label text-base font-bold text-text-primary">
                   {line.productTitle} {line.quantity > 1 && <span className="text-text-muted">× {line.quantity}</span>}
                 </p>
-                <div className="flex flex-wrap gap-1.5">
-                  <Badge tone="waiting">{line.edition}</Badge>
-                </div>
+                {line.edition && (
+                  <div className="flex flex-wrap gap-1.5">
+                    <Badge tone="waiting">{line.edition}</Badge>
+                  </div>
+                )}
               </div>
               <p className="font-label text-base font-extrabold text-medium-green">{formatPrice(line.total.amount)}</p>
             </li>
@@ -362,17 +365,24 @@ export default function CheckoutForm() {
           <p className="font-display text-2xl font-medium">Totaal</p>
           <p className="font-label text-[32px] leading-[normal] font-extrabold">{formatPrice(totalCents / 100)}</p>
         </div>
-        <p className="-mt-3 text-sm text-text-primary">Incl. 21% btw. Levering binnen 2–3 weken na je bestelling.</p>
+        <p className="-mt-3 text-sm text-text-primary">Incl. 21% btw. Levering binnen {deliveryTime} na je bestelling.</p>
 
         {/* LEGAL-REVIEW: pre-contractual info. The withdrawal exception must be clear before ordering. */}
-        <div className="rounded-2xl bg-light-yellow p-4 text-sm leading-[1.5] text-text-primary">
-          <p>
-            <strong className="font-label">Op maat gemaakt.</strong> Je Palley wordt gemaakt op basis van jouw foto’s, dus het
-            herroepingsrecht geldt niet. De wettelijke garantie van 2 jaar blijft natuurlijk gelden.
-          </p>
-          <p className="mt-2">
-            We maken het 3D-model met hulp van AI; ons team werkt het daarna met de hand bij.
-          </p>
+        <div className="flex flex-col gap-2 rounded-2xl bg-light-yellow p-4 text-sm leading-[1.5] text-text-primary">
+          {lines.some((line) => !line.withdrawable) && (
+            <>
+              <p>
+                <strong className="font-label">Op maat gemaakt.</strong> Je Palley wordt gemaakt op basis van jouw foto’s, dus het
+                herroepingsrecht geldt niet. De wettelijke garantie van 2 jaar blijft natuurlijk gelden.
+              </p>
+              <p>We maken het 3D-model met hulp van AI; ons team werkt het daarna met de hand bij.</p>
+            </>
+          )}
+          {lines.some((line) => line.withdrawable) && (
+            <p>
+              <strong className="font-label">Collectibles.</strong> {COLLECTIBLE_RETURN_NOTE}
+            </p>
+          )}
         </div>
 
         <div className="flex flex-col gap-3">

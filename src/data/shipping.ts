@@ -21,6 +21,15 @@ export const PACKAGING = { weightGrams: 40, dimensionsCm: { length: 16, width: 1
 
 export type DeliveryType = "HOME" | "SERVICE_POINT";
 
+// Only for orders an admin adds: no parcel, we hand it over ourselves.
+export const HANDOVER_DELIVERY = {
+  id: "handover",
+  provider: "manual",
+  carrier: "Palleys",
+  deliveryType: "HANDOVER",
+  label: "Zelf overhandigen",
+} as const;
+
 export type StaticDeliveryOption = {
   id: string;
   country: ShippingCountry;

@@ -4,13 +4,27 @@ import { prisma } from "@/db/client";
 import type { Prisma } from "@/db/generated/client";
 import { createDownloadUrl } from "@/core/networking/external/storage-client";
 import { tokenMatches } from "@/core/utils/tokens";
+import { collectibleImageUrl } from "@/core/modules/collectibles/utils";
+import { nextStepLabel, OPEN_ORDER_STATUSES, summarizeCheckIn } from "./check-in";
 import { PAID_ORDER_STATUSES } from "./status";
-import type { AdminOrderDetail, AdminOrderListItem, AdminOrderStats, OrderListQuery } from "./types";
+import { formatOrderNumber, orderYear } from "./utils";
+import type { AdminOrderDetail, AdminOrderListItem, AdminOrderStats, OrderCheckInRow, OrderListQuery } from "./types";
 import type { OrderStatusView } from "@/core/modules/checkout/types";
 
 const ORDER_LIST_LIMIT = 100;
 
 export class OrderNotFoundError extends Error {}
+
+/** Next number for the current year. Call inside the order's transaction. */
+export async function nextOrderNumber(tx: Pick<typeof prisma, "$queryRaw">) {
+  const year = orderYear();
+  // Row-locking upsert inside the order's transaction: concurrent checkouts wait, a rollback leaves no gap.
+  const [row] = await tx.$queryRaw<{ last: number }[]>`
+    INSERT INTO "OrderCounter" ("year", "last") VALUES (${year}, 1)
+    ON CONFLICT ("year") DO UPDATE SET "last" = "OrderCounter"."last" + 1
+    RETURNING "last"`;
+  return formatOrderNumber(year, row.last);
+}
 
 // ---------- Customer (return page) ----------
 
@@ -36,6 +50,7 @@ export async function listOrdersForAdmin(query: OrderListQuery): Promise<AdminOr
     where.OR = [
       { number: { contains: query.q, mode: "insensitive" } },
       { email: { contains: query.q, mode: "insensitive" } },
+      { firstName: { contains: query.q, mode: "insensitive" } },
       { lastName: { contains: query.q, mode: "insensitive" } },
     ];
   }
@@ -51,6 +66,7 @@ export async function listOrdersForAdmin(query: OrderListQuery): Promise<AdminOr
       firstName: true,
       lastName: true,
       email: true,
+      createdBy: true,
       country: true,
       totalCents: true,
       attentionReason: true,
@@ -67,6 +83,7 @@ export async function listOrdersForAdmin(query: OrderListQuery): Promise<AdminOr
     status: order.status,
     name: `${order.firstName} ${order.lastName}`,
     email: order.email,
+    createdBy: order.createdBy,
     country: order.country,
     totalCents: order.totalCents,
     itemCount: order.items.reduce((sum, item) => sum + item.quantity, 0),
@@ -76,6 +93,43 @@ export async function listOrdersForAdmin(query: OrderListQuery): Promise<AdminOr
     createdAt: order.createdAt.toISOString(),
     paidAt: order.paidAt?.toISOString() ?? null,
   }));
+}
+
+/** Paid orders that still have to leave, oldest first: the team's work list. */
+export async function listOrdersForCheckIn(): Promise<OrderCheckInRow[]> {
+  const orders = await prisma.order.findMany({
+    where: { status: { in: OPEN_ORDER_STATUSES } },
+    orderBy: { paidAt: "asc" },
+    take: ORDER_LIST_LIMIT,
+    select: {
+      id: true,
+      number: true,
+      status: true,
+      firstName: true,
+      lastName: true,
+      createdBy: true,
+      paidAt: true,
+      shipment: { select: { deliveryType: true } },
+      items: { select: { checkedInAt: true, preview: { select: { status: true } } } },
+    },
+  });
+  return orders.map((order) => {
+    const summary = summarizeCheckIn(
+      order.items.map((item) => ({ previewStatus: item.preview?.status ?? null, checkedInAt: item.checkedInAt })),
+    );
+    const handover = order.shipment?.deliveryType === "HANDOVER";
+    return {
+      id: order.id,
+      number: order.number,
+      status: order.status,
+      name: `${order.firstName} ${order.lastName}`,
+      createdBy: order.createdBy,
+      paidAt: order.paidAt?.toISOString() ?? null,
+      handover,
+      summary,
+      nextStep: nextStepLabel(order.status, summary, { handover }),
+    };
+  });
 }
 
 export async function getOrderStatsForAdmin(): Promise<AdminOrderStats> {
@@ -108,9 +162,11 @@ export async function getOrderForAdmin(id: string): Promise<AdminOrderDetail | n
           preview: {
             select: {
               status: true,
-              photos: { where: { uploadedBy: null }, orderBy: { createdAt: "asc" }, take: 1, select: { key: true } },
+              // The first photo, whoever uploaded it: on a manually added order that's the admin.
+              photos: { orderBy: { createdAt: "asc" }, take: 1, select: { key: true } },
             },
           },
+          collectible: { select: { imageKey: true } },
         },
       },
       payments: { orderBy: { createdAt: "desc" } },
@@ -122,18 +178,22 @@ export async function getOrderForAdmin(id: string): Promise<AdminOrderDetail | n
 
   const items = await Promise.all(
     order.items.map(async (item) => {
-      const key = item.preview.photos[0]?.key;
+      const key = item.preview?.photos[0]?.key;
       return {
         id: item.id,
+        kind: item.previewId ? ("personalized" as const) : ("collectible" as const),
         previewId: item.previewId,
-        previewStatus: item.preview.status,
+        previewStatus: item.preview?.status ?? null,
+        collectibleId: item.collectibleId,
+        checkedInAt: item.checkedInAt?.toISOString() ?? null,
+        checkedInBy: item.checkedInBy,
         title: item.title,
         sku: item.sku,
         size: item.size,
         quantity: item.quantity,
         unitCents: item.unitCents,
         notes: item.notes,
-        photoUrl: key ? await createDownloadUrl(key) : null,
+        photoUrl: key ? await createDownloadUrl(key) : collectibleImageUrl(item.collectible?.imageKey ?? null),
       };
     }),
   );
@@ -142,23 +202,26 @@ export async function getOrderForAdmin(id: string): Promise<AdminOrderDetail | n
     id: order.id,
     number: order.number,
     status: order.status,
+    createdBy: order.createdBy,
     email: order.email,
     firstName: order.firstName,
     lastName: order.lastName,
     phone: order.phone,
-    address: {
-      street: order.street,
-      houseNumber: order.houseNumber,
-      postalCode: order.postalCode,
-      city: order.city,
-      country: order.country,
-    },
+    address: order.street
+      ? {
+          street: order.street,
+          houseNumber: order.houseNumber,
+          postalCode: order.postalCode,
+          city: order.city,
+          country: order.country,
+        }
+      : null,
     subtotalCents: order.subtotalCents,
     shippingCents: order.shippingCents,
     vatCents: order.vatCents,
     totalCents: order.totalCents,
     termsVersion: order.termsVersion,
-    termsAcceptedAt: order.termsAcceptedAt.toISOString(),
+    termsAcceptedAt: order.termsAcceptedAt?.toISOString() ?? null,
     locale: order.locale,
     marketingOptIn: order.marketingOptIn,
     attentionReason: order.attentionReason,
@@ -174,6 +237,7 @@ export async function getOrderForAdmin(id: string): Promise<AdminOrderDetail | n
       method: payment.method,
       status: payment.status,
       amountCents: payment.amountCents,
+      checkoutUrl: payment.status === "OPEN" ? payment.checkoutUrl : null,
       refundedCents: payment.refundedCents,
       chargedBackCents: payment.chargedBackCents,
       lastSyncedAt: payment.lastSyncedAt?.toISOString() ?? null,

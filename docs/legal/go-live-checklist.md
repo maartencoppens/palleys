@@ -17,6 +17,8 @@ waar juridische tekst of een juridische keuze zit.
 - [x] Verplicht, niet-aangevinkt vinkje voor de voorwaarden; aparte, niet-aangevinkte marketing-opt-in.
 - [x] Knop "Bestellen met betalingsverplichting".
 - [x] Melding dat het herroepingsrecht niet geldt (gepersonaliseerd), op de checkout en in de bevestigingsmail.
+- [ ] Collectibles (niet gepersonaliseerd): 14 dagen herroepingsrecht laten nakijken: tekst in de voorwaarden (art. 4), checkout en bevestigingsmail, modelformulier voor herroeping toevoegen.
+- [ ] Handmatig toegevoegde orders: de klant aanvaardt de voorwaarden niet online. Afspreken hoe dat gebeurt (bv. link meesturen).
 - [ ] Dezelfde melding op de productpagina (`/create`).
 - [x] `Order.termsVersion` en `termsAcceptedAt` worden opgeslagen.
 - [x] Bevestigingsmail met ordernummer, overzicht, totaal, btw, bedrijfsgegevens, link naar de geversioneerde voorwaarden.

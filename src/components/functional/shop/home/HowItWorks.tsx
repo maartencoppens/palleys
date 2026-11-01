@@ -1,3 +1,4 @@
+import DeliveryTime from "@/components/functional/shop/DeliveryTime";
 import Button from "@/components/design/Button";
 import SectionHeader from "@/components/design/SectionHeader";
 import StepCard, { type Step } from "@/components/design/StepCard";
@@ -30,8 +31,11 @@ const steps: Step[] = [
   },
   {
     title: "Ontmoet je Palley",
-    description:
-      "Binnen 2–3 weken valt je Palley in de bus, klaar voor je sleutelbos.",
+    description: (
+      <>
+        Binnen <DeliveryTime /> valt je Palley in de bus, klaar voor je sleutelbos.
+      </>
+    ),
     blob: { src: "/images/steps/blob-3.svg", width: 271.825, height: 243.684 },
     icon: {
       src: "/images/steps/icon-gift.svg",

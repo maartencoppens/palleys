@@ -24,6 +24,16 @@ export function formatDateCompact(date: Date) {
 export const formatPrice = (price: number) =>
   `€ ${price.toLocaleString("nl-BE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+/** Cents as the text of a price field: 2799 → "27,99". */
+export const toEuroInput = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
+
+/** Reads a price field back: "27,99" or "27.99" → 2799. Null when it isn't a valid amount. */
+export const fromEuroInput = (value: string) => {
+  const normalized = value.trim().replace(",", ".");
+  if (!/^\d+(\.\d{1,2})?$/.test(normalized)) return null;
+  return Math.round(Number(normalized) * 100);
+};
+
 /** Formats a file size, e.g. 2_516_582 → "2,4 MB" and 48_000 → "47 KB". */
 export const formatFileSize = (bytes: number) => {
   const megabytes = bytes / 1024 / 1024;

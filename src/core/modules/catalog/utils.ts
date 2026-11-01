@@ -38,10 +38,16 @@ export function getVariant(sku: string, size: string = DEFAULT_SIZE): Variant | 
   return null;
 }
 
-export function priceFor(variant: Pick<Variant, "type" | "size">): number {
-  const price = UNIT_PRICE_CENTS[variant.type][variant.size];
+/** The price of a variant. `prices` are the live prices from the settings; without them the starting prices apply. */
+export function priceFor(variant: Pick<Variant, "type" | "size">, prices?: Record<ProductType, number>): number {
+  const price = prices?.[variant.type] ?? UNIT_PRICE_CENTS[variant.type][variant.size];
   if (!Number.isInteger(price) || price <= 0) throw new Error(`No price for ${variant.type} ${variant.size}`);
   return price;
+}
+
+/** What one edition costs at the live prices, for the configurator. */
+export function editionPriceCents(edition: Edition, prices: Record<ProductType, number>) {
+  return prices[EDITION_TYPE[edition]];
 }
 
 /** Shopper-facing name of a line, e.g. "Palley Hond · Met sleutelhanger". */

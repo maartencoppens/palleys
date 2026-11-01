@@ -1,5 +1,4 @@
 import Image from "next/image";
-import { PALLEY_PRICE } from "@/data/options";
 import { formatPrice } from "@/core/utils/format";
 
 type OrderSummaryProps = {
@@ -8,6 +7,7 @@ type OrderSummaryProps = {
   /** File name for one photo, "3 photos" for several. */
   photos: string | null;
   previewUrl: string | null;
+  priceCents: number;
 };
 
 /* Figma: order-summary. Shows the visitor's own photo once uploaded, an example Palley before that. */
@@ -16,6 +16,7 @@ export default function OrderSummary({
   edition,
   photos,
   previewUrl,
+  priceCents,
 }: OrderSummaryProps) {
   const rows = [
     { label: "Huisdier", value: pet },
@@ -85,7 +86,7 @@ export default function OrderSummary({
             Totaal
           </p>
           <p className="font-label text-[32px] leading-[normal] font-extrabold">
-            {formatPrice(PALLEY_PRICE)}
+            {formatPrice(priceCents / 100)}
           </p>
         </div>
         <p className="text-sm leading-[1.5] text-text-primary">

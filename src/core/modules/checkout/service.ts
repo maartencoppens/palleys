@@ -1,13 +1,12 @@
 import "server-only";
 import { prisma } from "@/db/client";
-import { env } from "@/core/utils/env";
 import { createToken, hashToken } from "@/core/utils/tokens";
 import { computeTotals } from "@/core/modules/catalog/utils";
 import { assertPreviewCanBeOrdered, CartError, getCheckoutLines } from "@/core/modules/cart/service";
-import { formatOrderNumber, maskEmail, orderYear } from "@/core/modules/orders/utils";
+import { nextOrderNumber } from "@/core/modules/orders/service";
+import { maskEmail } from "@/core/modules/orders/utils";
 import { paymentProvider } from "@/core/modules/payments/providers";
-import { BANCONTACT_CALLBACK_PATH } from "@/core/modules/payments/providers/bancontact";
-import type { ProviderPayment } from "@/core/modules/payments/providers/types";
+import { createOrderPayment, InvalidProviderPaymentError } from "@/core/modules/payments/service";
 import { getShopSettings } from "@/core/modules/settings/service";
 import { getDeliveryOptions, resolveDeliveryOption } from "@/core/modules/shipping/service";
 import type { DeliveryAddress } from "@/core/modules/shipping/types";
@@ -61,27 +60,6 @@ export async function listDeliveryOptions(cartToken: string | null, address: Del
   return options.map(forDisplay);
 }
 
-function isPublicHttps(url: string) {
-  const { hostname, protocol } = new URL(url);
-  const local = hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".local") || hostname.endsWith(".localhost");
-  return protocol === "https:" && !local;
-}
-
-// Bancontact can't reach localhost: no callback there, the return page asks Bancontact instead.
-function callbackUrl() {
-  return isPublicHttps(env.APP_URL) ? `${env.APP_URL}${BANCONTACT_CALLBACK_PATH}` : null;
-}
-
-async function nextOrderNumber(tx: Pick<typeof prisma, "$queryRaw">) {
-  const year = orderYear();
-  // Row-locking upsert inside the order's transaction: concurrent checkouts wait, a rollback leaves no gap.
-  const [row] = await tx.$queryRaw<{ last: number }[]>`
-    INSERT INTO "OrderCounter" ("year", "last") VALUES (${year}, 1)
-    ON CONFLICT ("year") DO UPDATE SET "last" = "OrderCounter"."last" + 1
-    RETURNING "last"`;
-  return formatOrderNumber(year, row.last);
-}
-
 export async function startCheckout(cartToken: string | null, input: CheckoutInput): Promise<CheckoutResult> {
   const config = await getCheckoutConfig();
   if (!config.enabled) throw new CheckoutError("checkout_closed");
@@ -91,7 +69,7 @@ export async function startCheckout(cartToken: string | null, input: CheckoutInp
   if (lines.length === 0) throw new CheckoutError("cart_empty");
   // Same checks as adding to the cart, again: a preview may have expired or been paid in the meantime.
   try {
-    await Promise.all(lines.map((line) => assertPreviewCanBeOrdered(line.previewId)));
+    await Promise.all(lines.flatMap((line) => (line.previewId ? assertPreviewCanBeOrdered(line.previewId) : [])));
   } catch (error) {
     if (error instanceof CartError) throw new CheckoutError("preview_not_orderable");
     throw error;
@@ -128,6 +106,7 @@ export async function startCheckout(cartToken: string | null, input: CheckoutInp
         items: {
           create: lines.map((line) => ({
             previewId: line.previewId,
+            collectibleId: line.collectibleId,
             sku: line.sku,
             size: line.size,
             edition: line.edition,
@@ -136,7 +115,8 @@ export async function startCheckout(cartToken: string | null, input: CheckoutInp
             notes: line.notes,
             quantity: line.quantity,
             unitCents: line.unitCents,
-            withdrawable: false, // made from the customer's photo: no right of withdrawal (art. VI.53, 3° WER)
+            // Made from the customer's photo: no right of withdrawal (art. VI.53, 3° WER). A collectible has one.
+            withdrawable: line.kind === "collectible",
           })),
         },
         shipment: {
@@ -156,28 +136,9 @@ export async function startCheckout(cartToken: string | null, input: CheckoutInp
     });
   });
 
-  const returnUrl = new URL("/checkout/return", env.APP_URL);
-  returnUrl.searchParams.set("order", order.id);
-  returnUrl.searchParams.set("t", statusToken);
-
-  let payment: ProviderPayment | undefined;
-  let checkoutUrl: string;
+  let payment: Awaited<ReturnType<typeof createOrderPayment>>;
   try {
-    payment = await paymentProvider.createPayment({
-      amountCents: order.totalCents,
-      reference: order.number,
-      description: `Palleys bestelling ${order.number}`,
-      // Bancontact only accepts https here; locally that means `npm run dev:https`.
-      returnUrl: returnUrl.toString(),
-      callbackUrl: callbackUrl(),
-    });
-    if (!payment.checkoutUrl || !paymentProvider.isCheckoutUrl(payment.checkoutUrl)) {
-      throw new Error(`Unexpected checkout URL for ${payment.id}`);
-    }
-    if (payment.amountCents !== order.totalCents) {
-      throw new Error(`Payment ${payment.id} amount ${payment.amountCents} != order ${order.totalCents}`);
-    }
-    checkoutUrl = payment.checkoutUrl;
+    payment = await createOrderPayment(order, statusToken);
   } catch (error) {
     console.error(
       `[checkout] payment creation failed for ${order.number} (${maskEmail(input.email)}):`,
@@ -187,7 +148,7 @@ export async function startCheckout(cartToken: string | null, input: CheckoutInp
       where: { id: order.id },
       data: {
         status: "CANCELLED",
-        attentionReason: payment ? `Betaling ${payment.id} aangemaakt maar ongeldig` : null,
+        attentionReason: error instanceof InvalidProviderPaymentError ? `Betaling ${error.paymentId} aangemaakt maar ongeldig` : null,
         statusChanges: {
           create: { fromStatus: "PENDING_PAYMENT", toStatus: "CANCELLED", source: "checkout", note: "Payment creation failed" },
         },
@@ -196,21 +157,6 @@ export async function startCheckout(cartToken: string | null, input: CheckoutInp
     throw new CheckoutError("payment_failed");
   }
 
-  await prisma.payment.create({
-    data: {
-      orderId: order.id,
-      provider: paymentProvider.name,
-      providerPaymentId: payment.id,
-      mode: payment.mode,
-      method: payment.method,
-      status: payment.status,
-      amountCents: payment.amountCents,
-      checkoutUrl,
-      rawLastStatus: payment.snapshot as object,
-      // Not synced yet: the return page's first poll asks Bancontact straight away.
-    },
-  });
-
   console.info(`[checkout] ${order.number} created, payment ${payment.id} (${payment.mode})`);
-  return { checkoutUrl };
+  return { checkoutUrl: payment.checkoutUrl };
 }

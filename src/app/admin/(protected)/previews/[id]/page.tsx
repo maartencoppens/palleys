@@ -32,10 +32,10 @@ export default async function AdminPreviewDetailPage({
   return (
     <main>
       <Link
-        href="/admin"
+        href={preview.order ? `/admin/orders/${preview.order.id}` : "/admin"}
         className="rounded font-label text-base font-bold text-medium-green underline underline-offset-4 transition-colors hover:text-orange"
       >
-        Terug naar overzicht
+        {preview.order ? `Terug naar order ${preview.order.number}` : "Terug naar overzicht"}
       </Link>
 
       <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">

@@ -11,9 +11,7 @@ import {
   animals,
   editions,
   findOption,
-  PALLEY_PRICE,
   PALLEY_SIZE,
-  RETURN_NOTE,
   steps,
   type Animal,
   type Edition,
@@ -24,6 +22,8 @@ import Stepper from "@/components/design/Stepper";
 import Panel from "@/components/design/Panel";
 import ChoiceChips from "@/components/design/ChoiceChips";
 import { formatPrice } from "@/core/utils/format";
+import { editionPriceCents } from "@/core/modules/catalog/utils";
+import type { CatalogSettings } from "@/core/modules/settings/types";
 import { useAddPalleyToCart } from "@/core/hooks/useAddPalleyToCart";
 import { TERMS_URL } from "@/data/checkout";
 import { publishCart } from "@/core/hooks/useCartSnapshot";
@@ -31,16 +31,26 @@ import Button from "@/components/design/Button";
 
 const errorClassName = "font-label text-base font-semibold text-[#a3341a]";
 
+type ConfiguratorProps = {
+  /** Prices and available options from /admin/settings/products. */
+  catalog: CatalogSettings;
+  deliveryTime: string;
+  returnNote: string;
+};
+
 /*
  * Configurator for a custom Palley (Figma: Frame 29 – stepper, three step panels and an order summary).
  * All steps stay visible, so people can scroll back and change things; the first unfinished step is
  * highlighted, and the stepper reflects progress. "Add to cart" checks everything and, if something is
  * missing, jumps to that step and shows what's needed.
  */
-export default function Configurator() {
+export default function Configurator({ catalog, deliveryTime, returnNote }: ConfiguratorProps) {
+  const animalOptions = animals.filter((option) => !catalog.disabledAnimals.includes(option.value));
+  const editionOptions = editions.filter((option) => !catalog.disabledEditions.includes(option.value));
   const [animal, setAnimal] = useState<Animal | null>(null);
-  // Palleys are keychains first, so that's preselected; switching to a figure is one tap.
-  const [edition, setEdition] = useState<Edition>("keychain");
+  // Palleys are keychains first, so that's preselected (when on sale); switching to a figure is one tap.
+  const [edition, setEdition] = useState<Edition>(editionOptions[0].value);
+  const priceCents = editionPriceCents(edition, catalog.prices);
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
   const [notes, setNotes] = useState("");
   const [consent, setConsent] = useState(false);
@@ -129,7 +139,7 @@ export default function Configurator() {
 
   const startOver = () => {
     setAnimal(null);
-    setEdition("keychain");
+    setEdition(editionOptions[0].value);
     photos.forEach(
       (item) => item.previewUrl && URL.revokeObjectURL(item.previewUrl),
     );
@@ -166,7 +176,7 @@ export default function Configurator() {
             <ChoiceChips
               legend="Welk huisdier heb je?"
               name="animal"
-              options={animals}
+              options={animalOptions}
               value={animal}
               onChange={setAnimal}
               error={
@@ -176,7 +186,7 @@ export default function Configurator() {
             <ChoiceChips
               legend="Sleutelhanger of figuurtje?"
               name="edition"
-              options={editions}
+              options={editionOptions}
               value={edition}
               onChange={setEdition}
               hint={`${PALLEY_SIZE}. Het figuurtje komt zonder sleutelring.`}
@@ -289,12 +299,12 @@ export default function Configurator() {
                 className="shrink-0"
               />
               <p className="text-base leading-[1.5] text-text-primary md:text-lg">
-                Elke Palley wordt met de hand gemodelleerd en geprint. Binnen
-                2–3 weken valt hij in je bus.
+                Elke Palley wordt met de hand gemodelleerd en geprint. Binnen{" "}
+                {deliveryTime} valt hij in je bus.
               </p>
             </div>
             <p className="-mt-2 text-sm leading-[1.5] text-text-primary md:-mt-3">
-              {RETURN_NOTE}
+              {returnNote}
             </p>
 
             {added ? (
@@ -319,7 +329,7 @@ export default function Configurator() {
                       Je Palley zit in je winkelmandje!
                     </p>
                     <p className="text-base leading-[1.5] text-text-primary">
-                      {`${animalLabel}, ${editionLabel?.toLowerCase()} · ${formatPrice(PALLEY_PRICE)}`}
+                      {`${animalLabel}, ${editionLabel?.toLowerCase()} · ${formatPrice(priceCents / 100)}`}
                       {cart && cart.totalQuantity > 1
                         ? ` · ${cart.totalQuantity} Palleys in je mandje`
                         : ""}
@@ -360,7 +370,7 @@ export default function Configurator() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 {/* The summary sits below the steps on small screens, so the price is repeated here. */}
                 <p className="font-label text-2xl font-extrabold text-medium-green lg:hidden">
-                  {formatPrice(PALLEY_PRICE)}
+                  {formatPrice(priceCents / 100)}
                 </p>
                 <button
                   type="submit"
@@ -401,6 +411,7 @@ export default function Configurator() {
             edition={editionLabel}
             photos={photosLabel}
             previewUrl={previewUrl}
+            priceCents={priceCents}
           />
         </div>
       </div>

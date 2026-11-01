@@ -22,9 +22,14 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
 
   return (
     <main>
-      <h1 className="font-display text-[clamp(2rem,1.4rem+1.8vw,3rem)] leading-[1.22] font-medium text-medium-green">
-        Orders
-      </h1>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="font-display text-[clamp(2rem,1.4rem+1.8vw,3rem)] leading-[1.22] font-medium text-medium-green">
+          Orders
+        </h1>
+        <Button variant="primary" href="/admin/orders/new">
+          Order toevoegen
+        </Button>
+      </div>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
@@ -109,11 +114,16 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
                         <Badge tone="danger">Probleem</Badge>
                       </span>
                     )}
+                    {order.createdBy && (
+                      <span className="ml-2" title={`Toegevoegd door ${order.createdBy}`}>
+                        <Badge>Handmatig</Badge>
+                      </span>
+                    )}
                   </td>
                   <td className="whitespace-nowrap px-5 py-4 tabular-nums">{formatDateTime(order.createdAt)}</td>
                   <td className="px-5 py-4">
                     <span className="font-semibold">{order.name}</span>
-                    <span className="block text-text-muted">{order.email}</span>
+                    {order.email && <span className="block text-text-muted">{order.email}</span>}
                   </td>
                   <td className="px-5 py-4">
                     <OrderStatusBadge status={order.status} />

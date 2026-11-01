@@ -5,13 +5,10 @@
  * is the exact option value in Shopify, `skuCode` the matching SKU part.
  */
 import type { AnimalType } from "./animals";
-import { UNIT_PRICE_CENTS } from "./pricing";
 import { buildSku, PRODUCT_HANDLE } from "./products";
 import { ALLOWED_IMAGE_TYPES, MAX_PHOTOS_PER_PREVIEW, MAX_UPLOAD_BYTES } from "./uploads";
 
 export const SHOPIFY_PRODUCT_HANDLE = PRODUCT_HANDLE;
-// Display price in euros; the amount itself lives in data/pricing.ts (cents, VAT included).
-export const PALLEY_PRICE = UNIT_PRICE_CENTS.keychain.M / 100;
 export const PALLEY_SIZE = "Ongeveer 3,7 cm aan de langste kant";
 
 export type Option<Value extends string> = { value: Value; label: string; shopifyValue: string; skuCode: string };

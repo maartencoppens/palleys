@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Image from "next/image";
 
 type Asset = { src: string; width: number; height: number };
@@ -7,7 +8,7 @@ type Icon = Asset & { x: number; y: number };
 
 export type Step = {
   title: string;
-  description: string;
+  description: ReactNode;
   /** Coloured organic shape behind the icon; each step has its own. */
   blob: Asset;
   icon: Icon;
