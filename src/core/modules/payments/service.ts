@@ -4,11 +4,12 @@ import { prisma } from "@/db/client";
 import type { OrderStatus, PaymentStatus } from "@/db/generated/enums";
 import { env } from "@/core/utils/env";
 import { createToken, hashToken } from "@/core/utils/tokens";
-import { sendEmail } from "@/core/networking/external/email-client";
+import { EmailError, sendEmail } from "@/core/networking/external/email-client";
 import { statusesThatCanTransitionTo } from "@/core/modules/previews/status";
 import { buildOrderConfirmation } from "@/core/modules/orders/emails";
 import { canTransitionOrder, orderStatusesThatCanTransitionTo } from "@/core/modules/orders/status";
 import { maskEmail } from "@/core/modules/orders/utils";
+import { localizedPath, toLocale } from "@/core/locale/config";
 import { getShopSettings } from "@/core/modules/settings/service";
 import { animals } from "@/data/options";
 import { MANUAL_PAYMENT_PROVIDER, type ManualPaymentMethod } from "@/data/payment-methods";
@@ -28,7 +29,7 @@ import type { ProviderPayment } from "./providers/types";
  * the Shopify webhook did. From there the AI pipeline takes over; nothing in it is touched here.
  */
 
-export type ProcessSource = "webhook" | "return-page" | "cron" | `admin:${string}`;
+export type ProcessSource = "webhook" | "return-page" | "cron" | "checkout" | `admin:${string}`;
 
 export class ManualPaymentNotAllowedError extends Error {}
 
@@ -60,18 +61,22 @@ export class InvalidProviderPaymentError extends Error {
   }
 }
 
-/** Creates a Bancontact payment for an order and stores it. The status token ends up in the return URL. */
-export async function createOrderPayment(order: { id: string; number: string; totalCents: number }, statusToken: string) {
-  const returnUrl = new URL("/checkout/return", env.APP_URL);
-  returnUrl.searchParams.set("order", order.id);
+/** Where a customer lands after paying. The status token is the key to reading the order's status. */
+export function orderReturnUrl(orderId: string, statusToken: string, locale: string) {
+  const returnUrl = new URL(localizedPath("/checkout/return", toLocale(locale)), env.APP_URL);
+  returnUrl.searchParams.set("order", orderId);
   returnUrl.searchParams.set("t", statusToken);
+  return returnUrl.toString();
+}
 
+/** Creates a Bancontact payment for an order and stores it. The status token ends up in the return URL. */
+export async function createOrderPayment(order: { id: string; number: string; totalCents: number; locale: string }, statusToken: string) {
   const payment = await paymentProvider.createPayment({
     amountCents: order.totalCents,
     reference: order.number,
     description: `Palleys bestelling ${order.number}`,
     // Bancontact only accepts https here; locally that means `npm run dev:https`.
-    returnUrl: returnUrl.toString(),
+    returnUrl: orderReturnUrl(order.id, statusToken, order.locale),
     callbackUrl: callbackUrl(),
   });
   if (!payment.checkoutUrl || !paymentProvider.isCheckoutUrl(payment.checkoutUrl)) {
@@ -238,7 +243,12 @@ async function markOrderPaid(orderId: string, orderNumber: string, source: Proce
   const conflicts = await prisma.$transaction(async (tx) => {
     const order = await tx.order.findUniqueOrThrow({
       where: { id: orderId },
-      select: { status: true, email: true, items: { select: { previewId: true, quantity: true, animal: true } } },
+      select: {
+        status: true,
+        email: true,
+        cartId: true,
+        items: { select: { previewId: true, collectibleId: true, quantity: true, animal: true } },
+      },
     });
     const paidAt = new Date();
     const { count } = await tx.order.updateMany({
@@ -248,6 +258,12 @@ async function markOrderPaid(orderId: string, orderNumber: string, source: Proce
     if (count === 0) return null; // already paid: webhook retry or a parallel sync
 
     await tx.orderStatusChange.create({ data: { orderId, fromStatus: order.status, toStatus: "PAID", source } });
+
+    // A paid preview drops out of the cart by itself, a collectible can be bought again: take the bought ones out here.
+    const boughtCollectibles = order.items.flatMap((item) => item.collectibleId ?? []);
+    if (order.cartId && boughtCollectibles.length > 0) {
+      await tx.cartLine.deleteMany({ where: { cartId: order.cartId, collectibleId: { in: boughtCollectibles } } });
+    }
 
     const problems: string[] = [];
     for (const item of order.items) {
@@ -292,7 +308,7 @@ async function markOrderPaid(orderId: string, orderNumber: string, source: Proce
 }
 
 /** Sends the confirmation mail at most once per order, even with concurrent webhooks. */
-async function sendConfirmationOnce(orderId: string) {
+async function sendConfirmationOnce(orderId: string, idempotencySuffix = "") {
   const claimed = await prisma.order.updateMany({
     where: { id: orderId, confirmationSentAt: null },
     data: { confirmationSentAt: new Date() },
@@ -302,8 +318,20 @@ async function sendConfirmationOnce(orderId: string) {
   const order = await prisma.order.findUniqueOrThrow({
     where: { id: orderId },
     include: {
-      items: { select: { title: true, quantity: true, unitCents: true, notes: true, withdrawable: true } },
-      shipment: { select: { label: true, deliveryType: true } },
+      items: {
+        select: {
+          title: true,
+          animal: true,
+          edition: true,
+          attachment: true,
+          quantity: true,
+          unitCents: true,
+          notes: true,
+          withdrawable: true,
+          collectible: { select: { translations: true } },
+        },
+      },
+      shipment: { select: { label: true, deliveryType: true, deliveryOptionId: true } },
     },
   });
   // A manually added order can come without an e-mail address: nobody to send it to.
@@ -313,8 +341,8 @@ async function sendConfirmationOnce(orderId: string) {
   }
   try {
     const { company, content } = await getShopSettings();
-    const mail = buildOrderConfirmation(order, env.APP_URL, { company, deliveryTime: content.deliveryTime });
-    const sent = await sendEmail({ to: order.email, ...mail, idempotencyKey: `order-confirmation-${order.id}` });
+    const mail = buildOrderConfirmation(order, env.APP_URL, { company, deliveryTime: content[toLocale(order.locale)].deliveryTime });
+    const sent = await sendEmail({ to: order.email, ...mail, idempotencyKey: `order-confirmation-${order.id}${idempotencySuffix}` });
     if (!sent) {
       console.warn(`[payments] confirmation for ${order.number} not sent: e-mail is not configured`);
       await prisma.order.update({ where: { id: orderId }, data: { confirmationSentAt: null } });
@@ -325,7 +353,8 @@ async function sendConfirmationOnce(orderId: string) {
       error instanceof Error ? error.message : error,
     );
     await prisma.order.update({ where: { id: orderId }, data: { confirmationSentAt: null } });
-    await flagOrder(orderId, "Bevestigingsmail kon niet verstuurd worden");
+    const detail = error instanceof EmailError ? error.detail : null;
+    await flagOrder(orderId, `Bevestigingsmail kon niet verstuurd worden${detail ? ` (Resend: ${detail})` : ""}`);
   }
 }
 
@@ -362,6 +391,22 @@ export async function recordManualPayment(
   return { orderId };
 }
 
+/** An order a discount made free: no money to wait for, so it's paid right away. Only ever for a total of € 0. */
+export async function completeFreeOrder(orderId: string, orderNumber: string) {
+  await prisma.payment.create({
+    data: {
+      orderId,
+      provider: MANUAL_PAYMENT_PROVIDER,
+      providerPaymentId: `free-${randomUUID()}`,
+      method: "discount",
+      status: "PAID",
+      amountCents: 0,
+    },
+  });
+  await markOrderPaid(orderId, orderNumber, "checkout");
+  await sendConfirmationOnce(orderId);
+}
+
 /**
  * A (new) Bancontact payment link for an order an admin added. Links lapse after 20 minutes, so this can be repeated.
  * The status token in the return URL is replaced each time; only its hash is stored, so the old one can't be reused.
@@ -369,7 +414,7 @@ export async function recordManualPayment(
 export async function createManualOrderPaymentLink(orderId: string) {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
-    select: { id: true, number: true, status: true, totalCents: true, createdBy: true },
+    select: { id: true, number: true, status: true, totalCents: true, createdBy: true, locale: true },
   });
   if (!order) return null;
   if (!order.createdBy || order.status !== "PENDING_PAYMENT" || order.totalCents <= 0) {
@@ -388,7 +433,8 @@ export async function resendConfirmation(orderId: string) {
     return false;
   }
   await prisma.order.update({ where: { id: orderId }, data: { confirmationSentAt: null } });
-  await sendConfirmationOnce(orderId);
+  // Its own idempotency key: Resend would otherwise drop a send the admin asks for within 24 hours of the last one.
+  await sendConfirmationOnce(orderId, `-manual-${randomUUID()}`);
   const after = await prisma.order.findUnique({ where: { id: orderId }, select: { confirmationSentAt: true } });
   return Boolean(after?.confirmationSentAt);
 }

@@ -65,7 +65,7 @@ export function OrderProgressPanel({ orderId, status, summary, nextStep, handove
                   id="tracking-code"
                   value={trackingCode}
                   onChange={(event) => setTrackingCode(event.target.value)}
-                  className="mt-1 h-11 text-base md:text-base"
+                  className="mt-1 h-11 text-base!"
                 />
               </div>
             )}

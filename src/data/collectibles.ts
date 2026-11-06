@@ -12,6 +12,3 @@ export const HOME_COLLECTIBLE_LIMIT = 4;
 
 export const COLLECTIBLE_LIMITS = { name: 80, description: 1000, tag: 30 } as const;
 
-// LEGAL-REVIEW: not personalised, so the 14-day right of withdrawal applies (unlike a personalised Palley).
-export const COLLECTIBLE_RETURN_NOTE =
-  "Collectibles worden niet op maat gemaakt: je mag ze binnen 14 dagen na ontvangst zonder reden terugsturen.";

@@ -26,14 +26,17 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
             />
             Admin
           </Link>
-          <AdminNav />
-          <div className="flex min-w-0 items-center gap-4 sm:ml-auto">
-            <span className="truncate text-sm">{user.email}</span>
-            <SignOutButton />
-          </div>
+          <AdminNav
+            account={
+              <div className="flex min-w-0 items-center justify-between gap-4 lg:ml-auto lg:justify-start">
+                <span className="truncate text-sm">{user.email}</span>
+                <SignOutButton />
+              </div>
+            }
+          />
         </div>
       </header>
-      <div className="page-container py-10 md:py-14">{children}</div>
+      <div className="page-container py-6 md:py-14">{children}</div>
     </>
   );
 }

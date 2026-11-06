@@ -1,3 +1,5 @@
+import { useMessages } from "@/core/locale/client";
+import { fill } from "@/core/locale/fill";
 import { MAX_LINE_QUANTITY } from "@/data/pricing";
 
 type QuantityStepperProps = {
@@ -26,12 +28,13 @@ export default function QuantityStepper({
   size = "default",
 }: QuantityStepperProps) {
   const styles = sizes[size];
+  const { quantity: m } = useMessages().cart;
   const buttonClassName = `grid shrink-0 place-items-center rounded-full font-label leading-none font-bold text-medium-green transition-colors hover:bg-light-green/40 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent ${styles.button}`;
 
   return (
     <div
       role="group"
-      aria-label={`Aantal ${label}`}
+      aria-label={fill(m.label, { name: label })}
       className={`inline-flex items-center rounded-pill border-[1.5px] border-medium-green bg-white ${styles.wrapper}`}
     >
       <button
@@ -39,7 +42,7 @@ export default function QuantityStepper({
         onClick={() => onChange(quantity - 1)}
         disabled={disabled || quantity <= 1}
         className={buttonClassName}
-        aria-label="Eén minder"
+        aria-label={m.less}
       >
         −
       </button>
@@ -54,7 +57,7 @@ export default function QuantityStepper({
         onClick={() => onChange(quantity + 1)}
         disabled={disabled || quantity >= MAX_LINE_QUANTITY}
         className={buttonClassName}
-        aria-label="Eén meer"
+        aria-label={m.more}
       >
         +
       </button>

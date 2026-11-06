@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { getSiteSettings } from "@/core/modules/settings/service";
+import { getLocale, getMessages, getSiteContent } from "@/core/locale/server";
 import { DEFAULT_SITE_CONTENT } from "@/data/site-content";
 
 function MessageList({ messages, hidden = false }: { messages: string[]; hidden?: boolean }) {
@@ -35,7 +35,7 @@ function Track({ messages }: { messages: string[] }) {
 
 async function LiveTrack() {
   await connection();
-  const { content } = await getSiteSettings();
+  const content = await getSiteContent();
   return <Track messages={content.infoBannerMessages} />;
 }
 
@@ -44,13 +44,14 @@ async function LiveTrack() {
  * as in Figma; on phones they don't fit, so they scroll by as a looping ticker.
  * The messages come from /admin/settings/content; the starting values hold the space until they've loaded.
  */
-export default function InfoBanner() {
+export default async function InfoBanner() {
+  const [{ banner }, locale] = await Promise.all([getMessages(), getLocale()]);
   return (
     <aside
       className="w-full overflow-hidden bg-banner py-[11.42px] font-label text-banner-text motion-reduce:overflow-x-auto"
-      aria-label="Waarom Palleys"
+      aria-label={banner.label}
     >
-      <Suspense fallback={<Track messages={DEFAULT_SITE_CONTENT.infoBannerMessages} />}>
+      <Suspense fallback={<Track messages={DEFAULT_SITE_CONTENT[locale].infoBannerMessages} />}>
         <LiveTrack />
       </Suspense>
     </aside>

@@ -1,19 +1,20 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Label, Textarea } from "@/components/design/form";
+import { Link, useLocale, useMessages } from "@/core/locale/client";
+import { fill, fillNodes } from "@/core/locale/fill";
 import OrderSummary from "./OrderSummary";
 import PhotoTips from "./PhotoTips";
 import PhotoUpload, { type UploadedPhoto } from "./PhotoUpload";
 import {
   animals,
+  attachments,
   editions,
-  findOption,
-  PALLEY_SIZE,
-  steps,
+  STEP_IDS,
   type Animal,
+  type Attachment,
   type Edition,
   type StepId,
   type StepStatus,
@@ -25,9 +26,10 @@ import { formatPrice } from "@/core/utils/format";
 import { editionPriceCents } from "@/core/modules/catalog/utils";
 import type { CatalogSettings } from "@/core/modules/settings/types";
 import { useAddPalleyToCart } from "@/core/hooks/useAddPalleyToCart";
-import { TERMS_URL } from "@/data/checkout";
+import { PRIVACY_URL, TERMS_URL } from "@/data/checkout";
 import { publishCart } from "@/core/hooks/useCartSnapshot";
 import Button from "@/components/design/Button";
+import WarningNote from "@/components/design/WarningNote";
 
 const errorClassName = "font-label text-base font-semibold text-[#a3341a]";
 
@@ -45,11 +47,20 @@ type ConfiguratorProps = {
  * missing, jumps to that step and shows what's needed.
  */
 export default function Configurator({ catalog, deliveryTime, returnNote }: ConfiguratorProps) {
-  const animalOptions = animals.filter((option) => !catalog.disabledAnimals.includes(option.value));
-  const editionOptions = editions.filter((option) => !catalog.disabledEditions.includes(option.value));
+  const { create: m, options, common } = useMessages();
+  const locale = useLocale();
+  const animalOptions = animals
+    .filter((option) => !catalog.disabledAnimals.includes(option.value))
+    .map((option) => ({ value: option.value, label: options.animals[option.value] }));
+  const editionOptions = editions
+    .filter((option) => !catalog.disabledEditions.includes(option.value))
+    .map((option) => ({ value: option.value, label: options.editions[option.value] }));
+  const attachmentOptions = attachments.map((option) => ({ value: option.value, label: options.attachments[option.value] }));
   const [animal, setAnimal] = useState<Animal | null>(null);
   // Palleys are keychains first, so that's preselected (when on sale); switching to a figure is one tap.
   const [edition, setEdition] = useState<Edition>(editionOptions[0].value);
+  const [attachment, setAttachment] = useState<Attachment>(attachments[0].value);
+  const withKeychain = edition === "keychain";
   const priceCents = editionPriceCents(edition, catalog.prices);
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
   const [notes, setNotes] = useState("");
@@ -87,35 +98,25 @@ export default function Configurator({ catalog, deliveryTime, returnNote }: Conf
     [],
   );
 
-  // The summary previews the first photo the browser can display.
-  const previewUrl = photos.find((item) => item.previewUrl)?.previewUrl ?? null;
   const photosLabel =
     photos.length === 0
       ? null
       : photos.length === 1
         ? photos[0].file.name
-        : `${photos.length} foto’s`;
+        : fill(m.summary.photosCount, { count: photos.length });
 
-  const animalLabel = findOption(animals, animal)?.label ?? null;
-  const editionLabel = findOption(editions, edition)?.label ?? null;
+  const animalLabel = animal ? options.animals[animal] : null;
+  const editionLabel = options.editions[edition];
+  const attachmentLabel = withKeychain ? options.attachments[attachment] : null;
   const complete: Record<StepId, boolean> = {
     choose: Boolean(animal),
     upload: photos.length > 0,
     order: consent,
   };
-  const activeStep = steps.find((step) => !complete[step.id])?.id ?? null;
-  const nextStep = activeStep
-    ? steps[steps.findIndex((step) => step.id === activeStep) + 1]?.id
-    : undefined;
+  const activeStep = STEP_IDS.find((step) => !complete[step]) ?? null;
+  const nextStep = activeStep ? STEP_IDS[STEP_IDS.indexOf(activeStep) + 1] : undefined;
   const status = Object.fromEntries(
-    steps.map((step) => [
-      step.id,
-      complete[step.id]
-        ? "done"
-        : step.id === activeStep
-          ? "active"
-          : "upcoming",
-    ]),
+    STEP_IDS.map((step) => [step, complete[step] ? "done" : step === activeStep ? "active" : "upcoming"]),
   ) as Record<StepId, StepStatus>;
 
   const handleAddToCart = (event: React.FormEvent) => {
@@ -134,12 +135,13 @@ export default function Configurator({ catalog, deliveryTime, returnNote }: Conf
       return;
     }
     // Uploads the photos to R2, then adds the preview with the chosen variant and notes to the cart.
-    void addToCart({ animal: animal!, edition, photos, notes });
+    void addToCart({ animal: animal!, edition, attachment: withKeychain ? attachment : undefined, photos, notes });
   };
 
   const startOver = () => {
     setAnimal(null);
     setEdition(editionOptions[0].value);
+    setAttachment(attachments[0].value);
     photos.forEach(
       (item) => item.previewUrl && URL.revokeObjectURL(item.previewUrl),
     );
@@ -168,35 +170,45 @@ export default function Configurator({ catalog, deliveryTime, returnNote }: Conf
           <Panel
             id="choose"
             number={1}
-            title="Kies je Palley"
+            title={m.choose.title}
             status={status.choose}
             isNext={nextStep === "choose"}
             headingRef={chooseHeadingRef}
           >
             <ChoiceChips
-              legend="Welk huisdier heb je?"
+              legend={m.choose.animal}
               name="animal"
               options={animalOptions}
               value={animal}
               onChange={setAnimal}
               error={
-                showErrors && !animal ? "Kies je soort huisdier." : undefined
+                showErrors && !animal ? m.choose.animalError : undefined
               }
             />
             <ChoiceChips
-              legend="Sleutelhanger of figuurtje?"
+              legend={m.choose.edition}
               name="edition"
               options={editionOptions}
               value={edition}
               onChange={setEdition}
-              hint={`${PALLEY_SIZE}. Het figuurtje komt zonder sleutelring.`}
+              hint={withKeychain ? undefined : m.choose.size}
             />
+            {withKeychain && (
+              <ChoiceChips
+                legend={m.choose.attachment}
+                name="attachment"
+                options={attachmentOptions}
+                value={attachment}
+                onChange={setAttachment}
+                hint={`${m.choose.size} ${m.choose.keychainHint}`}
+              />
+            )}
           </Panel>
 
           <Panel
             id="upload"
             number={2}
-            title="Upload je foto’s"
+            title={m.upload.title}
             status={status.upload}
             isNext={nextStep === "upload"}
             headingRef={uploadHeadingRef}
@@ -206,14 +218,14 @@ export default function Configurator({ catalog, deliveryTime, returnNote }: Conf
               onChange={setPhotos}
               error={
                 showErrors && photos.length === 0
-                  ? "Upload minstens één foto van je huisdier om verder te gaan."
+                  ? m.upload.missing
                   : undefined
               }
             />
             <PhotoTips />
-            {/* Sets expectations: the 3D model isn't generated automatically and fully hands-off. */}
+            {/* Sets expectations: AI makes the model, and people check it. */}
             <aside
-              aria-label="Goed om te weten"
+              aria-label={m.upload.infoLabel}
               className="flex items-start gap-3 rounded-[20px] bg-light-yellow p-4 text-text-primary md:p-5"
             >
               <span
@@ -224,11 +236,9 @@ export default function Configurator({ catalog, deliveryTime, returnNote }: Conf
               </span>
               <p className="text-base leading-[1.5]">
                 <strong className="font-label font-bold">
-                  Elk model wordt met de hand bijgewerkt.
+                  {m.upload.infoTitle}
                 </strong>{" "}
-                Na je bestelling werkt ons team in Gent het 3D-model van je
-                huisdier met de hand bij, zodat vlekjes, kleuren en dat ene
-                flaporetje er precies goed uitkomen.
+                {m.upload.infoText}
               </p>
             </aside>
           </Panel>
@@ -236,22 +246,22 @@ export default function Configurator({ catalog, deliveryTime, returnNote }: Conf
           <Panel
             id="order"
             number={3}
-            title="Nakijken & bestellen"
+            title={m.order.title}
             status={status.order}
             isNext={nextStep === "order"}
             headingRef={orderHeadingRef}
           >
             <div className="flex flex-col gap-3">
               <Label htmlFor="notes">
-                Iets wat we moeten weten?{" "}
+                {m.order.notes}{" "}
                 <span className="font-semibold text-placeholder">
-                  (optioneel)
+                  {m.order.optional}
                 </span>
               </Label>
               <Textarea
                 id="notes"
                 rows={4}
-                placeholder="Vlekjes, kleur van de ogen, dat ene flaporetje…"
+                placeholder={m.order.notesPlaceholder}
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
                 className="min-h-40 md:min-h-[200px] md:px-[30px] md:py-6"
@@ -271,20 +281,23 @@ export default function Configurator({ catalog, deliveryTime, returnNote }: Conf
                   className="mt-px size-6 shrink-0 cursor-pointer accent-medium-green"
                 />
                 <span id="consent-label">
-                  Ik bevestig dat ik deze foto’s mag gebruiken en ga akkoord met
-                  de{" "}
-                  <Link
-                    href={TERMS_URL}
-                    className="font-semibold text-medium-green underline underline-offset-2"
-                  >
-                    algemene voorwaarden
-                  </Link>
-                  .
+                  {fillNodes(m.order.consent, {
+                    terms: (
+                      <Link href={TERMS_URL} className="font-semibold text-medium-green underline underline-offset-2">
+                        {m.order.terms}
+                      </Link>
+                    ),
+                    privacy: (
+                      <Link href={PRIVACY_URL} className="font-semibold text-medium-green underline underline-offset-2">
+                        {m.order.privacy}
+                      </Link>
+                    ),
+                  })}
                 </span>
               </label>
               {showErrors && !consent && (
                 <p id="consent-error" className={errorClassName}>
-                  Vink dit aan om je bestelling te plaatsen.
+                  {m.order.consentError}
                 </p>
               )}
             </div>
@@ -299,10 +312,10 @@ export default function Configurator({ catalog, deliveryTime, returnNote }: Conf
                 className="shrink-0"
               />
               <p className="text-base leading-[1.5] text-text-primary md:text-lg">
-                Elke Palley wordt met de hand gemodelleerd en geprint. Binnen{" "}
-                {deliveryTime} valt hij in je bus.
+                {fill(m.order.info, { deliveryTime })}
               </p>
             </div>
+            <WarningNote>{common.heatWarning}</WarningNote>
             <p className="-mt-2 text-sm leading-[1.5] text-text-primary md:-mt-3">
               {returnNote}
             </p>
@@ -326,13 +339,15 @@ export default function Configurator({ catalog, deliveryTime, returnNote }: Conf
                   </span>
                   <div className="flex flex-col gap-1">
                     <p className="font-display text-2xl leading-[1.2] font-bold text-medium-green">
-                      Je Palley zit in je winkelmandje!
+                      {m.order.addedTitle}
                     </p>
                     <p className="text-base leading-[1.5] text-text-primary">
-                      {`${animalLabel}, ${editionLabel?.toLowerCase()} · ${formatPrice(priceCents / 100)}`}
-                      {cart && cart.totalQuantity > 1
-                        ? ` · ${cart.totalQuantity} Palleys in je mandje`
-                        : ""}
+                      {fill(m.order.addedLine, {
+                        animal: animalLabel ?? "",
+                        edition: editionLabel.toLowerCase(),
+                        price: formatPrice(priceCents / 100, locale),
+                      })}
+                      {cart && cart.totalQuantity > 1 ? fill(m.order.addedCount, { count: cart.totalQuantity }) : ""}
                     </p>
                   </div>
                 </div>
@@ -343,7 +358,7 @@ export default function Configurator({ catalog, deliveryTime, returnNote }: Conf
                       href="/checkout"
                       className="group flex items-center justify-center gap-3 rounded-pill bg-orange px-7 py-3.5 font-label text-base font-semibold text-off-white transition hover:bg-orange-hover active:scale-[0.98]"
                     >
-                      Afrekenen
+                      {common.checkout}
                       <Image
                         className="transition-transform group-hover:translate-x-1"
                         src="/images/cta/arrow-right.svg"
@@ -355,14 +370,14 @@ export default function Configurator({ catalog, deliveryTime, returnNote }: Conf
                     </Link>
                   ) : null}
                   <Button variant="secondary" href="/cart" className="py-3.5">
-                    Bekijk winkelmandje
+                    {m.order.viewCart}
                   </Button>
                   <button
                     type="button"
                     onClick={startOver}
                     className="py-2 font-label text-base font-bold text-medium-green underline underline-offset-4 hover:text-orange sm:ml-auto"
                   >
-                    Nog een Palley maken
+                    {m.order.another}
                   </button>
                 </div>
               </div>
@@ -370,7 +385,7 @@ export default function Configurator({ catalog, deliveryTime, returnNote }: Conf
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 {/* The summary sits below the steps on small screens, so the price is repeated here. */}
                 <p className="font-label text-2xl font-extrabold text-medium-green lg:hidden">
-                  {formatPrice(priceCents / 100)}
+                  {formatPrice(priceCents / 100, locale)}
                 </p>
                 <button
                   type="submit"
@@ -379,10 +394,10 @@ export default function Configurator({ catalog, deliveryTime, returnNote }: Conf
                   className="group flex disabled:cursor-wait disabled:opacity-70 items-center justify-center gap-3 self-stretch rounded-full bg-orange py-[18px] pr-6 pl-7 font-label text-lg leading-[normal] font-semibold text-off-white transition hover:bg-orange-hover active:scale-[0.98] sm:self-auto lg:order-first"
                 >
                   {cartStatus === "uploading"
-                    ? "Foto’s uploaden…"
+                    ? m.order.uploading
                     : cartStatus === "adding"
-                      ? "Toevoegen…"
-                      : "In winkelmandje"}
+                      ? m.order.adding
+                      : m.order.add}
                   <Image
                     className="transition-transform group-hover:translate-x-1"
                     src="/images/cta/arrow-right.svg"
@@ -409,8 +424,8 @@ export default function Configurator({ catalog, deliveryTime, returnNote }: Conf
           <OrderSummary
             pet={animalLabel}
             edition={editionLabel}
+            attachment={attachmentLabel}
             photos={photosLabel}
-            previewUrl={previewUrl}
             priceCents={priceCents}
           />
         </div>

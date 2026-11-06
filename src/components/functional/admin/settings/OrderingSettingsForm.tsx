@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import type { OrderingSettings } from "@/core/modules/settings/types";
 import { Textarea } from "@/components/design/form";
@@ -7,7 +8,7 @@ import { fieldLabelClassName, SaveBar, SettingsCard } from "./SettingsParts";
 import { useSettingsSave } from "./useSettingsSave";
 
 /* The checkout's on/off switch. Orders toevoegen in de backoffice blijft altijd werken. */
-export function OrderingSettingsForm({ settings }: { settings: OrderingSettings }) {
+export function OrderingSettingsForm({ settings, paymentsAvailable }: { settings: OrderingSettings; paymentsAvailable: boolean }) {
   const [checkoutEnabled, setCheckoutEnabled] = useState(settings.checkoutEnabled);
   const [closedMessage, setClosedMessage] = useState(settings.checkoutClosedMessage ?? "");
   const { save, saving, message, error } = useSettingsSave("ordering");
@@ -34,6 +35,12 @@ export function OrderingSettingsForm({ settings }: { settings: OrderingSettings 
           Uitzetten pauzeert de checkout meteen (bv. tijdens vakantie of bij een probleem). Winkelmandjes blijven bewaard, en
           orders toevoegen in de backoffice blijft werken.
         </p>
+        {checkoutEnabled && !paymentsAvailable && (
+          <p role="status" className="mt-4 rounded-2xl bg-light-yellow p-4 text-sm text-text-primary">
+            <strong>Klanten kunnen nog niet afrekenen:</strong> Bancontact Pro is nog niet gekoppeld, dus de checkout toont
+            &ldquo;Betalen is tijdelijk niet mogelijk&rdquo;. Bekijk de <Link href="/admin/settings/integrations" className="font-semibold underline">koppelingen</Link>.
+          </p>
+        )}
         <label htmlFor="closed-message" className={`mt-5 block ${fieldLabelClassName}`}>
           Boodschap wanneer bestellen gepauzeerd is (optioneel)
         </label>
@@ -44,7 +51,7 @@ export function OrderingSettingsForm({ settings }: { settings: OrderingSettings 
           value={closedMessage}
           onChange={(event) => setClosedMessage(event.target.value)}
           placeholder="We zijn met vakantie tot 15 augustus. Bestellen kan daarna weer!"
-          className="mt-2 min-h-20 text-base md:text-base"
+          className="mt-2 min-h-20 text-base!"
         />
       </SettingsCard>
       <SaveBar saving={saving} message={message} error={error} />

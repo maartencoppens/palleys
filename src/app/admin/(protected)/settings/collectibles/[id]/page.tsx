@@ -6,6 +6,8 @@ import { getCollectibleForAdmin } from "@/core/modules/collectibles/service";
 import { CollectibleForm } from "@/components/functional/admin/settings/CollectibleForm";
 import { SettingsHeader } from "@/components/functional/admin/settings/SettingsParts";
 
+export const instant = false;
+
 const paramsSchema = z.object({ id: z.uuid() });
 
 export default async function EditCollectiblePage({ params }: PageProps<"/admin/settings/collectibles/[id]">) {

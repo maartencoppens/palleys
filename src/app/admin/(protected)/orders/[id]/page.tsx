@@ -5,6 +5,8 @@ import { itemStage, nextStepLabel, OPEN_ORDER_STATUSES, summarizeCheckIn } from 
 import { getOrderForAdmin } from "@/core/modules/orders/service";
 import { paymentProvider } from "@/core/modules/payments/providers";
 import { formatDateTime, formatPrice } from "@/core/utils/format";
+import { isPersonalDelivery } from "@/data/shipping";
+import { attachments } from "@/data/options";
 import { MANUAL_PAYMENT_PROVIDER, PAYMENT_METHOD_LABELS } from "@/data/payment-methods";
 import { Badge } from "@/components/design/Badge";
 import { OrderActions } from "@/components/functional/admin/OrderActions";
@@ -12,7 +14,10 @@ import { ItemCheckInButton } from "@/components/functional/admin/orders/ItemChec
 import { OrderPaymentPanel } from "@/components/functional/admin/orders/OrderPaymentPanel";
 import { OrderProgressPanel } from "@/components/functional/admin/orders/OrderProgressPanel";
 import { OrderStatusBadge, orderStatusLabel, PaymentStatusBadge } from "@/components/functional/admin/OrderStatusBadge";
+import { PhotoThumbnails } from "@/components/functional/admin/PhotoThumbnails";
 import { PreviewStatusBadge } from "@/components/functional/admin/PreviewStatusBadge";
+
+export const instant = false;
 
 const euro = (cents: number) => formatPrice(cents / 100);
 
@@ -26,7 +31,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
   const open = OPEN_ORDER_STATUSES.includes(order.status);
   const checkInItems = order.items.map((item) => ({ previewStatus: item.previewStatus, checkedInAt: item.checkedInAt }));
   const summary = summarizeCheckIn(checkInItems);
-  const handover = order.shipment?.deliveryType === "HANDOVER";
+  const handover = isPersonalDelivery(order.shipment?.deliveryType);
   const paidManually = order.payments.some((payment) => payment.provider === MANUAL_PAYMENT_PROVIDER && payment.status === "PAID");
   const hasProviderPayment = order.payments.some((payment) => payment.provider !== MANUAL_PAYMENT_PROVIDER);
   const openPaymentLink = order.payments.find((payment) => payment.checkoutUrl)?.checkoutUrl ?? null;
@@ -59,14 +64,17 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
         </section>
       )}
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8">
-        <div className="flex min-w-0 flex-col gap-6">
-          <section className="rounded-3xl bg-white p-6">
+      {/* On a phone the two columns dissolve: first the products, then what to do next, and the records last. */}
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:mt-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8">
+        <div className="contents lg:flex lg:min-w-0 lg:flex-col lg:gap-6">
+          <section className="-order-1 rounded-3xl bg-white p-5 sm:p-6 lg:order-none">
             <h2 className="font-display text-xl font-medium text-medium-green">Producten</h2>
             <ul className="mt-4 divide-y divide-off-white-dark">
               {order.items.map((item) => (
                 <li key={item.id} className="flex flex-wrap items-start gap-4 py-4 first:pt-0 last:pb-0">
-                  {item.photoUrl ? (
+                  {item.photoUrls.length > 0 ? (
+                    <PhotoThumbnails urls={item.photoUrls} limit={1} className="size-16" />
+                  ) : item.photoUrl ? (
                     /* Bewust <img>, niet next/image: klantfoto's (GDPR). */
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -84,6 +92,10 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
                     <p className="font-mono text-xs text-text-muted">
                       {item.sku} · maat {item.size}
                     </p>
+                    {/* A Palley has it in its title. */}
+                    {item.kind === "collectible" && item.attachment && (
+                      <p className="text-sm">Bevestiging: {attachments.find((option) => option.value === item.attachment)?.label ?? item.attachment}</p>
+                    )}
                     {item.notes && <p className="text-sm italic">“{item.notes}”</p>}
                     <div className="mt-1 flex flex-wrap items-center gap-3">
                       {item.previewId && item.previewStatus ? (
@@ -120,6 +132,12 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
                 <dt>Subtotaal</dt>
                 <dd className="tabular-nums">{euro(order.subtotalCents)}</dd>
               </div>
+              {order.discountCents > 0 && (
+                <div className="flex justify-between">
+                  <dt>Korting{order.discountCode ? ` (${order.discountCode})` : ""}</dt>
+                  <dd className="tabular-nums">- {euro(order.discountCents)}</dd>
+                </div>
+              )}
               <div className="flex justify-between">
                 <dt>Verzending{order.shipment ? ` (${order.shipment.label})` : ""}</dt>
                 <dd className="tabular-nums">{euro(order.shippingCents)}</dd>
@@ -128,14 +146,17 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
                 <dt>Totaal</dt>
                 <dd className="tabular-nums">{euro(order.totalCents)}</dd>
               </div>
-              <div className="flex justify-between text-text-muted">
-                <dt>waarvan btw</dt>
-                <dd className="tabular-nums">{euro(order.vatCents)}</dd>
-              </div>
+              {/* Only on orders from before the VAT exemption. */}
+              {order.vatCents > 0 && (
+                <div className="flex justify-between text-text-muted">
+                  <dt>waarvan btw</dt>
+                  <dd className="tabular-nums">{euro(order.vatCents)}</dd>
+                </div>
+              )}
             </dl>
           </section>
 
-          <section className="rounded-3xl bg-white p-6">
+          <section className="order-1 rounded-3xl bg-white p-5 sm:p-6 lg:order-none">
             <h2 className="font-display text-xl font-medium text-medium-green">Betalingen</h2>
             {order.payments.length === 0 ? (
               <p className="mt-2 text-sm text-text-muted">Geen betaling aangemaakt.</p>
@@ -164,7 +185,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
             )}
           </section>
 
-          <section className="rounded-3xl bg-white p-6">
+          <section className="order-1 rounded-3xl bg-white p-5 sm:p-6 lg:order-none">
             <h2 className="font-display text-xl font-medium text-medium-green">Geschiedenis</h2>
             <ol className="mt-3 space-y-2 text-sm">
               {order.statusChanges.map((change, index) => (
@@ -183,7 +204,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
           </section>
         </div>
 
-        <aside className="flex flex-col gap-6">
+        <aside className="contents lg:flex lg:flex-col lg:gap-6">
           {order.status === "PENDING_PAYMENT" && order.createdBy && (
             <OrderPaymentPanel
               orderId={order.id}

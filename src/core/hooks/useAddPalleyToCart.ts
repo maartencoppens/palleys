@@ -4,29 +4,12 @@ import axios from "axios";
 import { uploadCustomerPhotos } from "@/core/modules/previews/api";
 import { postAddToCart } from "@/core/modules/cart/api";
 import type { CartView } from "@/core/modules/cart/types";
-import type { Animal, Edition } from "@/data/options";
+import { useMessages } from "@/core/locale/client";
+import type { Animal, Attachment, Edition } from "@/data/options";
 
 type Photo = { id: string; file: File };
-type Input = { animal: Animal; edition: Edition; photos: Photo[]; notes: string };
+type Input = { animal: Animal; edition: Edition; attachment?: Attachment; photos: Photo[]; notes: string };
 type Status = "idle" | "uploading" | "adding" | "done";
-
-const ERROR_MESSAGES: Record<string, string> = {
-  photos_missing: "Je foto’s zijn niet goed aangekomen. Probeer het nog eens.",
-  preview_not_orderable: "Deze upload is verlopen. Voeg je foto’s opnieuw toe.",
-  preview_not_found: "Deze upload is verlopen. Voeg je foto’s opnieuw toe.",
-  option_unavailable: "Deze keuze is even niet beschikbaar. Kies een ander dier of een andere uitvoering.",
-  cart_full: "Je winkelmandje zit vol. Reken eerst af of verwijder een Palley.",
-  rate_limited: "Even rustig aan: probeer het over een paar minuten opnieuw.",
-};
-const FALLBACK_ERROR = "Er ging iets mis bij het toevoegen. Probeer het nog eens.";
-
-function messageFor(error: unknown) {
-  if (axios.isAxiosError<{ error?: string }>(error)) {
-    const code = error.response?.data?.error;
-    if (code && ERROR_MESSAGES[code]) return ERROR_MESSAGES[code];
-  }
-  return FALLBACK_ERROR;
-}
 
 /**
  * Upload → preview → cart, as one action for the configurator.
@@ -34,12 +17,13 @@ function messageFor(error: unknown) {
  * doesn't upload (and store) the photos a second time.
  */
 export function useAddPalleyToCart() {
+  const errors: Record<string, string> = useMessages().create.errors;
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
   const [cart, setCart] = useState<CartView | null>(null);
   const upload = useRef<{ photoIds: string; previewId: string } | null>(null);
 
-  const addToCart = useCallback(async ({ animal, edition, photos, notes }: Input) => {
+  const addToCart = useCallback(async ({ animal, edition, attachment, photos, notes }: Input) => {
     setError(null);
     const photoIds = photos.map((p) => p.id).join(",");
     try {
@@ -54,6 +38,7 @@ export function useAddPalleyToCart() {
         previewId,
         animal,
         edition,
+        attachment,
         notes: notes.trim() || undefined,
       });
       setCart(updated);
@@ -66,10 +51,11 @@ export function useAddPalleyToCart() {
           upload.current = null;
         }
       }
-      setError(messageFor(err));
+      const code = axios.isAxiosError<{ error?: string }>(err) ? err.response?.data?.error : undefined;
+      setError((code && errors[code]) || errors.fallback);
       setStatus("idle");
     }
-  }, []);
+  }, [errors]);
 
   const reset = useCallback(() => {
     upload.current = null;

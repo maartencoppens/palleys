@@ -1,5 +1,8 @@
 import Image from "next/image";
 import Button from "@/components/design/Button";
+import Availability from "@/components/functional/shop/collection/Availability";
+import { fill } from "@/core/locale/fill";
+import { getLocale, getMessages } from "@/core/locale/server";
 import { formatPrice } from "@/core/utils/format";
 
 export type Product = {
@@ -10,17 +13,20 @@ export type Product = {
   price: number;
   image: string;
   tag?: string;
+  soldOut?: boolean;
 };
 
 /* Figma: featured-product-card, 313×382. */
-export default function ProductCard({
+export default async function ProductCard({
   slug,
   brand,
   name,
   price,
   image,
   tag,
+  soldOut = false,
 }: Product) {
+  const [{ collection: m }, locale] = await Promise.all([getMessages(), getLocale()]);
   return (
     // `relative` keeps the absolutely positioned sr-only text inside the card (and inside the scroll row on phones).
     <article className="relative flex h-full flex-col overflow-hidden rounded-2xl bg-card transition-transform duration-300 hover:-translate-y-1.5 hover:-rotate-1">
@@ -49,7 +55,7 @@ export default function ProductCard({
           <Image
             className="object-contain"
             src={image}
-            alt={`${name} sleutelhanger`}
+            alt={fill(m.imageAlt, { name })}
             fill
             sizes="289px"
           />
@@ -64,13 +70,16 @@ export default function ProductCard({
           </h3>
         </div>
 
-        <div className="flex items-center justify-between gap-s">
-          <p className="text-xl leading-[27px] font-semibold text-text-primary">
-            {formatPrice(price)}
-          </p>
-          <Button href={`/shop/${slug}`} variant="arrow">
-            Shop<span className="sr-only"> {name}</span>
-          </Button>
+        <div className="flex flex-col gap-s">
+          {!soldOut && <Availability />}
+          <div className="flex items-center justify-between gap-s">
+            <p className="text-xl leading-[27px] font-semibold text-text-primary">
+              {formatPrice(price, locale)}
+            </p>
+            <Button href={`/shop/${slug}`} variant="arrow">
+              {m.shop}<span className="sr-only"> {name}</span>
+            </Button>
+          </div>
         </div>
       </div>
     </article>

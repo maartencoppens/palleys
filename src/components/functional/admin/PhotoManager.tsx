@@ -14,6 +14,7 @@ import {
   MAX_UPLOAD_BYTES,
 } from "@/data/uploads";
 import { Button } from "@/components/design/Button";
+import { PhotoLightbox } from "./PhotoLightbox";
 
 type PhotoManagerProps = {
   previewId: string;
@@ -32,6 +33,7 @@ export function PhotoManager({
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   async function handleFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -108,14 +110,21 @@ export function PhotoManager({
       <ul className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
         {photos.map((photo, index) => (
           <li key={photo.id}>
-            {/* Bewust <img> en geen next/image: die zou de klantfoto via de
-                image optimizer van de server proxyen en cachen (GDPR). */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={photo.url}
-              alt={`Foto ${index + 1}`}
-              className="aspect-square w-full rounded-3xl bg-white object-cover"
-            />
+            <button
+              type="button"
+              onClick={() => setOpenIndex(index)}
+              aria-label={`Foto ${index + 1} groot bekijken`}
+              className="block w-full overflow-hidden rounded-3xl transition-opacity hover:opacity-80"
+            >
+              {/* Bewust <img> en geen next/image: die zou de klantfoto via de
+                  image optimizer van de server proxyen en cachen (GDPR). */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={photo.url}
+                alt=""
+                className="aspect-square w-full bg-white object-cover"
+              />
+            </button>
             <div className="mt-2 flex items-center justify-between gap-2 text-xs text-text-muted">
               <span className="truncate">
                 {photo.uploadedBy ? `Door ${photo.uploadedBy}` : "Klant"}
@@ -125,7 +134,7 @@ export function PhotoManager({
                   type="button"
                   onClick={() => handleDelete(photo.id)}
                   disabled={busy !== null}
-                  className="rounded font-label font-bold text-[#a3341a] underline underline-offset-4 disabled:opacity-60"
+                  className="rounded py-1.5 font-label text-sm font-bold text-[#a3341a] underline underline-offset-4 disabled:opacity-60"
                 >
                   {busy === photo.id ? "Bezig…" : "Verwijderen"}
                 </button>
@@ -138,6 +147,13 @@ export function PhotoManager({
         <p className="mt-2 text-xs text-text-muted">
           De laatste foto kan niet weg. Upload eerst een nieuwe.
         </p>
+      )}
+      {openIndex !== null && (
+        <PhotoLightbox
+          urls={photos.map((photo) => photo.url)}
+          startIndex={openIndex}
+          onClose={() => setOpenIndex(null)}
+        />
       )}
     </section>
   );

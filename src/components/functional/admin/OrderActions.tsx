@@ -45,7 +45,7 @@ export function OrderActions({ orderId, canSyncPayment, canResendConfirmation, a
         {canSyncPayment && (
           <Button
             variant="secondary"
-            className="w-full"
+            className="w-full px-4! whitespace-normal!"
             loading={busy === "sync"}
             loadingText="Ophalen bij Bancontact…"
             onClick={() => run("sync", async () => `Status: ${(await postSyncOrderPayment(orderId)).status}`)}
@@ -56,14 +56,14 @@ export function OrderActions({ orderId, canSyncPayment, canResendConfirmation, a
         {canResendConfirmation && (
           <Button
             variant="secondary"
-            className="w-full"
+            className="w-full px-4! whitespace-normal!"
             loading={busy === "mail"}
             loadingText="Versturen…"
             onClick={() =>
               run("mail", async () =>
                 (await postResendConfirmation(orderId)).sent
                   ? "Bevestigingsmail verstuurd"
-                  : "Niet verstuurd: is Resend ingesteld (RESEND_API_KEY, EMAIL_FROM)?",
+                  : "Niet verstuurd. De reden staat bij Opvolgen; staat daar niets, dan is Resend niet ingesteld (RESEND_API_KEY, EMAIL_FROM).",
               )
             }
           >
@@ -83,7 +83,7 @@ export function OrderActions({ orderId, canSyncPayment, canResendConfirmation, a
             value={note}
             onChange={(event) => setNote(event.target.value)}
             placeholder="bv. Terugbetaald via het Bancontact Pro-portaal"
-            className="min-h-24 text-base md:text-base"
+            className="min-h-24 text-base!"
           />
           <Button
             variant="primary"

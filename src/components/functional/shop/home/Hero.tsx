@@ -2,6 +2,7 @@ import Button from "@/components/design/Button";
 import HeroArt from "./HeroArt";
 import InfoBanner from "./InfoBanner";
 import Navbar from "@/components/functional/shop/layout/Navbar";
+import { getMessages } from "@/core/locale/server";
 
 /*
  * Desktop measurements come from the 1440×780 Figma frame: navbar inset 64.5px (page-container),
@@ -10,7 +11,8 @@ import Navbar from "@/components/functional/shop/layout/Navbar";
  * The section has no background of its own: the artwork covers it completely, and a dark background
  * underneath would show as a thin rim along the rounded corner.
  */
-export default function Hero() {
+export default async function Hero() {
+  const { hero: m, common } = await getMessages();
   return (
     <section
       className="flex min-h-svh flex-col overflow-hidden rounded-bl-section-lg"
@@ -35,10 +37,10 @@ export default function Hero() {
               className="font-display text-[clamp(2.375rem,1.2rem+4.6vw,4.875rem)] leading-[0.98] font-medium tracking-[-0.045em]"
             >
               <span className="block text-title-accent" data-hero-item>
-                A pal
+                {m.titleAccent}
               </span>{" "}
               <span className="block" data-hero-item>
-                for your keys.
+                {m.titleRest}
               </span>
             </h1>
 
@@ -46,18 +48,16 @@ export default function Hero() {
               data-hero-item
               className="max-w-[570px] text-[clamp(1.0625rem,0.95rem+0.35vw,1.25rem)] leading-[1.485]"
             >
-              Maak kennis met je Palley: je huisdier als 3D-geprinte
-              sleutelhanger, gemaakt van je favoriete foto en met de hand
-              afgewerkt. Je beste vriend, klein genoeg om overal mee te gaan.
+              {m.text}
             </p>
 
             <div
               data-hero-item
               className="flex w-full max-w-[400px] flex-col items-stretch gap-s lg:w-auto lg:max-w-none lg:flex-row lg:items-center lg:gap-0"
             >
-              <Button href="/create">Maak je Palley</Button>
+              <Button href="/create">{common.createPalley}</Button>
               <Button href="/#collectables" variant="bare">
-                Bekijk de collectie
+                {m.collection}
               </Button>
             </div>
           </div>

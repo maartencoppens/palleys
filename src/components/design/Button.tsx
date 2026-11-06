@@ -4,7 +4,7 @@ import type {
   ReactNode,
 } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import { Link } from "@/core/locale/client";
 
 type ButtonVariant = "orange" | "bare" | "arrow" | "primary" | "secondary";
 

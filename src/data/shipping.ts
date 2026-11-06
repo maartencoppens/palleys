@@ -4,7 +4,7 @@
 import type { KeychainSize } from "./sizes";
 
 // Countries we ship to: Belgium only, where customers pay with Bancontact (data/payment-methods.ts).
-export const SHIPPING_COUNTRIES = [{ code: "BE", label: "België" }] as const;
+export const SHIPPING_COUNTRIES = [{ code: "BE" }] as const;
 export type ShippingCountry = (typeof SHIPPING_COUNTRIES)[number]["code"];
 export const SHIPPING_COUNTRY_CODES = SHIPPING_COUNTRIES.map((c) => c.code) as [ShippingCountry, ...ShippingCountry[]];
 
@@ -19,7 +19,11 @@ export const PARCEL_BY_SIZE: Record<KeychainSize, { weightGrams: number }> = {
 };
 export const PACKAGING = { weightGrams: 40, dimensionsCm: { length: 16, width: 11, height: 3 } };
 
-export type DeliveryType = "HOME" | "SERVICE_POINT";
+export type DeliveryType = "HOME" | "SERVICE_POINT" | "PICKUP" | "HANDOVER";
+
+// A parcel needs an address. Picking up or getting it from us in person doesn't, so we don't ask for one.
+export const needsShippingAddress = (type: string | null | undefined) => type === "HOME" || type === "SERVICE_POINT";
+export const isPersonalDelivery = (type: string | null | undefined) => type === "PICKUP" || type === "HANDOVER";
 
 // Only for orders an admin adds: no parcel, we hand it over ourselves.
 export const HANDOVER_DELIVERY = {
@@ -37,8 +41,18 @@ export type StaticDeliveryOption = {
   deliveryType: DeliveryType;
   label: string;
   eta: string;
-  defaultPriceCents: number; // VAT included; overridable in /admin/settings
+  defaultPriceCents: number; // overridable in /admin/settings
 };
+
+// For friends and family, free and only offered with a discount code that has personalDelivery on. Never goes to a carrier.
+export const FRIENDS_DELIVERY = {
+  id: "friends-family",
+  provider: "manual",
+  carrier: "Palleys",
+  deliveryType: "HANDOVER",
+  label: "Vrienden en familie: persoonlijk overhandigen",
+  eta: "We spreken samen af wanneer we hem geven",
+} as const;
 
 // Used while no carrier API is connected, and as fallback when it fails, so checkout never blocks.
 export const STATIC_DELIVERY_OPTIONS: StaticDeliveryOption[] = [
@@ -50,6 +64,15 @@ export const STATIC_DELIVERY_OPTIONS: StaticDeliveryOption[] = [
     label: "Thuislevering met bpost",
     eta: "1–2 werkdagen na verzending",
     defaultPriceCents: 495,
+  },
+  {
+    id: "be-pickup-kantienberg",
+    country: "BE",
+    carrier: "Palleys",
+    deliveryType: "PICKUP",
+    label: "Ophalen op campus Kantienberg",
+    eta: "We laten je weten wanneer je bestelling klaarligt",
+    defaultPriceCents: 0,
   },
 ];
 

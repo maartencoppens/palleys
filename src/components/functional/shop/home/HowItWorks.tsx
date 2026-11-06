@@ -2,11 +2,11 @@ import DeliveryTime from "@/components/functional/shop/DeliveryTime";
 import Button from "@/components/design/Button";
 import SectionHeader from "@/components/design/SectionHeader";
 import StepCard, { type Step } from "@/components/design/StepCard";
+import { fillNodes } from "@/core/locale/fill";
+import { getMessages } from "@/core/locale/server";
 
-const steps: Step[] = [
+const artwork: Pick<Step, "blob" | "icon">[] = [
   {
-    title: "Kies je huisdier",
-    description: "Hond, kat, konijn of egel: vertel ons wie een Palley wordt.",
     blob: { src: "/images/steps/blob-1.svg", width: 273, height: 267 },
     icon: {
       src: "/images/steps/icon-paw.svg",
@@ -17,9 +17,6 @@ const steps: Step[] = [
     },
   },
   {
-    title: "Upload een foto",
-    description:
-      "Eén heldere, scherpe foto is genoeg. Wij modelleren, printen en werken de rest met de hand af.",
     blob: { src: "/images/steps/blob-2.svg", width: 273.261, height: 247.171 },
     icon: {
       src: "/images/steps/icon-camera.svg",
@@ -30,12 +27,6 @@ const steps: Step[] = [
     },
   },
   {
-    title: "Ontmoet je Palley",
-    description: (
-      <>
-        Binnen <DeliveryTime /> valt je Palley in de bus, klaar voor je sleutelbos.
-      </>
-    ),
     blob: { src: "/images/steps/blob-3.svg", width: 271.825, height: 243.684 },
     icon: {
       src: "/images/steps/icon-gift.svg",
@@ -53,7 +44,13 @@ const steps: Step[] = [
  * Desktop: three 447px cards 22px apart, the middle one 92px lower. Tablet keeps the three columns with
  * smaller artwork; phones get compact rows, so the section still fits one screen.
  */
-export default function HowItWorks() {
+export default async function HowItWorks() {
+  const { howItWorks: m, common } = await getMessages();
+  const steps = m.steps.map((step, index): Step => ({
+    title: step.title,
+    description: fillNodes(step.text, { deliveryTime: <DeliveryTime /> }),
+    ...artwork[index],
+  }));
   return (
     <section
       id="how-it-works"
@@ -61,8 +58,8 @@ export default function HowItWorks() {
       aria-labelledby="how-it-works-title"
     >
       <SectionHeader
-        tag="Zo werkt het"
-        title="Van foto tot Palley in drie stappen."
+        tag={m.tag}
+        title={m.title}
         titleId="how-it-works-title"
       />
 
@@ -86,7 +83,7 @@ export default function HowItWorks() {
 
       <div data-animate="fade-up">
         <Button href="/create" size="large">
-          Maak je Palley
+          {common.createPalley}
         </Button>
       </div>
     </section>

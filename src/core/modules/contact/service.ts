@@ -2,7 +2,8 @@
 
 export type ContactState = {
   status: "idle" | "success" | "error";
-  message: string;
+  /** Which text the form shows, in the visitor's language. */
+  code?: "missing" | "invalidEmail" | "sent";
   /** Values echoed back on error, so the visitor doesn't lose what they typed. */
   values?: { name: string; email: string; message: string };
 };
@@ -22,14 +23,14 @@ export async function sendContactMessage(
   if (!values.name || !values.email || !values.message) {
     return {
       status: "error",
-      message: "Vul je naam, e-mailadres en bericht in.",
+      code: "missing",
       values,
     };
   }
   if (!EMAIL_PATTERN.test(values.email)) {
     return {
       status: "error",
-      message: "Dat e-mailadres lijkt niet te kloppen.",
+      code: "invalidEmail",
       values,
     };
   }
@@ -43,6 +44,6 @@ export async function sendContactMessage(
 
   return {
     status: "success",
-    message: "Bedankt! We laten zo snel mogelijk iets van ons horen.",
+    code: "sent",
   };
 }

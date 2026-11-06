@@ -9,6 +9,8 @@ import Button from "@/components/design/Button";
 import { CollectibleActions } from "@/components/functional/admin/settings/CollectibleActions";
 import { SettingsHeader } from "@/components/functional/admin/settings/SettingsParts";
 
+export const instant = false;
+
 export default async function AdminCollectiblesPage() {
   await requireAdminPage();
   const collectibles = await listCollectiblesForAdmin();
@@ -52,7 +54,7 @@ export default async function AdminCollectiblesPage() {
 function CollectibleTable({ collectibles }: { collectibles: AdminCollectible[] }) {
   return (
     <div className="overflow-x-auto rounded-3xl bg-white">
-      <table className="w-full text-left text-sm">
+      <table className="admin-table w-full text-left text-sm">
         <thead className="border-b-[1.5px] border-off-white-dark font-label text-text-muted">
           <tr>
             <th className="px-5 py-4 font-semibold">Product</th>
@@ -80,7 +82,7 @@ function CollectibleTable({ collectibles }: { collectibles: AdminCollectible[] }
                   </div>
                 </div>
               </td>
-              <td className="px-5 py-3">
+              <td data-label="Status" className="px-5 py-3">
                 <div className="flex flex-wrap gap-1.5">
                   {collectible.archivedAt ? (
                     <Badge>Verwijderd</Badge>
@@ -90,12 +92,15 @@ function CollectibleTable({ collectibles }: { collectibles: AdminCollectible[] }
                     <Badge tone="waiting">Verborgen</Badge>
                   )}
                   {collectible.soldOut && !collectible.archivedAt && <Badge tone="danger">Uitverkocht</Badge>}
+                  {collectible.missingTranslations.length > 0 && !collectible.archivedAt && (
+                    <Badge tone="waiting">Vertaling ontbreekt</Badge>
+                  )}
                 </div>
               </td>
-              <td className="whitespace-nowrap px-5 py-3 text-right font-semibold tabular-nums">
+              <td data-label="Prijs" className="whitespace-nowrap px-5 py-3 text-right font-semibold tabular-nums">
                 {formatPrice(collectible.priceCents / 100)}
               </td>
-              <td className="px-5 py-3 text-right tabular-nums">{collectible.orderedQuantity}</td>
+              <td data-label="Verkocht" className="px-5 py-3 text-right tabular-nums">{collectible.orderedQuantity}</td>
               <td className="whitespace-nowrap px-5 py-3 text-right">
                 <div className="flex justify-end gap-4">
                   {!collectible.archivedAt && (

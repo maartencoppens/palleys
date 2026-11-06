@@ -157,28 +157,86 @@
 }
 
 /*
+ * Backoffice tables where they would not fit, so on a phone or tablet: each row becomes a card, each cell a line with its data-label. A cell without a label
+ * (the title, the actions) takes the full width. Outside any layer, so it beats the cells' own utility classes.
+ */
+@media (width < 72rem) {
+  .admin-table,
+  .admin-table tbody,
+  .admin-table tr {
+    display: block;
+  }
+
+  .admin-table thead {
+    display: none;
+  }
+
+  /* The links and buttons in a row are small text: give a thumb something to hit. */
+  .admin-table td a:not([class*="rounded-pill"]),
+  .admin-table td button:not([class*="rounded-pill"], :has(img)) {
+    display: inline-block;
+    padding-block: 6px;
+  }
+
+  .admin-table tr {
+    padding: var(--spacing-s) 20px;
+  }
+
+  .admin-table td {
+    display: block;
+    max-width: none;
+    padding: 4px 0;
+    overflow: visible;
+    overflow-wrap: anywhere;
+    text-align: left;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  /* The label on the left, everything in the cell stacked on the right. */
+  .admin-table td[data-label] {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    column-gap: var(--spacing-m);
+    justify-items: end;
+    text-align: right;
+  }
+
+  .admin-table td[data-label] > * {
+    grid-column: 2;
+  }
+
+  .admin-table td[data-label]::before {
+    grid-row: 1 / span 9;
+    justify-self: start;
+    font-family: var(--font-label);
+    font-weight: 600;
+    color: var(--color-text-muted);
+    content: attr(data-label);
+  }
+
+  .admin-table td:last-child:not([data-label]) {
+    padding-top: var(--spacing-s);
+    text-align: right;
+  }
+}
+
+/*
  * Animation setup (see SiteAnimations). With JavaScript on, animated elements start hidden so they
  * don't flash before GSAP reveals them. Two safety nets: with "reduce motion" everything shows right
  * away, and if the animation script never runs, the fallback keyframe makes everything visible after 2s.
  */
-.js [data-animate],
-.js [data-hero-item],
-.js [data-nav-item] {
-  visibility: hidden;
-  animation: reveal-fallback 0s 2s forwards;
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  [data-animate],
+  [data-hero-item],
+  [data-nav-item] {
+    visibility: hidden;
+    animation: reveal-fallback 0s 2s forwards;
+  }
 }
 
 @keyframes reveal-fallback {
   to {
     visibility: visible;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .js [data-animate],
-  .js [data-hero-item],
-  .js [data-nav-item] {
-    visibility: visible;
-    animation: none;
   }
 }

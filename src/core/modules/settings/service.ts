@@ -9,7 +9,9 @@ import {
   catalogSettingsSchema,
   companySettingsSchema,
   shippingSettingsSchema,
+  localizedSiteContentSchema,
   siteContentSchema,
+  type LocalizedSiteContent,
   type SettingsSection,
   type SettingsSectionInput,
   type ShopSettings,
@@ -44,6 +46,13 @@ function parsed<T extends z.ZodType>(schema: T, value: unknown, fallback: z.infe
   return result.success ? result.data : fallback;
 }
 
+/** Texts saved before there were languages are the Dutch ones. */
+function parsedContent(value: unknown): LocalizedSiteContent {
+  const dutchOnly = siteContentSchema.safeParse(value);
+  if (dutchOnly.success) return { ...DEFAULTS.content, nl: dutchOnly.data };
+  return parsed(localizedSiteContentSchema, value, DEFAULTS.content);
+}
+
 export async function getShopSettings(): Promise<ShopSettings> {
   const row = await prisma.shopSettings.findUnique({ where: { id: SETTINGS_ID } });
   if (!row) return DEFAULTS;
@@ -52,7 +61,7 @@ export async function getShopSettings(): Promise<ShopSettings> {
     checkoutClosedMessage: row.checkoutClosedMessage,
     shippingOverrides: parsed(shippingSettingsSchema.shape.shippingOverrides, row.shippingOverrides, {}),
     catalog: parsed(catalogSettingsSchema, row.catalog, DEFAULTS.catalog),
-    content: parsed(siteContentSchema, row.siteContent, DEFAULTS.content),
+    content: parsedContent(row.siteContent),
     company: parsed(companySettingsSchema, row.company, DEFAULTS.company),
     updatedBy: row.updatedBy,
     updatedAt: row.updatedAt.toISOString(),

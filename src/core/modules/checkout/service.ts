@@ -2,15 +2,23 @@ import "server-only";
 import { prisma } from "@/db/client";
 import { createToken, hashToken } from "@/core/utils/tokens";
 import { computeTotals } from "@/core/modules/catalog/utils";
-import { assertPreviewCanBeOrdered, CartError, getCheckoutLines } from "@/core/modules/cart/service";
+import { assertPreviewCanBeOrdered, CartError, findCartId, getCheckoutLines } from "@/core/modules/cart/service";
+import { checkDiscount, claimDiscount } from "@/core/modules/discounts/service";
+import type { AppliedDiscount } from "@/core/modules/discounts/types";
 import { nextOrderNumber } from "@/core/modules/orders/service";
 import { maskEmail } from "@/core/modules/orders/utils";
 import { paymentProvider } from "@/core/modules/payments/providers";
-import { createOrderPayment, InvalidProviderPaymentError } from "@/core/modules/payments/service";
+import {
+  completeFreeOrder,
+  createOrderPayment,
+  InvalidProviderPaymentError,
+  orderReturnUrl,
+} from "@/core/modules/payments/service";
 import { getShopSettings } from "@/core/modules/settings/service";
-import { getDeliveryOptions, resolveDeliveryOption } from "@/core/modules/shipping/service";
+import { friendsDelivery, getDeliveryOptions, resolveDeliveryOption } from "@/core/modules/shipping/service";
 import type { DeliveryAddress } from "@/core/modules/shipping/types";
 import { TERMS_VERSION } from "@/data/checkout";
+import { FRIENDS_DELIVERY, needsShippingAddress } from "@/data/shipping";
 import { CURRENCY } from "@/data/pricing";
 import type { CheckoutConfig, CheckoutInput, CheckoutResult, DeliveryOptionView } from "./types";
 
@@ -27,10 +35,16 @@ export type CheckoutErrorCode =
   | "cart_empty"
   | "preview_not_orderable"
   | "delivery_option_invalid"
+  | "address_required"
+  | "discount_invalid"
+  | "discount_min_subtotal"
   | "payment_failed";
 
 export class CheckoutError extends Error {
-  constructor(public readonly code: CheckoutErrorCode) {
+  constructor(
+    public readonly code: CheckoutErrorCode,
+    public readonly details?: Record<string, number>,
+  ) {
     super(code);
   }
 }
@@ -54,10 +68,33 @@ const forDisplay = (option: Awaited<ReturnType<typeof getDeliveryOptions>>[numbe
   priceCents: option.priceCents,
 });
 
-export async function listDeliveryOptions(cartToken: string | null, address: DeliveryAddress) {
+export async function listDeliveryOptions(cartToken: string | null, address: DeliveryAddress, discountCode?: string) {
   const lines = await getCheckoutLines(cartToken);
   const options = await getDeliveryOptions(address, lines.length > 0 ? lines : [{ size: "M", quantity: 1 }]);
-  return options.map(forDisplay);
+  const check = discountCode ? await checkDiscount(discountCode, subtotalOf(lines)) : null;
+  return (check?.ok && check.personalDelivery ? [...options, friendsDelivery()] : options).map(forDisplay);
+}
+
+const subtotalOf = (lines: { unitCents: number; quantity: number }[]) =>
+  lines.reduce((sum, line) => sum + line.unitCents * line.quantity, 0);
+
+type DiscountCheck = Awaited<ReturnType<typeof checkDiscount>>;
+
+function assertDiscountUsable(check: DiscountCheck): asserts check is Extract<DiscountCheck, { ok: true }> {
+  if (check.ok) return;
+  if (check.reason === "min_subtotal") {
+    throw new CheckoutError("discount_min_subtotal", { minSubtotalCents: check.minSubtotalCents });
+  }
+  throw new CheckoutError("discount_invalid");
+}
+
+/** What a code takes off this visitor's cart right now, for the checkout's summary. */
+export async function applyCheckoutDiscount(cartToken: string | null, code: string): Promise<AppliedDiscount> {
+  const lines = await getCheckoutLines(cartToken);
+  if (lines.length === 0) throw new CheckoutError("cart_empty");
+  const check = await checkDiscount(code, subtotalOf(lines));
+  assertDiscountUsable(check);
+  return { code: check.code, label: check.label, discountCents: check.discountCents };
 }
 
 export async function startCheckout(cartToken: string | null, input: CheckoutInput): Promise<CheckoutResult> {
@@ -76,25 +113,41 @@ export async function startCheckout(cartToken: string | null, input: CheckoutInp
   }
 
   const address = { country: input.country, postalCode: input.postalCode };
-  const delivery = await resolveDeliveryOption(input.deliveryOptionId, address, lines);
+  const forFriends = input.deliveryOptionId === FRIENDS_DELIVERY.id;
+  const delivery = forFriends ? friendsDelivery() : await resolveDeliveryOption(input.deliveryOptionId, address, lines);
   if (!delivery) throw new CheckoutError("delivery_option_invalid");
+  const shipped = needsShippingAddress(delivery.deliveryType);
+  if (shipped && !(input.street && input.houseNumber && input.postalCode && input.city)) throw new CheckoutError("address_required");
 
-  const totals = computeTotals(lines, delivery.priceCents);
   const statusToken = createToken();
+  const cartId = await findCartId(cartToken);
 
   const order = await prisma.$transaction(async (tx) => {
+    // Checked here rather than once more up front: this is what stops two checkouts sharing the last use of a code.
+    let discount: Extract<DiscountCheck, { ok: true }> | null = null;
+    if (input.discountCode) {
+      const check = await claimDiscount(tx, input.discountCode, subtotalOf(lines), input.email);
+      assertDiscountUsable(check);
+      discount = check;
+    }
+    // Free delivery in person is what the code gives: without one that may, this option doesn't exist.
+    if (forFriends && !discount?.personalDelivery) throw new CheckoutError("delivery_option_invalid");
+    const totals = computeTotals(lines, delivery.priceCents, discount?.discountCents ?? 0);
     const number = await nextOrderNumber(tx);
     return tx.order.create({
       data: {
         number,
+        cartId,
+        discountCodeId: discount?.id,
+        discountCode: discount?.code,
         email: input.email,
         firstName: input.firstName,
         lastName: input.lastName,
         phone: input.phone ?? null,
-        street: input.street,
-        houseNumber: input.houseNumber,
-        postalCode: input.postalCode,
-        city: input.city,
+        street: shipped ? input.street : null,
+        houseNumber: shipped ? input.houseNumber : null,
+        postalCode: shipped ? input.postalCode : null,
+        city: shipped ? input.city : null,
         country: input.country,
         currency: CURRENCY,
         ...totals,
@@ -110,6 +163,7 @@ export async function startCheckout(cartToken: string | null, input: CheckoutInp
             sku: line.sku,
             size: line.size,
             edition: line.edition,
+            attachment: line.attachment,
             animal: line.animal,
             title: line.title,
             notes: line.notes,
@@ -132,9 +186,15 @@ export async function startCheckout(cartToken: string | null, input: CheckoutInp
         },
         statusChanges: { create: { fromStatus: null, toStatus: "PENDING_PAYMENT", source: "checkout" } },
       },
-      select: { id: true, number: true, totalCents: true },
+      select: { id: true, number: true, totalCents: true, locale: true },
     });
   });
+
+  // Nothing to pay (a 100% code with free delivery): Bancontact can't charge € 0, so there's no payment to wait for.
+  if (order.totalCents === 0) {
+    await completeFreeOrder(order.id, order.number);
+    return { checkoutUrl: orderReturnUrl(order.id, statusToken, order.locale) };
+  }
 
   let payment: Awaited<ReturnType<typeof createOrderPayment>>;
   try {

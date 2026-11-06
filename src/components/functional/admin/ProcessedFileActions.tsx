@@ -74,7 +74,7 @@ export function ProcessedFileActions({
 
   return (
     <div className="flex flex-col items-end gap-2">
-      <div className="flex gap-2">
+      <div className="flex flex-wrap justify-end gap-2">
         {hasProcessedFile && (
           <Button
             variant="primary"

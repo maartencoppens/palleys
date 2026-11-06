@@ -28,6 +28,8 @@ const schema = z.object({
   BANCONTACT_API_KEY: optional(z.string().min(16)),
   BANCONTACT_PAYMENT_PROFILE_ID: optional(z.string().min(8)), // checked against the `sub` of every signed callback
   BANCONTACT_ENV: z.enum(["preprod", "production"]).default("preprod"),
+  // "fake" = fake payments to test the order flow locally without Bancontact. Ignored in production (see providers/fake.ts).
+  PAYMENT_PROVIDER: optional(z.enum(["bancontact", "fake"])),
   // Resend for order mails. Unset = mails are skipped (and logged without personal data).
   RESEND_API_KEY: optional(z.string().min(1)),
   EMAIL_FROM: optional(z.string().min(3)), // e.g. "Palleys <bestellingen@palleys.be>", domain verified in Resend

@@ -9,8 +9,7 @@ import { useSettingsSave } from "./useSettingsSave";
 const COMPANY_FIELDS = [
   { name: "legalName", label: "Naam" },
   { name: "address", label: "Adres (straat, nummer, postcode, gemeente)" },
-  { name: "enterpriseNumber", label: "Ondernemingsnummer" },
-  { name: "vatNumber", label: "Btw-nummer" },
+  { name: "enterpriseNumber", label: "Ondernemingsnummer (leeg als we er geen hebben)" },
   { name: "email", label: "E-mail" },
   { name: "phone", label: "Telefoon" },
 ] as const;

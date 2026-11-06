@@ -3,6 +3,8 @@ import { getShopSettings } from "@/core/modules/settings/service";
 import { CatalogSettingsForm } from "@/components/functional/admin/settings/CatalogSettingsForm";
 import { SettingsHeader } from "@/components/functional/admin/settings/SettingsParts";
 
+export const instant = false;
+
 export default async function AdminProductSettingsPage() {
   await requireAdminPage();
   const { catalog } = await getShopSettings();

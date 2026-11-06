@@ -14,7 +14,7 @@ import { formatPrice, fromEuroInput, toEuroInput } from "@/core/utils/format";
 import Button from "@/components/design/Button";
 import { Input, Textarea } from "@/components/design/form";
 import { compactFieldClassName, fieldLabelClassName } from "@/components/functional/admin/settings/SettingsParts";
-import { animals, editions, type Animal, type Edition } from "@/data/options";
+import { animals, attachments, editions, type Animal, type Attachment, type Edition } from "@/data/options";
 import { MANUAL_PAYMENT_METHODS, PAYMENT_METHOD_LABELS, type ManualPaymentMethod } from "@/data/payment-methods";
 import { MAX_LINE_QUANTITY, MAX_ORDER_LINES } from "@/data/pricing";
 import { ALLOWED_IMAGE_TYPES, MAX_PHOTOS_PER_PREVIEW, MAX_UPLOAD_BYTES } from "@/data/uploads";
@@ -35,12 +35,13 @@ type PersonalizedLine = {
   kind: "personalized";
   animal: Animal;
   edition: Edition;
+  attachment: Attachment;
   quantity: number;
   price: string | null;
   notes: string;
   photos: File[];
 };
-type CollectibleLine = { key: number; kind: "collectible"; collectibleId: string; quantity: number; price: string | null; notes: string };
+type CollectibleLine = { key: number; kind: "collectible"; collectibleId: string; attachment: Attachment; quantity: number; price: string | null; notes: string };
 type Line = PersonalizedLine | CollectibleLine;
 
 type PaymentChoice = "bancontact" | "paid" | "later";
@@ -138,8 +139,8 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
           notes: line.notes,
         };
         return line.kind === "personalized"
-          ? { kind: line.kind, animal: line.animal, edition: line.edition, ...shared }
-          : { kind: line.kind, collectibleId: line.collectibleId, ...shared };
+          ? { kind: line.kind, animal: line.animal, edition: line.edition, attachment: line.attachment, ...shared }
+          : { kind: line.kind, collectibleId: line.collectibleId, attachment: line.attachment, ...shared };
       }),
       delivery:
         deliveryType === "handover"
@@ -274,23 +275,55 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
                         ))}
                       </select>
                     </Field>
+                    {line.edition === "keychain" && (
+                      <Field label="Bevestiging" id={`attachment-${index}`}>
+                        <select
+                          id={`attachment-${index}`}
+                          value={line.attachment}
+                          onChange={(e) => updateLine(line.key, { attachment: e.target.value as Attachment })}
+                          className={selectClassName}
+                        >
+                          {attachments.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                    )}
                   </div>
                 ) : (
-                  <Field label="Product" id={`collectible-${index}`}>
-                    <select
-                      id={`collectible-${index}`}
-                      value={line.collectibleId}
-                      onChange={(e) => updateLine(line.key, { collectibleId: e.target.value, price: null })}
-                      className={selectClassName}
-                    >
-                      {collectibles.map((option) => (
-                        <option key={option.id} value={option.id}>
-                          {option.name}
-                          {option.soldOut ? " (uitverkocht)" : ""}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="Product" id={`collectible-${index}`}>
+                      <select
+                        id={`collectible-${index}`}
+                        value={line.collectibleId}
+                        onChange={(e) => updateLine(line.key, { collectibleId: e.target.value, price: null })}
+                        className={selectClassName}
+                      >
+                        {collectibles.map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {option.name}
+                            {option.soldOut ? " (uitverkocht)" : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Bevestiging" id={`attachment-${index}`}>
+                      <select
+                        id={`attachment-${index}`}
+                        value={line.attachment}
+                        onChange={(e) => updateLine(line.key, { attachment: e.target.value as Attachment })}
+                        className={selectClassName}
+                      >
+                        {attachments.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                  </div>
                 )}
 
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -359,7 +392,7 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
               variant="secondary"
               disabled={lines.length >= MAX_ORDER_LINES || collectibles.length === 0}
               onClick={() =>
-                addLine({ key: nextKey, kind: "collectible", collectibleId: collectibles[0].id, quantity: 1, price: null, notes: "" })
+                addLine({ key: nextKey, kind: "collectible", collectibleId: collectibles[0].id, attachment: attachments[0].value, quantity: 1, price: null, notes: "" })
               }
             >
               Collectible
@@ -488,7 +521,6 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
           <span className="font-display text-xl font-medium">Totaal</span>
           <span className="text-2xl font-extrabold tabular-nums">{formatPrice(totalCents / 100)}</span>
         </p>
-        <p className="-mt-3 text-xs text-text-muted">Incl. btw</p>
 
         {payment === "paid" ? (
           <label className="flex cursor-pointer items-start gap-3 text-sm">
@@ -525,7 +557,7 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="bv. Vriend van Maarten, opgehaald op school"
-            className="mt-2 min-h-16 text-sm md:text-sm"
+            className="mt-2 min-h-16 text-base!"
           />
         </div>
 
@@ -543,7 +575,7 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
 }
 
 function newPersonalizedLine(key: number): PersonalizedLine {
-  return { key, kind: "personalized", animal: "dog", edition: "keychain", quantity: 1, price: null, notes: "", photos: [] };
+  return { key, kind: "personalized", animal: "dog", edition: "keychain", attachment: attachments[0].value, quantity: 1, price: null, notes: "", photos: [] };
 }
 
 function lineName(line: Line, collectibles: CollectibleView[]) {

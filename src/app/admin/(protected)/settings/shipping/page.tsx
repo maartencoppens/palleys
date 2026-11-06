@@ -3,6 +3,8 @@ import { getShopSettings } from "@/core/modules/settings/service";
 import { SettingsHeader } from "@/components/functional/admin/settings/SettingsParts";
 import { ShippingSettingsForm } from "@/components/functional/admin/settings/ShippingSettingsForm";
 
+export const instant = false;
+
 export default async function AdminShippingSettingsPage() {
   await requireAdminPage();
   const settings = await getShopSettings();

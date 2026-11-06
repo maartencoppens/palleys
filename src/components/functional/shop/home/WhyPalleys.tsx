@@ -1,21 +1,7 @@
 import Image from "next/image";
 import Button from "@/components/design/Button";
 import SectionHeader from "@/components/design/SectionHeader";
-
-const benefits = [
-  {
-    title: "Sprekend jouw huisdier",
-    text: "Gemaakt naar je eigen foto, dus onmiskenbaar jouw maatje. Geen twee Palleys zijn hetzelfde.",
-  },
-  {
-    title: "Een cadeau met een verhaal",
-    text: "Ken je een baasje dat alles al heeft? Dit hebben ze gegarandeerd nog niet.",
-  },
-  {
-    title: "Elke dag mee",
-    text: "Aan je sleutels, je tas of je rugzak: je beste vriend gaat voortaan overal mee.",
-  },
-];
+import { getMessages } from "@/core/locale/server";
 
 /*
  * "Why buy a Palley?" (Figma: info-section, 1440×1246). Same page background as the sections around it,
@@ -25,7 +11,8 @@ const benefits = [
  * also capped by the viewport height, so the whole section still fits one screen on shorter monitors:
  * 601px is the height of everything else in the section on desktop, 2.098 the photo's aspect ratio.
  */
-export default function WhyPalleys() {
+export default async function WhyPalleys() {
+  const { why: m, common } = await getMessages();
   return (
     <section
       id="why-palleys"
@@ -34,8 +21,8 @@ export default function WhyPalleys() {
     >
       <div className="flex w-full flex-col items-center gap-6 md:gap-[55px]">
         <SectionHeader
-          tag="Waarom een Palley?"
-          title="Je Palley, altijd bij je"
+          tag={m.tag}
+          title={m.title}
           titleId="why-palleys-title"
         />
 
@@ -45,7 +32,7 @@ export default function WhyPalleys() {
           src="/images/info/pets-together.png"
           width={1266}
           height={603.5}
-          alt="Een golden retriever, een pluizige puppy en een rosse kat liggen samen in het gras"
+          alt={m.photoAlt}
           sizes="(min-width: 1298px) 1266px, 100vw"
         />
       </div>
@@ -54,7 +41,7 @@ export default function WhyPalleys() {
         data-animate="stagger"
         className="grid w-full max-w-[1260px] gap-4 md:grid-cols-3 md:gap-8 lg:gap-[117px]"
       >
-        {benefits.map((benefit) => (
+        {m.benefits.map((benefit) => (
           <li
             key={benefit.title}
             className="flex flex-col gap-1 text-medium-green md:gap-[13px]"
@@ -71,7 +58,7 @@ export default function WhyPalleys() {
 
       <div data-animate="fade-up">
         <Button href="/create" size="large">
-          Maak je Palley
+          {common.createPalley}
         </Button>
       </div>
     </section>

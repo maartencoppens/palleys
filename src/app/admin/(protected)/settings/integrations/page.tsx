@@ -7,17 +7,22 @@ import { TERMS_VERSION } from "@/data/checkout";
 import { Badge } from "@/components/design/Badge";
 import { SettingsHeader } from "@/components/functional/admin/settings/SettingsParts";
 
+export const instant = false;
+
 export default async function AdminIntegrationsPage() {
   await requireAdminPage();
   const mode = paymentProvider.mode();
+  const fake = paymentProvider.name === "fake";
   const callbackReachable = env.APP_URL.startsWith("https://") && !["localhost", "127.0.0.1"].includes(new URL(env.APP_URL).hostname);
 
   const status = [
     {
       label: "Bancontact Pro (KBC)",
-      value: mode === "live" ? "Productie" : mode === "test" ? "Preprod (test)" : "Niet gekoppeld",
-      tone: mode === "live" ? "success" : mode === "test" ? "waiting" : "danger",
-      hint: mode
+      value: fake ? "Testbetalingen, geen echt geld" : mode === "live" ? "Productie" : mode === "test" ? "Preprod (test)" : "Niet gekoppeld",
+      tone: mode === "live" && !fake ? "success" : mode === "test" ? "waiting" : "danger",
+      hint: fake
+        ? "PAYMENT_PROVIDER=fake: alleen lokaal, staat in productie altijd uit"
+        : mode
         ? `BANCONTACT_ENV=${env.BANCONTACT_ENV}`
         : "Zet BANCONTACT_API_KEY en BANCONTACT_PAYMENT_PROFILE_ID in .env (portal.bancontactpro.com) en herstart",
     },

@@ -44,7 +44,7 @@ export function ShippingSettingsForm({ settings }: { settings: ShippingSettings 
     <form onSubmit={submit} className="flex flex-col gap-6">
       <SettingsCard
         title="Verzendopties"
-        intro="Prijs die de klant betaalt, incl. btw. Vaste opties tot Sendcloud gekoppeld is; daarna blijven ze de noodoplossing."
+        intro="Prijs die de klant betaalt. Vaste opties tot Sendcloud gekoppeld is; daarna blijven ze de noodoplossing."
       >
         <ul className="divide-y divide-off-white-dark">
           {STATIC_DELIVERY_OPTIONS.map((option) => (
@@ -74,7 +74,7 @@ export function ShippingSettingsForm({ settings }: { settings: ShippingSettings 
                   onChange={(event) =>
                     setRows((current) => ({ ...current, [option.id]: { ...current[option.id], price: event.target.value } }))
                   }
-                  className="h-11 w-28 text-base md:text-base"
+                  className="h-11 w-28 text-base!"
                 />
               </div>
             </li>

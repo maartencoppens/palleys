@@ -73,7 +73,7 @@ export function ApprovedModelsTable({ models }: { models: Model[] }) {
       )}
 
       <div className="mt-4 overflow-x-auto rounded-3xl bg-white">
-        <table className="w-full text-left text-sm">
+        <table className="admin-table w-full text-left text-sm">
           <thead className="border-b-[1.5px] border-off-white-dark font-label text-text-muted">
             <tr>
               <th className="w-10 px-5 py-4" />
@@ -86,7 +86,7 @@ export function ApprovedModelsTable({ models }: { models: Model[] }) {
           <tbody>
             {models.map((m) => (
               <tr key={m.id} className="border-b border-off-white-dark last:border-0">
-                <td className="px-5 py-4">
+                <td data-label="Selecteren" className="px-5 py-4">
                   <input
                     type="checkbox"
                     className="size-5 accent-medium-green"
@@ -95,13 +95,13 @@ export function ApprovedModelsTable({ models }: { models: Model[] }) {
                     aria-label={`Selecteer ${m.id}`}
                   />
                 </td>
-                <td className="px-5 py-4 tabular-nums">
+                <td data-label="Aangemaakt" className="px-5 py-4 tabular-nums">
                   {formatDateTime(m.createdAt)}
                 </td>
-                <td className="px-5 py-4">
+                <td data-label="Aantal" className="px-5 py-4">
                   {m.quantity > 1 ? <Badge tone="waiting">{m.quantity}×</Badge> : "1"}
                 </td>
-                <td className="px-5 py-4">
+                <td data-label="Gedownload" className="px-5 py-4">
                   {m.downloadedAt ? (
                     <span className="text-text-muted">
                       {m.downloadedBy} · {formatDateTime(m.downloadedAt)}

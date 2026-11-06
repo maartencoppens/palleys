@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { getMessages } from "@/core/locale/server";
 
 /*
  * Rays around the "50%" tag, from Figma (charity-section → Group 1). Each ray is the same pill shape,
@@ -13,7 +14,8 @@ const rays = [
   { x: 487.65, y: 14.4, width: 51.668, height: 39.905, angle: 150.82 },
 ];
 
-export default function CharityTag() {
+export default async function CharityTag() {
+  const { charity: m } = await getMessages();
   return (
     <div data-animate="rays" className="relative h-[158.66px] w-[550.59px]">
       {rays.map((ray) => (
@@ -44,11 +46,11 @@ export default function CharityTag() {
           alt=""
           aria-hidden
         />
-        <p className="relative flex items-center gap-[41px] font-display leading-[normal] font-medium whitespace-nowrap text-medium-green">
+        <p className="relative flex items-center gap-4 font-display leading-[normal] font-medium whitespace-nowrap text-medium-green">
           <span className="text-[64px]">50%</span>
-          <span className="flex flex-col gap-[5px] text-2xl">
-            <span>Van onze winst</span>
-            <span>Voor de dieren</span>
+          <span className="flex flex-col gap-[5px] text-lg">
+            <span>{m.badgeLine1}</span>
+            <span>{m.badgeLine2}</span>
           </span>
         </p>
       </div>

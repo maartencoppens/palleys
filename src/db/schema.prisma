@@ -204,6 +204,7 @@ model CartLine {
   collectibleId String?
   collectible   Collectible? @relation(fields: [collectibleId], references: [id], onDelete: Cascade)
   edition       String? // waarde uit src/data/options.ts (keychain | figure), alleen bij een preview
+  attachment    String? // waarde uit src/data/options.ts (clip | key-ring), alleen bij een sleutelhanger
   animal        String? // waarde uit src/data/options.ts (dog, cat, ...), alleen bij een preview
   size          String       @default("M")
   notes         String?
@@ -219,25 +220,53 @@ model CartLine {
 // Kant-en-klare modellen die niet gepersonaliseerd zijn. Beheerd in /admin/settings/collectibles.
 // Verwijderen = archivedAt zetten: oude orders blijven ernaar verwijzen en herstellen kan altijd.
 model Collectible {
-  id          String      @id @default(uuid())
-  slug        String      @unique // in de URL (/shop/<slug>), verandert niet na het aanmaken
-  sku         String      @unique // PAL-COL-<SLUG>
-  name        String
-  description String?
-  tag         String? // label op de kaart, bv. "Bestseller"
-  priceCents  Int // incl. btw
-  imageKey    String? // R2-key onder collectibles/, publiek via /api/collectibles/images
-  published   Boolean     @default(false) // zichtbaar op de website
-  soldOut     Boolean     @default(false)
-  sortOrder   Int         @default(0)
-  archivedAt  DateTime?
-  updatedBy   String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  cartLines   CartLine[]
-  orderItems  OrderItem[]
+  id           String      @id @default(uuid())
+  slug         String      @unique // in de URL (/shop/<slug>), verandert niet na het aanmaken
+  sku          String      @unique // PAL-COL-<SLUG>
+  name         String
+  description  String?
+  tag          String? // label op de kaart, bv. "Bestseller"
+  // Naam, beschrijving en label in de andere talen: { "en": { "name": …, "description": …, "tag": … } }
+  translations Json        @default("{}")
+  priceCents   Int // incl. btw
+  imageKey     String? // R2-key onder collectibles/, publiek via /api/collectibles/images
+  published    Boolean     @default(false) // zichtbaar op de website
+  soldOut      Boolean     @default(false)
+  sortOrder    Int         @default(0)
+  archivedAt   DateTime?
+  updatedBy    String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  cartLines    CartLine[]
+  orderItems   OrderItem[]
 
   @@index([published, archivedAt, sortOrder])
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+// Kortingscodes, beheerd in /admin/settings/discounts. Korting geldt op de producten, niet op de verzending.
+// Het aantal keer gebruikt staat nergens apart: dat zijn de orders die de code dragen en niet geannuleerd of verlopen zijn.
+model DiscountCode {
+  id               String       @id @default(uuid())
+  code             String       @unique // altijd hoofdletters
+  type             DiscountType
+  value            Int // procent (1-100) of centen, volgens type
+  minSubtotalCents Int          @default(0)
+  maxRedemptions   Int? // leeg = onbeperkt
+  oncePerEmail     Boolean      @default(false)
+  personalDelivery Boolean      @default(false) // geeft recht op gratis persoonlijk overhandigen (vrienden en familie)
+  startsAt         DateTime?
+  expiresAt        DateTime?
+  active           Boolean      @default(true)
+  note             String? // alleen voor de admin
+  updatedBy        String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  orders           Order[]
 }
 
 model Order {
@@ -245,6 +274,11 @@ model Order {
   number             String              @unique // PAL-2026-00042, sequentieel per jaar
   status             OrderStatus         @default(PENDING_PAYMENT)
   createdBy          String? // null = via de website, anders de admin die de order toevoegde
+  cartId             String? // het mandje van deze order: na betaling verdwijnen de gekochte collectibles eruit
+  discountCodeId     String?
+  discount           DiscountCode?       @relation(fields: [discountCodeId], references: [id], onDelete: Restrict)
+  discountCode       String? // de code zoals gebruikt, ook als hij later hernoemd wordt
+  discountCents      Int                 @default(0) // afgetrokken van het subtotaal, zit al verrekend in totalCents
   email              String? // alleen leeg bij een handmatige order
   firstName          String
   lastName           String
@@ -276,6 +310,7 @@ model Order {
 
   @@index([status, createdAt])
   @@index([email])
+  @@index([discountCodeId])
 }
 
 model OrderItem {
@@ -289,6 +324,7 @@ model OrderItem {
   sku           String
   size          String
   edition       String?
+  attachment    String? // clip | key-ring, alleen bij een sleutelhanger
   animal        String?
   title         String // zoals de klant het zag, bv. "Palley Hond · Met sleutelhanger"
   notes         String?

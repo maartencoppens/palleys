@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
+import { Link, useMessages } from "@/core/locale/client";
 import {
   gsap,
   prefersReducedMotion,
@@ -10,6 +10,7 @@ import {
   useGSAP,
 } from "@/core/utils/gsap";
 import CartMenu from "./CartMenu";
+import LanguageSwitcher from "./LanguageSwitcher";
 import MobileMenu from "./MobileMenu";
 
 interface NavLink {
@@ -22,13 +23,6 @@ interface ScrollUpdateContext {
   direction: number;
 }
 
-const links: NavLink[] = [
-  { label: "Home", href: "/" },
-  { label: "Maak je Palley", href: "/create" },
-  { label: "Collectie", href: "/shop" },
-  { label: "Over ons", href: "/about" },
-];
-
 /*
  * Site navbar. It starts in its own spot at the top of the page. Once the visitor scrolls past it, it
  * becomes a compact green bar fixed to the top that slides away while scrolling down (more room to
@@ -38,6 +32,12 @@ const links: NavLink[] = [
  * (e.g. the create page stepper) can sit just below it instead of being covered.
  */
 export default function Navbar() {
+  const { nav, common } = useMessages();
+  const links: NavLink[] = [
+    { label: nav.home, href: "/" },
+    { label: common.createPalley, href: "/create" },
+    { label: nav.about, href: "/about" },
+  ];
   const [menuOpen, setMenuOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
   const slotRef = useRef<HTMLDivElement>(null);
@@ -152,7 +152,7 @@ export default function Navbar() {
           <Link
             href="/"
             className="shrink-0 rounded-full"
-            aria-label="Palleys startpagina"
+            aria-label={nav.homeLabel}
             data-nav-item
           >
             <Image
@@ -167,7 +167,7 @@ export default function Navbar() {
 
           <nav
             className="flex items-center gap-s md:gap-8 md:pl-5 lg:gap-12"
-            aria-label="Hoofdmenu"
+            aria-label={nav.mainMenu}
           >
             <ul className="hidden items-center gap-10 md:flex lg:gap-[70px]">
               {links.map((link) => (
@@ -189,6 +189,8 @@ export default function Navbar() {
               data-nav-item
             />
 
+            <LanguageSwitcher />
+
             <CartMenu
               pinned={pinned}
               onOpenChange={setCartOpen}
@@ -208,7 +210,7 @@ export default function Navbar() {
               }}
               data-nav-item
             >
-              <span className="sr-only">Menu openen</span>
+              <span className="sr-only">{nav.openMenu}</span>
               <span
                 className="h-[3px] w-[26px] rounded-full bg-text-secondary"
                 aria-hidden

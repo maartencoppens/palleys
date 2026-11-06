@@ -2,7 +2,7 @@
 
 // LEGAL-REVIEW: bump this whenever the terms change, and keep every published version reachable
 // (Order.termsVersion records which one a customer accepted).
-export const TERMS_VERSION = "2026-11-01-concept";
+export const TERMS_VERSION = "2026-11-04b-concept";
 export const TERMS_URL = "/algemene-voorwaarden";
 export const PRIVACY_URL = "/privacy";
 
@@ -23,6 +23,7 @@ export const RETURN_POLL_MAX_MS = 3 * 60 * 1000;
 export const RATE_LIMITS = {
   checkout: { max: 10, windowMs: 10 * 60 * 1000 },
   deliveryOptions: { max: 60, windowMs: 10 * 60 * 1000 },
+  discount: { max: 15, windowMs: 10 * 60 * 1000 },
   cart: { max: 120, windowMs: 10 * 60 * 1000 },
   uploads: { max: 20, windowMs: 60 * 60 * 1000 },
   orderStatus: { max: 120, windowMs: 10 * 60 * 1000 },
@@ -33,10 +34,6 @@ export const CART_COOKIE = "palleys_cart";
 export const CART_TTL_MS = 10 * 24 * 60 * 60 * 1000;
 
 export const MAX_NOTES_LENGTH = 500;
-
-// Languages the checkout can be in; stored on the order for mails (FR/EN later, core/locale).
-export const CHECKOUT_LOCALES = ["nl", "fr", "en"] as const;
-export type CheckoutLocale = (typeof CHECKOUT_LOCALES)[number];
 
 // Field limits for customer details.
 export const FIELD_LIMITS = {

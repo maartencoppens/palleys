@@ -2,13 +2,13 @@ import type { ReactNode } from "react";
 import Button from "@/components/design/Button";
 
 export const fieldLabelClassName = "font-label text-sm font-semibold text-text-muted";
-export const compactFieldClassName = "h-11 text-base md:text-base";
+export const compactFieldClassName = "h-11 text-base!";
 
 /** Page heading of one settings section. */
 export function SettingsHeader({ title, intro, action }: { title: string; intro?: string; action?: ReactNode }) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-4">
-      <div className="max-w-2xl">
+      <div className="min-w-0 flex-1 basis-72">
         <h2 className="font-display text-3xl font-medium text-medium-green">{title}</h2>
         {intro && <p className="mt-1 text-base text-text-muted">{intro}</p>}
       </div>

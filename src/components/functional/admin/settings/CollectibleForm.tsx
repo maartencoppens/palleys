@@ -4,7 +4,15 @@ import Image from "next/image";
 import { useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { postCollectible, putCollectible, uploadCollectibleImage } from "@/core/modules/collectibles/api";
-import type { AdminCollectible } from "@/core/modules/collectibles/types";
+import {
+  missingTranslations,
+  TRANSLATED_LOCALES,
+  type AdminCollectible,
+  type CollectibleTranslation,
+  type CollectibleTranslations,
+  type TranslatedLocale,
+} from "@/core/modules/collectibles/types";
+import { LOCALE_LABELS } from "@/core/locale/config";
 import { getApiErrorMessage } from "@/core/networking/api";
 import { fromEuroInput, toEuroInput } from "@/core/utils/format";
 import Button from "@/components/design/Button";
@@ -20,6 +28,7 @@ export function CollectibleForm({ collectible, nextSortOrder = 0 }: { collectibl
   const [name, setName] = useState(collectible?.name ?? "");
   const [description, setDescription] = useState(collectible?.description ?? "");
   const [tag, setTag] = useState(collectible?.tag ?? "");
+  const [translations, setTranslations] = useState<CollectibleTranslations>(collectible?.translations ?? {});
   const [price, setPrice] = useState(collectible ? toEuroInput(collectible.priceCents) : "");
   const [sortOrder, setSortOrder] = useState(String(collectible?.sortOrder ?? nextSortOrder));
   const [published, setPublished] = useState(collectible?.published ?? true);
@@ -56,6 +65,14 @@ export function CollectibleForm({ collectible, nextSortOrder = 0 }: { collectibl
     }
     if (published && !image.key) return setError("Voeg een foto toe, of zet het product nog niet op de website");
 
+    const cleaned = Object.fromEntries(
+      TRANSLATED_LOCALES.map((locale) => [locale, trimTranslation(translations[locale])]),
+    ) as CollectibleTranslations;
+    const missing = missingTranslations({ name, description: description.trim() || null, tag: tag.trim() || null, translations: cleaned });
+    if (published && missing.length > 0) {
+      return setError(`Vul ${missingLabel(missing)} in, of zet het product nog niet op de website`);
+    }
+
     const input = {
       name: name.trim(),
       description: description.trim() || null,
@@ -65,6 +82,7 @@ export function CollectibleForm({ collectible, nextSortOrder = 0 }: { collectibl
       published,
       soldOut,
       sortOrder: Math.max(0, Number.parseInt(sortOrder, 10) || 0),
+      translations: cleaned,
     };
     setSaving(true);
     try {
@@ -98,7 +116,7 @@ export function CollectibleForm({ collectible, nextSortOrder = 0 }: { collectibl
           </div>
           <div>
             <label htmlFor="collectible-price" className={fieldLabelClassName}>
-              Prijs incl. btw (€)
+              Prijs (€)
             </label>
             <Input
               id="collectible-price"
@@ -132,11 +150,21 @@ export function CollectibleForm({ collectible, nextSortOrder = 0 }: { collectibl
               maxLength={COLLECTIBLE_LIMITS.description}
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              className="mt-2 min-h-28 text-base md:text-base"
+              className="mt-2 min-h-28 text-base!"
             />
           </div>
         </div>
       </SettingsCard>
+
+      {TRANSLATED_LOCALES.map((locale) => (
+        <TranslationCard
+          key={locale}
+          locale={locale}
+          value={translations[locale] ?? {}}
+          dutch={{ name, description, tag }}
+          onChange={(value) => setTranslations((current) => ({ ...current, [locale]: value }))}
+        />
+      ))}
 
       <SettingsCard title="Foto" intro="JPG, PNG of WebP, maximaal 10 MB. Liefst op een transparante of effen achtergrond.">
         <div className="flex flex-wrap items-center gap-5">
@@ -205,5 +233,98 @@ export function CollectibleForm({ collectible, nextSortOrder = 0 }: { collectibl
         label={collectible ? "Opslaan" : "Collectible toevoegen"}
       />
     </form>
+  );
+}
+
+const FIELD_NAMES = { name: "de naam", description: "de beschrijving", tag: "het label" } as const;
+// The language names in Dutch, for the backoffice.
+const LOCALE_NAMES: Record<TranslatedLocale, string> = { nl: "Nederlands", en: "Engels" };
+
+/** ["en.name", "en.tag"] → "in het Engels ook de naam en het label". */
+function missingLabel(missing: string[]) {
+  return TRANSLATED_LOCALES.map((locale) => {
+    const fields = missing
+      .filter((entry) => entry.startsWith(`${locale}.`))
+      .map((entry) => FIELD_NAMES[entry.slice(locale.length + 1) as keyof typeof FIELD_NAMES]);
+    return fields.length > 0 ? `in het ${LOCALE_NAMES[locale]} ook ${fields.join(" en ")}` : null;
+  })
+    .filter(Boolean)
+    .join(", ");
+}
+
+function trimTranslation(value: CollectibleTranslation | undefined): CollectibleTranslation {
+  return {
+    name: value?.name?.trim() || null,
+    description: value?.description?.trim() || null,
+    tag: value?.tag?.trim() || null,
+  };
+}
+
+/** The same texts in another language. Empty fields show the Dutch text as a hint. */
+function TranslationCard({
+  locale,
+  value,
+  dutch,
+  onChange,
+}: {
+  locale: TranslatedLocale;
+  value: Partial<CollectibleTranslation>;
+  dutch: { name: string; description: string; tag: string };
+  onChange: (value: Partial<CollectibleTranslation>) => void;
+}) {
+  const id = (field: string) => `collectible-${locale}-${field}`;
+  const set = (field: keyof CollectibleTranslation) => (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    onChange({ ...value, [field]: event.target.value });
+  return (
+    <SettingsCard
+      title={`${LOCALE_NAMES[locale]} (${LOCALE_LABELS[locale].short})`}
+      intro={`Wat bezoekers van de ${LOCALE_LABELS[locale].name}-versie van de website zien. Elke tekst die je hierboven invult, vul je hier ook in.`}
+    >
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="sm:col-span-2">
+          <label htmlFor={id("name")} className={fieldLabelClassName}>
+            Naam
+          </label>
+          <Input
+            id={id("name")}
+            lang={locale}
+            value={value.name ?? ""}
+            maxLength={COLLECTIBLE_LIMITS.name}
+            onChange={set("name")}
+            placeholder={dutch.name || "Golden Retriever"}
+            className={`mt-2 ${compactFieldClassName}`}
+          />
+        </div>
+        <div>
+          <label htmlFor={id("tag")} className={fieldLabelClassName}>
+            Label op de kaart {dutch.tag.trim() ? "" : "(optioneel)"}
+          </label>
+          <Input
+            id={id("tag")}
+            lang={locale}
+            value={value.tag ?? ""}
+            maxLength={COLLECTIBLE_LIMITS.tag}
+            onChange={set("tag")}
+            placeholder={dutch.tag || "Bestseller"}
+            className={`mt-2 ${compactFieldClassName}`}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label htmlFor={id("description")} className={fieldLabelClassName}>
+            Beschrijving {dutch.description.trim() ? "" : "(optioneel)"}
+          </label>
+          <Textarea
+            id={id("description")}
+            lang={locale}
+            rows={4}
+            maxLength={COLLECTIBLE_LIMITS.description}
+            value={value.description ?? ""}
+            onChange={set("description")}
+            placeholder={dutch.description}
+            className="mt-2 min-h-28 text-base!"
+          />
+        </div>
+      </div>
+    </SettingsCard>
   );
 }

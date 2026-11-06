@@ -8,6 +8,8 @@ import { Badge } from "@/components/design/Badge";
 import { Input } from "@/components/design/form";
 import { OrderStatusBadge, orderStatusLabel, PaymentStatusBadge } from "@/components/functional/admin/OrderStatusBadge";
 
+export const instant = false;
+
 const FILTERS = [
   { value: "", label: "Alle" },
   { value: "ATTENTION", label: "Probleem" },
@@ -31,17 +33,17 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
         </Button>
       </div>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {[
           { label: "Betaald vandaag", value: String(stats.paidToday) },
-          { label: "Omzet vandaag (incl. btw)", value: formatPrice(stats.revenueTodayCents / 100) },
+          { label: "Omzet vandaag", value: formatPrice(stats.revenueTodayCents / 100) },
           { label: "Wacht op betaling", value: String(stats.pending) },
           { label: "Met probleem", value: String(stats.attention), danger: stats.attention > 0 },
         ].map((card) => (
-          <div key={card.label} className="rounded-3xl bg-white p-6">
+          <div key={card.label} className="rounded-3xl bg-white p-4 sm:p-6">
             <p className="font-label text-sm font-semibold text-text-muted">{card.label}</p>
             <p
-              className={`mt-2 font-display text-4xl font-medium tabular-nums ${card.danger ? "text-[#a3341a]" : "text-medium-green"}`}
+              className={`mt-2 font-display text-3xl font-medium tabular-nums sm:text-4xl ${card.danger ? "text-[#a3341a]" : "text-medium-green"}`}
             >
               {card.value}
             </p>
@@ -55,7 +57,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
           defaultValue={query.q ?? ""}
           placeholder="Ordernummer, e-mail of achternaam"
           aria-label="Orders zoeken"
-          className="h-12 sm:max-w-md md:h-14"
+          className="h-12 bg-white text-base! sm:max-w-md md:h-14 md:text-lg!"
         />
         {query.status && <input type="hidden" name="status" value={query.status} />}
         <Button type="submit" variant="primary">
@@ -90,7 +92,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
         </div>
       ) : (
         <div className="mt-6 overflow-x-auto rounded-3xl bg-white">
-          <table className="w-full text-left text-sm">
+          <table className="admin-table w-full text-left text-sm">
             <thead className="border-b-[1.5px] border-off-white-dark font-label text-text-muted">
               <tr>
                 <th className="px-5 py-4 font-semibold">Order</th>
@@ -120,19 +122,19 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
                       </span>
                     )}
                   </td>
-                  <td className="whitespace-nowrap px-5 py-4 tabular-nums">{formatDateTime(order.createdAt)}</td>
-                  <td className="px-5 py-4">
+                  <td data-label="Datum" className="whitespace-nowrap px-5 py-4 tabular-nums">{formatDateTime(order.createdAt)}</td>
+                  <td data-label="Klant" className="px-5 py-4">
                     <span className="font-semibold">{order.name}</span>
                     {order.email && <span className="block text-text-muted">{order.email}</span>}
                   </td>
-                  <td className="px-5 py-4">
+                  <td data-label="Status" className="px-5 py-4">
                     <OrderStatusBadge status={order.status} />
                   </td>
-                  <td className="whitespace-nowrap px-5 py-4">
+                  <td data-label="Betaling" className="whitespace-nowrap px-5 py-4">
                     {order.paymentStatus ? <PaymentStatusBadge status={order.paymentStatus} /> : "—"}
                     {order.paymentMode === "test" && <span className="ml-2 text-xs text-text-muted">test</span>}
                   </td>
-                  <td className="whitespace-nowrap px-5 py-4 text-right font-semibold tabular-nums">
+                  <td data-label="Totaal" className="whitespace-nowrap px-5 py-4 text-right font-semibold tabular-nums">
                     {formatPrice(order.totalCents / 100)}
                     <span className="block text-xs font-normal text-text-muted">
                       {order.itemCount} {order.itemCount === 1 ? "Palley" : "Palleys"}

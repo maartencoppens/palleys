@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo } from "react";
 import Button from "@/components/design/Button";
 import { publishCart } from "@/core/hooks/useCartSnapshot";
+import { useMessages } from "@/core/locale/client";
+import { fill, fillNodes } from "@/core/locale/fill";
 import { usePollStatus } from "@/core/hooks/usePollStatus";
 import { fetchOrderStatus } from "@/core/modules/orders/api";
 import type { OrderStatusView } from "@/core/modules/checkout/types";
@@ -18,6 +20,7 @@ const CLOSED: OrderStatusView["status"][] = ["CANCELLED", "EXPIRED"];
  * Bancontact, until the order is paid or closed. The link carries a token so nobody else can read the status.
  */
 export default function CheckoutReturn() {
+  const { orderReturn: m } = useMessages();
   const params = useSearchParams();
   const orderId = params.get("order");
   const token = params.get("t");
@@ -44,13 +47,12 @@ export default function CheckoutReturn() {
   if (poll.status === "error") {
     return (
       <div role="alert" className={card}>
-        <h1 className="font-display text-3xl font-bold text-medium-green">Deze link werkt niet</h1>
+        <h1 className="font-display text-3xl font-bold text-medium-green">{m.errorTitle}</h1>
         <p className="text-base text-text-primary md:text-lg">
-          We vinden deze bestelling niet. Kreeg je een bevestigingsmail? Dan is alles in orde. Twijfel je, neem dan contact
-          met ons op.
+          {m.errorText}
         </p>
         <Button variant="primary" href="/">
-          Naar de homepage
+          {m.home}
         </Button>
       </div>
     );
@@ -62,13 +64,12 @@ export default function CheckoutReturn() {
         <span className="grid size-14 place-items-center rounded-full bg-medium-green" aria-hidden>
           <Image src="/images/create/check.svg" width={24} height={18} alt="" />
         </span>
-        <h1 className="font-display text-3xl font-bold text-medium-green md:text-4xl">Bedankt voor je bestelling!</h1>
+        <h1 className="font-display text-3xl font-bold text-medium-green md:text-4xl">{m.paidTitle}</h1>
         <p className="text-base text-text-primary md:text-lg">
-          Je betaling is gelukt. Bestelnummer <strong className="font-label">{poll.data?.number}</strong>. Je krijgt een
-          bevestiging per mail, en ons team in Gent gaat aan de slag met je Palley.
+          {fillNodes(m.paidText, { number: <strong className="font-label">{poll.data?.number}</strong> })}
         </p>
         <Button variant="primary" href="/">
-          Terug naar de winkel
+          {m.backToShop}
         </Button>
       </div>
     );
@@ -77,16 +78,16 @@ export default function CheckoutReturn() {
   if (status && CLOSED.includes(status)) {
     return (
       <div role="alert" className={card}>
-        <h1 className="font-display text-3xl font-bold text-medium-green">De betaling is niet gelukt</h1>
+        <h1 className="font-display text-3xl font-bold text-medium-green">{m.closedTitle}</h1>
         <p className="text-base text-text-primary md:text-lg">
-          Er is niets aangerekend. Je Palleys staan nog in je winkelmandje, dus je kunt het meteen opnieuw proberen.
+          {m.closedText}
         </p>
         <div className="flex flex-wrap gap-3">
           <Button variant="primary" href="/checkout">
-            Opnieuw afrekenen
+            {m.payAgain}
           </Button>
           <Button variant="secondary" href="/cart">
-            Naar winkelmandje
+            {m.toCart}
           </Button>
         </div>
       </div>
@@ -96,13 +97,12 @@ export default function CheckoutReturn() {
   if (poll.status === "timeout") {
     return (
       <div role="status" className={card}>
-        <h1 className="font-display text-3xl font-bold text-medium-green">Je betaling wordt nog verwerkt</h1>
+        <h1 className="font-display text-3xl font-bold text-medium-green">{m.timeoutTitle}</h1>
         <p className="text-base text-text-primary md:text-lg">
-          Dit duurt langer dan normaal. Zodra je bank de betaling bevestigt, krijg je een mail
-          {poll.data ? ` voor bestelling ${poll.data.number}` : ""}. Je hoeft niets opnieuw te doen.
+          {poll.data ? fill(m.timeoutTextNumber, { number: poll.data.number }) : m.timeoutText}
         </p>
         <Button variant="secondary" onClick={() => window.location.reload()}>
-          Opnieuw controleren
+          {m.checkAgain}
         </Button>
       </div>
     );
@@ -111,8 +111,8 @@ export default function CheckoutReturn() {
   return (
     <div role="status" aria-live="polite" className={card}>
       <span className="size-10 animate-spin rounded-full border-4 border-light-green border-t-medium-green" aria-hidden />
-      <h1 className="font-display text-3xl font-bold text-medium-green">Je betaling wordt verwerkt…</h1>
-      <p className="text-base text-text-primary md:text-lg">Even geduld, dit duurt meestal maar een paar seconden.</p>
+      <h1 className="font-display text-3xl font-bold text-medium-green">{m.waitTitle}</h1>
+      <p className="text-base text-text-primary md:text-lg">{m.waitText}</p>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { animals, editions, type Animal, type Edition } from "@/data/options";
+import { LOCALES, type Locale } from "@/core/locale/config";
 import { FIELD_LIMITS } from "@/data/checkout";
 import { MAX_PRODUCT_PRICE_CENTS } from "@/data/pricing";
 import { MAX_SHIPPING_PRICE_CENTS, STATIC_DELIVERY_OPTIONS } from "@/data/shipping";
@@ -62,13 +63,17 @@ export const siteContentSchema = z.object({
     .max(faq.items),
 });
 
+// The texts an admin manages, once per language.
+export const localizedSiteContentSchema = z.object(
+  Object.fromEntries(LOCALES.map((locale) => [locale, siteContentSchema])) as Record<Locale, typeof siteContentSchema>,
+);
+
 const socialUrl = z.union([z.literal(""), z.url({ protocol: /^https$/ }).max(300)]);
 
 export const companySettingsSchema = z.object({
   legalName: z.string().trim().min(1).max(120),
   address: z.string().trim().min(1).max(200),
-  enterpriseNumber: z.string().trim().min(1).max(40),
-  vatNumber: z.string().trim().min(1).max(40),
+  enterpriseNumber: z.string().trim().max(40), // empty: we have none
   email: z.email().max(FIELD_LIMITS.email),
   phone: z.string().trim().max(FIELD_LIMITS.phone),
   socials: z.object({ instagram: socialUrl, tiktok: socialUrl, facebook: socialUrl }),
@@ -78,7 +83,7 @@ export const SETTINGS_SECTION_SCHEMAS = {
   ordering: orderingSettingsSchema,
   shipping: shippingSettingsSchema,
   catalog: catalogSettingsSchema,
-  content: siteContentSchema,
+  content: localizedSiteContentSchema,
   company: companySettingsSchema,
 } as const;
 
@@ -94,12 +99,13 @@ export type OrderingSettings = z.infer<typeof orderingSettingsSchema>;
 export type ShippingSettings = z.infer<typeof shippingSettingsSchema>;
 export type CatalogSettings = z.infer<typeof catalogSettingsSchema>;
 export type SiteContent = z.infer<typeof siteContentSchema>;
+export type LocalizedSiteContent = Record<Locale, SiteContent>;
 export type CompanySettings = z.infer<typeof companySettingsSchema>;
 
 export type ShopSettings = OrderingSettings &
   ShippingSettings & {
     catalog: CatalogSettings;
-    content: SiteContent;
+    content: LocalizedSiteContent;
     company: CompanySettings;
     updatedBy: string | null;
     updatedAt: string | null;

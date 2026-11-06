@@ -5,7 +5,7 @@ import { PACKAGING, PARCEL_BY_SIZE } from "@/data/shipping";
 import { KEYCHAIN_SIZES, type KeychainSize } from "@/data/sizes";
 
 /*
- * Pure catalog and price functions. Amounts are integer cents, VAT included; nothing here trusts the client.
+ * Pure catalog and price functions. Amounts are integer cents; nothing here trusts the client.
  * Edition/Animal are the configurator's values (data/options.ts), ProductType/Species the SKU's (data/products.ts).
  */
 
@@ -57,23 +57,35 @@ export function variantLabel(edition: Edition, animal: Animal) {
   return { animal: animalLabel, edition: editionLabel, title: `Palley ${animalLabel}` };
 }
 
-/** VAT contained in a VAT-inclusive amount, rounded to the cent: 2799 at 21% → 486. */
+/** VAT contained in an amount, rounded to the cent: 2799 at 21% → 486. Nothing at our rate (data/pricing.ts). */
 export function vatIncluded(grossCents: number, rateBasisPoints: number = VAT_RATE_BASIS_POINTS) {
   return Math.round((grossCents * rateBasisPoints) / (10_000 + rateBasisPoints));
 }
 
-export type Totals = { subtotalCents: number; shippingCents: number; vatCents: number; totalCents: number };
+export type Totals = {
+  subtotalCents: number;
+  discountCents: number;
+  shippingCents: number;
+  vatCents: number;
+  totalCents: number;
+};
 
-export function computeTotals(lines: { unitCents: number; quantity: number }[], shippingCents: number): Totals {
+export function computeTotals(
+  lines: { unitCents: number; quantity: number }[],
+  shippingCents: number,
+  discountCents = 0,
+): Totals {
   for (const line of lines) {
     if (!Number.isInteger(line.unitCents) || line.unitCents < 0) throw new Error("Invalid unit price");
     if (!Number.isInteger(line.quantity) || line.quantity < 1) throw new Error("Invalid quantity");
   }
   if (!Number.isInteger(shippingCents) || shippingCents < 0) throw new Error("Invalid shipping price");
   const subtotalCents = lines.reduce((sum, line) => sum + line.unitCents * line.quantity, 0);
-  const totalCents = subtotalCents + shippingCents;
-  // Shipping follows the VAT rate of the goods, so VAT is taken over the whole total.
-  return { subtotalCents, shippingCents, vatCents: vatIncluded(totalCents), totalCents };
+  if (!Number.isInteger(discountCents) || discountCents < 0 || discountCents > subtotalCents) {
+    throw new Error("Invalid discount");
+  }
+  const totalCents = subtotalCents - discountCents + shippingCents;
+  return { subtotalCents, discountCents, shippingCents, vatCents: vatIncluded(totalCents), totalCents };
 }
 
 /** Parcel for a set of Palleys: packaging plus every copy. */

@@ -1,3 +1,5 @@
+import { LOCALES, type Locale } from "@/core/locale/config";
+import { localizedTexts } from "@/core/modules/collectibles/translations";
 import "server-only";
 import { prisma } from "@/db/client";
 import { canTransition } from "@/core/modules/previews/status";
@@ -10,9 +12,9 @@ import type { CatalogSettings } from "@/core/modules/settings/types";
 import { createToken, hashToken } from "@/core/utils/tokens";
 import { CART_TTL_MS } from "@/data/checkout";
 import { CURRENCY, MAX_LINE_QUANTITY, MAX_ORDER_LINES } from "@/data/pricing";
-import type { Animal, Edition } from "@/data/options";
+import { attachments, DEFAULT_ATTACHMENT, type Animal, type Attachment, type Edition } from "@/data/options";
 import type { KeychainSize } from "@/data/sizes";
-import { animalSchema, editionSchema } from "./types";
+import { animalSchema, attachmentSchema, editionSchema } from "./types";
 import type {
   AddCollectibleToCartInput,
   AddToCartInput,
@@ -48,6 +50,7 @@ const LINE_SELECT = {
   id: true,
   previewId: true,
   edition: true,
+  attachment: true,
   animal: true,
   size: true,
   notes: true,
@@ -58,6 +61,7 @@ const LINE_SELECT = {
     select: {
       id: true,
       name: true,
+      translations: true,
       sku: true,
       priceCents: true,
       imageKey: true,
@@ -72,6 +76,7 @@ type StoredLine = {
   id: string;
   previewId: string | null;
   edition: string | null;
+  attachment: string | null;
   animal: string | null;
   size: string;
   notes: string | null;
@@ -80,6 +85,7 @@ type StoredLine = {
   collectible: {
     id: string;
     name: string;
+    translations: unknown;
     sku: string;
     priceCents: number;
     imageKey: string | null;
@@ -94,7 +100,10 @@ export type ResolvedCartLine = {
   id: string;
   size: KeychainSize;
   sku: string;
+  /** Dutch, as the order item and the backoffice keep it. */
   title: string;
+  /** What the shopper reads in each language. */
+  titles: Record<Locale, string>;
   notes: string | null;
   quantity: number;
   unitCents: number;
@@ -104,9 +113,11 @@ export type ResolvedCartLine = {
       previewId: string;
       collectibleId: null;
       edition: Edition;
+      attachment: Attachment | null;
       animal: Animal;
       animalLabel: string;
       editionLabel: string;
+      attachmentLabel: string | null;
       imageUrl: null;
     }
   | {
@@ -114,9 +125,11 @@ export type ResolvedCartLine = {
       previewId: null;
       collectibleId: string;
       edition: null;
+      attachment: Attachment;
       animal: null;
       animalLabel: null;
       editionLabel: null;
+      attachmentLabel: string;
       imageUrl: string | null;
     }
 );
@@ -142,22 +155,32 @@ export async function assertPreviewCanBeOrdered(previewId: string) {
   if (present.length === 0 || present.includes(false)) throw new CartError("photos_missing");
 }
 
+// A line from before the choice existed, or a collectible nobody has chosen for yet, gets the standard one.
+const chosenAttachment = (value: string | null) => attachmentSchema.safeParse(value).data ?? DEFAULT_ATTACHMENT;
+const labelOf = (value: Attachment) => attachments.find((option) => option.value === value)!.label;
+
 function resolveLine(line: StoredLine, catalog: CatalogSettings): ResolvedCartLine | null {
   if (line.collectible) {
     const collectible = line.collectible;
     if (!collectible.published || collectible.soldOut || collectible.archivedAt) return null;
+    const attachment = chosenAttachment(line.attachment);
     return {
       id: line.id,
       kind: "collectible",
       previewId: null,
       collectibleId: collectible.id,
       edition: null,
+      attachment,
       animal: null,
       size: DEFAULT_SIZE,
       sku: collectible.sku,
       title: collectible.name,
+      titles: Object.fromEntries(
+        LOCALES.map((locale) => [locale, localizedTexts({ ...collectible, description: null, tag: null }, locale).name]),
+      ) as Record<Locale, string>,
       animalLabel: null,
       editionLabel: null,
+      attachmentLabel: labelOf(attachment),
       notes: null,
       quantity: line.quantity,
       unitCents: collectible.priceCents,
@@ -172,18 +195,25 @@ function resolveLine(line: StoredLine, catalog: CatalogSettings): ResolvedCartLi
   const variant = variantFor(edition.data, animal.data, line.size);
   if (!getVariant(variant.sku, variant.size)) return null;
   const labels = variantLabel(edition.data, animal.data);
+  const attachment = edition.data === "keychain" ? chosenAttachment(line.attachment) : null;
+  const attachmentLabel = attachment && labelOf(attachment);
+  const title = [labels.title, labels.edition, attachmentLabel].filter(Boolean).join(" · ");
   return {
     id: line.id,
     kind: "personalized",
     previewId: line.previewId,
     collectibleId: null,
     edition: edition.data,
+    attachment,
     animal: animal.data,
     size: line.size,
     sku: variant.sku,
-    title: `${labels.title} · ${labels.edition}`,
+    title,
+    // The shop names a Palley from its choices in its own texts.
+    titles: Object.fromEntries(LOCALES.map((locale) => [locale, title])) as Record<Locale, string>,
     animalLabel: labels.animal,
     editionLabel: labels.edition,
+    attachmentLabel,
     notes: line.notes,
     quantity: line.quantity,
     unitCents: priceFor(variant, catalog.prices),
@@ -199,6 +229,10 @@ async function findCart(token: string | null) {
   });
   if (!cart || cart.expiresAt.getTime() <= Date.now()) return null;
   return cart;
+}
+
+export async function findCartId(token: string | null) {
+  return (await findCart(token))?.id ?? null;
 }
 
 /** Valid lines of a cart, after dropping the ones that can't be bought anymore. */
@@ -243,9 +277,10 @@ async function toView(lines: ResolvedCartLine[]): Promise<CartView> {
   const views: CartLineView[] = lines.map((line) => ({
     id: line.id,
     kind: line.kind,
-    productTitle: line.kind === "personalized" ? `Palley ${line.animalLabel}` : line.title,
-    animal: line.animalLabel,
-    edition: line.editionLabel,
+    productTitles: line.titles,
+    animal: line.animal,
+    edition: line.edition,
+    attachment: line.attachment,
     notes: line.notes,
     quantity: line.quantity,
     unitCents: line.unitCents,
@@ -315,6 +350,7 @@ export async function addPreviewToCart(
       cartId: cart.id,
       previewId: input.previewId,
       edition: input.edition,
+      attachment: input.edition === "keychain" ? (input.attachment ?? null) : null,
       animal: input.animal,
       size: DEFAULT_SIZE,
       notes: input.notes || null,
@@ -365,8 +401,9 @@ export async function updateCartLineQuantity(
   const cart = await findCart(token);
   if (!cart) return null;
   const { count } = await prisma.cartLine.updateMany({
-    where: { id: input.lineId, cartId: cart.id },
-    data: { quantity: input.quantity },
+    // A figurine has nothing to attach.
+    where: { id: input.lineId, cartId: cart.id, ...(input.attachment && { OR: [{ edition: null }, { edition: { not: "figure" } }] }) },
+    data: { quantity: input.quantity, attachment: input.attachment },
   });
   if (count === 0) throw new CartError("line_not_found");
   return toView(await loadLines(cart.id));

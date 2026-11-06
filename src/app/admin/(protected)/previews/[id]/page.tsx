@@ -16,6 +16,8 @@ import { PhotoManager } from "@/components/functional/admin/PhotoManager";
 import { StatusOverridePanel } from "@/components/functional/admin/StatusOverridePanel";
 import type { MeshyProgress } from "@/core/modules/previews/types";
 
+export const instant = false;
+
 const paramsSchema = z.object({ id: z.uuid() });
 
 export default async function AdminPreviewDetailPage({
@@ -46,7 +48,8 @@ export default async function AdminPreviewDetailPage({
       </div>
       <p className="mt-1 break-all font-mono text-sm text-text-muted">{preview.id}</p>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-8">
+      {/* On a phone: the model, then the photos, then the actions, with the emergency status last. */}
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:mt-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-8">
         {preview.glbUrl ? (
           <ModelViewer
             src={preview.glbUrl}
@@ -57,12 +60,14 @@ export default async function AdminPreviewDetailPage({
             Nog geen 3D-model voor deze preview.
           </div>
         )}
-        <StatusOverridePanel
-          previewId={preview.id}
-          currentStatus={preview.status}
-          history={preview.statusChanges}
-        />
-        <aside className="space-y-6 lg:row-span-2">
+        <div className="order-3 lg:order-none">
+          <StatusOverridePanel
+            previewId={preview.id}
+            currentStatus={preview.status}
+            history={preview.statusChanges}
+          />
+        </div>
+        <aside className="order-2 space-y-6 lg:order-none lg:row-span-2">
           <section className="rounded-3xl bg-white p-6">
             <h2 className="font-display text-xl font-medium text-medium-green">Gegevens</h2>
             <dl className="mt-3 space-y-3 text-sm">
@@ -194,7 +199,7 @@ export default async function AdminPreviewDetailPage({
           )}
         </aside>
 
-        <div className="space-y-8">
+        <div className="order-1 space-y-8 lg:order-none">
           <PhotoManager
             previewId={preview.id}
             photos={preview.photos}

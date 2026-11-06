@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { prisma } from "@/db/client";
+import { isPersonalDelivery } from "@/data/shipping";
 import type { Prisma } from "@/db/generated/client";
 import { createDownloadUrl } from "@/core/networking/external/storage-client";
 import { tokenMatches } from "@/core/utils/tokens";
@@ -117,7 +118,7 @@ export async function listOrdersForCheckIn(): Promise<OrderCheckInRow[]> {
     const summary = summarizeCheckIn(
       order.items.map((item) => ({ previewStatus: item.preview?.status ?? null, checkedInAt: item.checkedInAt })),
     );
-    const handover = order.shipment?.deliveryType === "HANDOVER";
+    const handover = isPersonalDelivery(order.shipment?.deliveryType);
     return {
       id: order.id,
       number: order.number,
@@ -162,8 +163,8 @@ export async function getOrderForAdmin(id: string): Promise<AdminOrderDetail | n
           preview: {
             select: {
               status: true,
-              // The first photo, whoever uploaded it: on a manually added order that's the admin.
-              photos: { orderBy: { createdAt: "asc" }, take: 1, select: { key: true } },
+              // Whoever uploaded them: on a manually added order that's the admin.
+              photos: { orderBy: { createdAt: "asc" }, select: { key: true } },
             },
           },
           collectible: { select: { imageKey: true } },
@@ -178,7 +179,7 @@ export async function getOrderForAdmin(id: string): Promise<AdminOrderDetail | n
 
   const items = await Promise.all(
     order.items.map(async (item) => {
-      const key = item.preview?.photos[0]?.key;
+      const photoUrls = await Promise.all((item.preview?.photos ?? []).map((photo) => createDownloadUrl(photo.key)));
       return {
         id: item.id,
         kind: item.previewId ? ("personalized" as const) : ("collectible" as const),
@@ -193,7 +194,9 @@ export async function getOrderForAdmin(id: string): Promise<AdminOrderDetail | n
         quantity: item.quantity,
         unitCents: item.unitCents,
         notes: item.notes,
-        photoUrl: key ? await createDownloadUrl(key) : collectibleImageUrl(item.collectible?.imageKey ?? null),
+        photoUrl: photoUrls[0] ?? collectibleImageUrl(item.collectible?.imageKey ?? null),
+        photoUrls,
+        attachment: item.attachment,
       };
     }),
   );
@@ -217,6 +220,8 @@ export async function getOrderForAdmin(id: string): Promise<AdminOrderDetail | n
         }
       : null,
     subtotalCents: order.subtotalCents,
+    discountCents: order.discountCents,
+    discountCode: order.discountCode,
     shippingCents: order.shippingCents,
     vatCents: order.vatCents,
     totalCents: order.totalCents,

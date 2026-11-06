@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { OrderStatus, PaymentStatus, PreviewStatus } from "@/db/generated/enums";
-import { animalSchema, editionSchema } from "@/core/modules/cart/types";
+import { animalSchema, attachmentSchema, editionSchema } from "@/core/modules/cart/types";
 import { phoneSchema, safeText } from "@/core/modules/checkout/types";
 import { FIELD_LIMITS, MAX_NOTES_LENGTH } from "@/data/checkout";
 import { MANUAL_PAYMENT_METHODS } from "@/data/payment-methods";
@@ -54,6 +54,7 @@ export const manualOrderSchema = z.object({
           kind: z.literal("personalized"),
           animal: animalSchema,
           edition: editionSchema,
+          attachment: attachmentSchema.optional(),
           quantity: lineQuantity,
           unitCents: lineUnitCents,
           notes: optionalNote,
@@ -61,6 +62,7 @@ export const manualOrderSchema = z.object({
         z.object({
           kind: z.literal("collectible"),
           collectibleId: z.uuid(),
+          attachment: attachmentSchema.optional(),
           quantity: lineQuantity,
           unitCents: lineUnitCents,
           notes: optionalNote,
@@ -162,6 +164,8 @@ export type AdminOrderDetail = {
   phone: string | null;
   address: { street: string; houseNumber: string | null; postalCode: string | null; city: string | null; country: string } | null;
   subtotalCents: number;
+  discountCents: number;
+  discountCode: string | null;
   shippingCents: number;
   vatCents: number;
   totalCents: number;
@@ -188,6 +192,8 @@ export type AdminOrderDetail = {
     unitCents: number;
     notes: string | null;
     photoUrl: string | null;
+    attachment: string | null;
+    photoUrls: string[]; // de foto's van een gepersonaliseerde Palley, leeg bij een collectible
   }[];
   payments: {
     id: string;

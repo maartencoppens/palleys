@@ -1,31 +1,26 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Badge } from "@/components/design/Badge";
 import Button from "@/components/design/Button";
-import { palleyCount } from "@/components/functional/shop/layout/CartMenu";
+import WarningNote from "@/components/design/WarningNote";
+import { lineChoices, lineName, palleyCount } from "@/components/functional/shop/layout/CartMenu";
+import { Link, useLocale, useMessages } from "@/core/locale/client";
+import { fill } from "@/core/locale/fill";
 import { loadCart, publishCart } from "@/core/hooks/useCartSnapshot";
 import { deleteCartLine, patchCartLine } from "@/core/modules/cart/api";
 import type { CartView } from "@/core/modules/cart/types";
 import { formatPrice } from "@/core/utils/format";
-import { COLLECTIBLE_RETURN_NOTE } from "@/data/collectibles";
 import CartLinePhoto from "./CartLinePhoto";
 import QuantityStepper from "./QuantityStepper";
 
 type State = { status: "loading" } | { status: "error" } | { status: "ready"; cart: CartView | null };
 
 // What happens after "Afrekenen", so the checkout doesn't feel like the end of the road.
-const nextSteps = (deliveryTime: string, personalized: boolean) => [
-  { title: "Veilig afrekenen", text: "Je vult je adres in en betaalt met Bancontact: via de QR-code of je bankapp." },
-  {
-    title: "Wij gaan aan de slag",
-    text: personalized
-      ? "Ons team in Gent werkt het 3D-model van je huisdier met de hand bij en print het."
-      : "Ons team in Gent maakt je bestelling klaar en pakt ze zorgvuldig in.",
-  },
-  { title: "In je bus", text: `Binnen ${deliveryTime} valt je bestelling in je brievenbus.` },
+const nextSteps = (m: ReturnType<typeof useMessages>["cart"]["next"], deliveryTime: string, personalized: boolean) => [
+  { title: m.payTitle, text: m.payText },
+  { title: m.workTitle, text: personalized ? m.workPersonalized : m.workCollectible },
+  { title: m.mailTitle, text: fill(personalized ? m.mailPersonalized : m.mailCollectible, { deliveryTime }) },
 ];
 
 /*
@@ -34,6 +29,9 @@ const nextSteps = (deliveryTime: string, personalized: boolean) => [
  * Every change is shared with the navbar's mini cart through useCartSnapshot.
  */
 export default function Cart({ deliveryTime, returnNote }: { deliveryTime: string; returnNote: string }) {
+  const messages = useMessages();
+  const locale = useLocale();
+  const { cart: m, common } = messages;
   const [state, setState] = useState<State>({ status: "loading" });
   const [removing, setRemoving] = useState<string | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
@@ -88,13 +86,13 @@ export default function Cart({ deliveryTime, returnNote }: { deliveryTime: strin
     return (
       <div role="alert" className="flex flex-col items-start gap-4 rounded-3xl bg-white p-6 md:rounded-[32px] md:p-8">
         <p className="font-display text-2xl leading-[1.2] font-bold text-medium-green">
-          We konden je winkelmandje niet laden
+          {m.loadError}
         </p>
         <p className="text-base leading-[1.5] text-text-primary">
-          Geen zorgen, je Palleys zijn niet weg. Probeer het nog eens.
+          {m.loadErrorText}
         </p>
         <Button variant="primary" onClick={() => window.location.reload()}>
-          Opnieuw proberen
+          {common.retry}
         </Button>
       </div>
     );
@@ -117,14 +115,14 @@ export default function Cart({ deliveryTime, returnNote }: { deliveryTime: strin
         </div>
         <div className="flex max-w-md flex-col gap-2">
           <p className="font-display text-2xl leading-[1.2] font-bold text-medium-green md:text-[32px]">
-            Je winkelmandje is nog leeg
+            {m.emptyTitle}
           </p>
           <p className="text-base leading-[1.5] text-text-primary md:text-lg">
-            Upload een foto van je huisdier en wij maken er een Palley van, met de hand afgewerkt in Gent.
+            {m.emptyText}
           </p>
         </div>
         <Button variant="primary" href="/create" className="px-8 py-3.5 text-lg">
-          Maak je Palley
+          {common.createPalley}
         </Button>
       </div>
     );
@@ -137,7 +135,7 @@ export default function Cart({ deliveryTime, returnNote }: { deliveryTime: strin
       aria-busy={redirecting}
       className="group flex items-center justify-center gap-3 rounded-pill bg-orange py-[18px] font-label text-lg leading-[normal] font-semibold text-off-white transition hover:bg-orange-hover active:scale-[0.98] aria-busy:opacity-80"
     >
-      {redirecting ? "Even geduld…" : "Afrekenen"}
+      {redirecting ? m.summary.wait : common.checkout}
       <Image
         className="transition-transform group-hover:translate-x-1"
         src="/images/cta/arrow-right.svg"
@@ -159,17 +157,17 @@ export default function Cart({ deliveryTime, returnNote }: { deliveryTime: strin
         >
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-off-white-dark pb-4 md:pb-5">
             <h2 id="cart-lines-title" className="font-display text-2xl leading-[1.2] font-bold text-medium-green">
-              {palleyCount(cart.totalQuantity)}
+              {palleyCount(cart.totalQuantity, messages)}
             </h2>
             <Link
               href="/create"
               className="font-label text-base font-bold text-medium-green underline underline-offset-4 hover:text-orange"
             >
-              + Nog een Palley maken
+              {m.another}
             </Link>
           </div>
 
-          <ul className="flex flex-col" aria-label="Producten in je winkelmandje">
+          <ul className="flex flex-col" aria-label={m.linesLabel}>
             {cart.lines.map((line) => (
               <li
                 key={line.id}
@@ -183,23 +181,24 @@ export default function Cart({ deliveryTime, returnNote }: { deliveryTime: strin
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
                   <div className="flex items-start justify-between gap-3">
                     <p className="font-display text-lg leading-[1.2] font-bold text-medium-green md:text-xl">
-                      {line.productTitle}
+                      {lineName(line, messages, locale)}
                     </p>
                     <div className="flex shrink-0 flex-col items-end">
                       <p className="font-label text-lg font-extrabold text-medium-green">
-                        {formatPrice(line.total.amount)}
+                        {formatPrice(line.total.amount, locale)}
                       </p>
                       {line.quantity > 1 && (
                         <p className="text-xs text-text-muted">
-                          {formatPrice(line.total.amount / line.quantity)} per stuk
+                          {fill(m.perUnit, { price: formatPrice(line.total.amount / line.quantity, locale) })}
                         </p>
                       )}
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {line.animal && <Badge tone="success">{line.animal}</Badge>}
-                    {line.edition && <Badge tone="waiting">{line.edition}</Badge>}
-                  </div>
+                  {lineChoices(line, messages) && (
+                    <p className="text-sm leading-[1.5] text-text-primary md:text-base">
+                      {lineChoices(line, messages)}
+                    </p>
+                  )}
                   {line.notes && (
                     <p className="line-clamp-2 text-sm leading-[1.5] text-text-primary italic" title={line.notes}>
                       “{line.notes}”
@@ -210,7 +209,7 @@ export default function Cart({ deliveryTime, returnNote }: { deliveryTime: strin
                       quantity={line.quantity}
                       onChange={(quantity) => changeQuantity(line.id, quantity)}
                       disabled={busyLine !== null}
-                      label={line.animal ? `Palley · ${line.animal}` : line.productTitle}
+                      label={line.animal ? fill(m.palleyLine, { animal: messages.options.animals[line.animal] }) : line.productTitles[locale]}
                     />
                     <button
                       type="button"
@@ -219,7 +218,7 @@ export default function Cart({ deliveryTime, returnNote }: { deliveryTime: strin
                       className="flex items-center gap-1.5 rounded-full py-1 font-label text-sm font-bold text-orange transition-colors hover:text-orange-hover disabled:opacity-50"
                     >
                       <Image src="/images/create/trash.svg" width={13} height={14.3} alt="" aria-hidden />
-                      {removing === line.id ? "Verwijderen…" : "Verwijder"}
+                      {removing === line.id ? m.removing : m.remove}
                     </button>
                   </div>
                 </div>
@@ -230,10 +229,10 @@ export default function Cart({ deliveryTime, returnNote }: { deliveryTime: strin
 
         <section aria-labelledby="next-steps-title" className="flex flex-col gap-5 rounded-3xl bg-light-yellow max-lg:order-3 p-5 md:rounded-[32px] md:p-8">
           <h2 id="next-steps-title" className="font-display text-xl leading-[1.2] font-bold text-medium-green md:text-2xl">
-            Zo gaat het verder
+            {m.next.title}
           </h2>
           <ol className="grid gap-4 md:grid-cols-3 md:gap-6">
-            {nextSteps(deliveryTime, hasPersonalized).map((step, index) => (
+            {nextSteps(m.next, deliveryTime, hasPersonalized).map((step, index) => (
               <li key={step.title} className="flex gap-3 md:flex-col">
                 <span
                   className="grid size-9 shrink-0 place-items-center rounded-full bg-medium-green font-display text-base font-bold text-off-white"
@@ -256,27 +255,27 @@ export default function Cart({ deliveryTime, returnNote }: { deliveryTime: strin
         className="flex flex-col gap-5 rounded-3xl bg-white p-5 max-lg:order-2 md:rounded-[32px] md:p-8 lg:sticky lg:top-[calc(var(--nav-offset,0px)+2rem)] lg:w-[420px] lg:shrink-0"
       >
         <h2 id="cart-summary-title" className="font-display text-2xl leading-[1.2] font-bold text-medium-green md:text-[32px]">
-          Overzicht
+          {m.summary.title}
         </h2>
         <dl className="flex flex-col gap-3 text-base text-text-primary md:text-lg">
           <div className="flex items-center justify-between gap-4">
-            <dt>Subtotaal ({palleyCount(cart.totalQuantity)})</dt>
-            <dd className="font-label font-semibold">{formatPrice(cart.subtotal.amount)}</dd>
+            <dt>{fill(m.summary.subtotal, { count: palleyCount(cart.totalQuantity, messages) })}</dt>
+            <dd className="font-label font-semibold">{formatPrice(cart.subtotal.amount, locale)}</dd>
           </div>
           <div className="flex items-center justify-between gap-4">
-            <dt>Verzending</dt>
-            <dd className="font-label font-semibold text-placeholder">Bij het afrekenen</dd>
+            <dt>{m.summary.shipping}</dt>
+            <dd className="text-right font-label font-semibold text-placeholder">{m.summary.shippingLater}</dd>
           </div>
         </dl>
         <hr className="border-text-primary" />
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between text-medium-green">
-            <p className="font-display text-2xl leading-[1.2] font-medium">Totaal</p>
+            <p className="font-display text-2xl leading-[1.2] font-medium">{m.summary.total}</p>
             <p className="font-label text-[32px] leading-[normal] font-extrabold">
-              {formatPrice(cart.subtotal.amount)}
+              {formatPrice(cart.subtotal.amount, locale)}
             </p>
           </div>
-          <p className="text-sm leading-[1.5] text-text-primary">Incl. btw · verzendkosten bij het afrekenen</p>
+          <p className="text-sm leading-[1.5] text-text-primary">{m.summary.exclShipping}</p>
         </div>
 
         {/* Leads to our checkout (address, delivery, then Bancontact). On phones the sticky bar below takes over. */}
@@ -284,7 +283,7 @@ export default function Cart({ deliveryTime, returnNote }: { deliveryTime: strin
           {checkout}
           <p className="flex items-center justify-center gap-2 text-sm text-text-primary">
             <LockIcon />
-            Veilig betalen met Bancontact
+            {m.summary.secure}
           </p>
         </div>
 
@@ -293,19 +292,20 @@ export default function Cart({ deliveryTime, returnNote }: { deliveryTime: strin
             <Image src="/images/create/heart.svg" width={16.5} height={15} alt="" />
           </span>
           <p className="text-[15px] leading-[1.5] text-text-primary">
-            50% van onze winst gaat naar de bescherming van dieren en hun leefgebied.
+            {m.summary.charity}
           </p>
         </div>
+        <WarningNote>{common.heatWarning}</WarningNote>
         {hasPersonalized && <p className="text-sm leading-[1.5] text-text-muted">{returnNote}</p>}
-        {hasCollectible && <p className="text-sm leading-[1.5] text-text-muted">{COLLECTIBLE_RETURN_NOTE}</p>}
+        {hasCollectible && <p className="text-sm leading-[1.5] text-text-muted">{m.summary.collectibleReturn}</p>}
       </aside>
 
       {/* Phones: total and checkout stay in reach while scrolling, and settle below the summary. */}
       <div className="sticky bottom-0 z-10 max-lg:order-4 -mx-5 flex items-center justify-between gap-4 rounded-t-3xl bg-white px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-12px_32px_rgb(0_0_0/0.12)] md:-mx-10 md:px-10 lg:hidden">
         <div className="flex flex-col">
-          <p className="text-sm text-text-primary">Totaal</p>
+          <p className="text-sm text-text-primary">{m.summary.total}</p>
           <p className="font-label text-2xl leading-[normal] font-extrabold text-medium-green">
-            {formatPrice(cart.subtotal.amount)}
+            {formatPrice(cart.subtotal.amount, locale)}
           </p>
         </div>
         <div className="flex-1 sm:max-w-xs">{checkout}</div>
@@ -315,8 +315,9 @@ export default function Cart({ deliveryTime, returnNote }: { deliveryTime: strin
 }
 
 export function CartSkeleton() {
+  const { cart: m } = useMessages();
   return (
-    <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-12" role="status" aria-label="Winkelmandje laden">
+    <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-12" role="status" aria-label={m.loading}>
       <div className="flex flex-1 animate-pulse flex-col gap-6 rounded-3xl bg-white p-5 md:rounded-[32px] md:p-8">
         {[0, 1].map((key) => (
           <div key={key} className="flex items-center gap-4 md:gap-6">

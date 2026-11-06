@@ -1,4 +1,5 @@
 import SectionHeader from "@/components/design/SectionHeader";
+import { getMessages } from "@/core/locale/server";
 import ContactForm from "./ContactForm";
 
 /*
@@ -13,7 +14,8 @@ import ContactForm from "./ContactForm";
  * - The empty band at the bottom of the Figma frame is left out; it's where the CTA card overlaps the
  *   footer, which isn't built yet.
  */
-export default function Contact() {
+export default async function Contact() {
+  const { contact: m } = await getMessages();
   return (
     <section
       id="contact"
@@ -21,9 +23,9 @@ export default function Contact() {
       aria-labelledby="contact-title"
     >
       <SectionHeader
-        tag="Zeg het maar"
-        title="Nog een vraag?"
-        subtitle="We helpen je graag op weg naar jouw perfecte Palley"
+        tag={m.tag}
+        title={m.title}
+        subtitle={m.subtitle}
         titleId="contact-title"
       />
       <ContactForm />

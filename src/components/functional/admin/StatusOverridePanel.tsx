@@ -64,7 +64,7 @@ export function StatusOverridePanel({
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value as PreviewStatus)}
-            className="mt-1 h-12 w-full rounded-[15px] bg-off-white-dark px-4 font-label font-semibold text-medium-green outline-none focus-visible:ring-3 focus-visible:ring-accent-highlights"
+            className="mt-1 h-12 w-full rounded-[15px] bg-off-white-dark px-4 font-label text-base font-semibold text-medium-green outline-none focus-visible:ring-3 focus-visible:ring-accent-highlights"
           >
             {ADMIN_SETTABLE_STATUSES.map((option) => (
               <option key={option} value={option}>
@@ -84,7 +84,7 @@ export function StatusOverridePanel({
             minLength={3}
             maxLength={500}
             placeholder="bv. Meshy-webhook kwam nooit binnen"
-            className="mt-1 w-full resize-none rounded-[15px] bg-off-white-dark px-4 py-3 font-label font-semibold text-medium-green placeholder:text-placeholder outline-none focus-visible:ring-3 focus-visible:ring-accent-highlights"
+            className="mt-1 w-full resize-none rounded-[15px] bg-off-white-dark px-4 py-3 font-label text-base font-semibold text-medium-green placeholder:text-placeholder outline-none focus-visible:ring-3 focus-visible:ring-accent-highlights"
           />
         </label>
         <Button

@@ -5,8 +5,16 @@ import { prisma } from "@/db/client";
 import { Prisma } from "@/db/generated/client";
 import { deleteObject, getObject, putObject } from "@/core/networking/external/storage-client";
 import { COLLECTIBLE_IMAGE_MAX_PX, COLLECTIBLE_IMAGE_QUALITY } from "@/data/collectibles";
-import { collectibleImageKey, collectibleImageUrl, isCollectibleImageFile, skuForSlug, slugify } from "./utils";
-import type { AdminCollectible, CollectibleInput, CollectibleView } from "./types";
+import { DEFAULT_LOCALE, type Locale } from "@/core/locale/config";
+import {
+  collectibleImageKey,
+  collectibleImageUrl,
+  isCollectibleImageFile,
+  skuForSlug,
+  slugify,
+} from "./utils";
+import { localizedTexts, parseTranslations } from "./translations";
+import { missingTranslations, type AdminCollectible, type CollectibleInput, type CollectibleView } from "./types";
 
 /*
  * Premade models customers buy as they are. They skip the AI pipeline: an order item for one goes straight to the
@@ -17,21 +25,22 @@ export class CollectibleNotFoundError extends Error {}
 
 const ORDER = [{ sortOrder: "asc" }, { createdAt: "asc" }] satisfies Prisma.CollectibleOrderByWithRelationInput[];
 
-const toView = (row: {
+type CollectibleRow = {
   id: string;
   slug: string;
   name: string;
   description: string | null;
   tag: string | null;
+  translations: Prisma.JsonValue;
   priceCents: number;
   imageKey: string | null;
   soldOut: boolean;
-}): CollectibleView => ({
+};
+
+const toView = (row: CollectibleRow, locale: Locale): CollectibleView => ({
   id: row.id,
   slug: row.slug,
-  name: row.name,
-  description: row.description,
-  tag: row.tag,
+  ...localizedTexts(row, locale),
   priceCents: row.priceCents,
   imageUrl: collectibleImageUrl(row.imageKey),
   soldOut: row.soldOut,
@@ -39,14 +48,14 @@ const toView = (row: {
 
 const VISIBLE = { published: true, archivedAt: null, imageKey: { not: null } } satisfies Prisma.CollectibleWhereInput;
 
-export async function listPublishedCollectibles(limit?: number): Promise<CollectibleView[]> {
+export async function listPublishedCollectibles(locale: Locale, limit?: number): Promise<CollectibleView[]> {
   const rows = await prisma.collectible.findMany({ where: VISIBLE, orderBy: ORDER, take: limit });
-  return rows.map(toView);
+  return rows.map((row) => toView(row, locale));
 }
 
-export async function getPublishedCollectible(slug: string): Promise<CollectibleView | null> {
+export async function getPublishedCollectible(slug: string, locale: Locale): Promise<CollectibleView | null> {
   const row = await prisma.collectible.findFirst({ where: { slug, ...VISIBLE } });
-  return row && toView(row);
+  return row && toView(row, locale);
 }
 
 /** The collectibles a shopper can add to a cart right now. */
@@ -62,8 +71,10 @@ export async function listCollectiblesForAdmin(): Promise<AdminCollectible[]> {
     include: { orderItems: { where: { order: { paidAt: { not: null } } }, select: { quantity: true } } },
   });
   return rows.map((row) => ({
-    ...toView(row),
+    ...toView(row, DEFAULT_LOCALE),
     sku: row.sku,
+    translations: parseTranslations(row.translations),
+    missingTranslations: missingTranslations({ ...row, translations: parseTranslations(row.translations) }),
     imageKey: row.imageKey,
     published: row.published,
     sortOrder: row.sortOrder,
@@ -80,7 +91,7 @@ export async function getCollectibleForAdmin(id: string): Promise<AdminCollectib
 /** Collectibles an admin can put on a manual order: also hidden and sold-out ones, not archived ones. */
 export async function listCollectiblesForManualOrder() {
   const rows = await prisma.collectible.findMany({ where: { archivedAt: null }, orderBy: ORDER });
-  return rows.map(toView);
+  return rows.map((row) => toView(row, DEFAULT_LOCALE));
 }
 
 async function uniqueSlug(name: string) {

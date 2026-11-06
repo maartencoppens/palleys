@@ -10,6 +10,8 @@ import { Input } from "@/components/design/form";
 import { OrderStatusBadge } from "@/components/functional/admin/OrderStatusBadge";
 import { PreviewStatusBadge } from "@/components/functional/admin/PreviewStatusBadge";
 
+export const instant = false;
+
 const searchSchema = z.object({ q: z.string().max(200).optional() });
 
 export default async function AdminDashboardPage({
@@ -33,7 +35,7 @@ export default async function AdminDashboardPage({
         </Button>
       </div>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard
           label="Te reviewen"
           value={stats.toReview}
@@ -98,7 +100,7 @@ export default async function AdminDashboardPage({
             defaultValue={query}
             placeholder="Ordernummer, e-mail of preview-id"
             aria-label="Preview zoeken"
-            className="h-12 sm:max-w-md md:h-14"
+            className="h-12 text-base! sm:max-w-md md:h-14 md:text-lg!"
           />
           <Button type="submit" variant="primary">
             Zoeken

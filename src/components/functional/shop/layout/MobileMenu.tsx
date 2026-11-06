@@ -1,11 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import Button from "@/components/design/Button";
 import { useCartSnapshot } from "@/core/hooks/useCartSnapshot";
+import { Link, useMessages } from "@/core/locale/client";
 import { gsap, prefersReducedMotion, useGSAP } from "@/core/utils/gsap";
 
 type MobileMenuProps = {
@@ -31,6 +31,7 @@ export default function MobileMenu({
   links,
   toggleRef,
 }: MobileMenuProps) {
+  const { nav, common } = useMessages();
   // Stays mounted while the closing animation plays.
   const [mounted, setMounted] = useState(false);
   if (open && !mounted) setMounted(true);
@@ -146,14 +147,14 @@ export default function MobileMenu({
         id="mobile-menu"
         role="dialog"
         aria-modal="true"
-        aria-label="Menu"
+        aria-label={nav.menu}
         className="relative flex flex-col gap-8 rounded-b-[32px] bg-medium-green px-m pt-4 pb-8 text-off-white shadow-[0_24px_48px_rgb(0_0_0/0.25)]"
       >
         <div className="flex items-center justify-between">
           <Link
             href="/"
             onClick={closeForNavigation}
-            aria-label="Palleys startpagina"
+            aria-label={nav.homeLabel}
             className="rounded-full"
           >
             <Image src="/images/logo.svg" width={64} height={64} alt="" />
@@ -163,7 +164,7 @@ export default function MobileMenu({
             type="button"
             onClick={onClose}
             className="grid size-12 place-items-center rounded-full bg-off-white/10 transition-colors hover:bg-off-white/20"
-            aria-label="Menu sluiten"
+            aria-label={nav.closeMenu}
           >
             <span className="relative block size-5" aria-hidden>
               <span className="absolute top-1/2 left-0 h-[3px] w-5 -translate-y-1/2 rotate-45 rounded-full bg-off-white" />
@@ -172,9 +173,9 @@ export default function MobileMenu({
           </button>
         </div>
 
-        <nav aria-label="Hoofdmenu">
+        <nav aria-label={nav.mainMenu}>
           <ul className="flex flex-col">
-            {[...links, { label: "Winkelmandje", href: "/cart" }].map(
+            {[...links, { label: nav.cart, href: "/cart" }].map(
               (link) => (
                 <li
                   key={link.href}
@@ -216,10 +217,10 @@ export default function MobileMenu({
         >
           {/* Only when "Create your own" isn't already one of the links above. */}
           {!links.some((link) => link.href === "/create") && (
-            <Button href="/create">Maak je Palley</Button>
+            <Button href="/create">{common.createPalley}</Button>
           )}
           <p className="text-center text-sm text-off-white/75">
-            Met de hand gemaakt in Gent · 50% van de winst naar dieren
+            {nav.mobileTagline}
           </p>
         </div>
       </div>

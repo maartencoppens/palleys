@@ -1,13 +1,15 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
 import SectionHeader from "@/components/design/SectionHeader";
-import { getSiteSettings } from "@/core/modules/settings/service";
+import { getLocale, getMessages, getSiteContent } from "@/core/locale/server";
 import type { SiteContent } from "@/core/modules/settings/types";
 import { DEFAULT_SITE_CONTENT } from "@/data/site-content";
 
-function FaqList({ faqs }: { faqs: SiteContent["faq"] }) {
+// The name makes it an exclusive accordion. The starting values and the live list are in the page at the same time while
+// it streams, so they need a name each: with one name the browser closes the first list's open question before React hydrates.
+function FaqList({ faqs, name }: { faqs: SiteContent["faq"]; name: string }) {
   return faqs.map((faq, index) => (
-    <details key={index} name="faq" open={index === 0} className="group border-t border-medium-green">
+    <details key={index} name={name} open={index === 0} className="group border-t border-medium-green">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-5 text-medium-green md:py-6 [&::-webkit-details-marker]:hidden">
         <h3 className="font-display text-xl leading-[1.25] font-bold md:text-[26px] lg:text-[32px]">{faq.question}</h3>
         {/* Plus that turns into a minus when open; the vertical bar folds away. */}
@@ -23,8 +25,8 @@ function FaqList({ faqs }: { faqs: SiteContent["faq"] }) {
 
 async function LiveFaqList() {
   await connection();
-  const { content } = await getSiteSettings();
-  return <FaqList faqs={content.faq} />;
+  const content = await getSiteContent();
+  return <FaqList faqs={content.faq} name="faq" />;
 }
 
 /*
@@ -39,7 +41,8 @@ async function LiveFaqList() {
  * only the top, leaving the row top-heavy), the +/− lines up with the question, and the answer sits
  * closer to its question than to the next one.
  */
-export default function Faq() {
+export default async function Faq() {
+  const [{ faq: m }, locale] = await Promise.all([getMessages(), getLocale()]);
   return (
     <section
       id="faq"
@@ -47,15 +50,15 @@ export default function Faq() {
       aria-labelledby="faq-title"
     >
       <SectionHeader
-        tag="Even helpen"
-        title="Veelgestelde vragen"
-        subtitle="Dingen die je je misschien afvraagt"
+        tag={m.tag}
+        title={m.title}
+        subtitle={m.subtitle}
         titleId="faq-title"
       />
 
       {/* From /admin/settings/content, so without data-animate: it arrives after the animations are set up. */}
       <div className="w-full max-w-[837px] border-b border-medium-green">
-        <Suspense fallback={<FaqList faqs={DEFAULT_SITE_CONTENT.faq} />}>
+        <Suspense fallback={<FaqList faqs={DEFAULT_SITE_CONTENT[locale].faq} name="faq-loading" />}>
           <LiveFaqList />
         </Suspense>
       </div>

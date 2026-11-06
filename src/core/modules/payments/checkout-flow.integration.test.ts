@@ -142,10 +142,30 @@ describe("checkout", () => {
     expect(order.subtotalCents).toBe(2 * 2799);
     expect(order.shippingCents).toBe(495);
     expect(order.totalCents).toBe(2 * 2799 + 495);
-    expect(order.vatCents).toBe(Math.round(((2 * 2799 + 495) * 21) / 121));
+    expect(order.vatCents).toBe(0);
     expect(order.termsVersion).toBeTruthy();
     expect(payment.amountCents).toBe(order.totalCents);
     expect(payment.status).toBe("OPEN");
+  });
+
+  it("keeps the chosen attachment on the order, and none on a figurine", async () => {
+    const { addToCartSchema } = await import("@/core/modules/cart/types");
+    const previewId = await newPreview();
+    const { token } = await addPreviewToCart(null, { previewId, animal: "dog", edition: "keychain", attachment: "clip" });
+    const { checkoutUrl } = await startCheckout(token, checkoutSchema.parse(customer));
+    const { orderId } = await prisma.payment.findFirstOrThrow({ where: { checkoutUrl } });
+    createdOrders.push(orderId);
+    expect(await prisma.orderItem.findFirstOrThrow({ where: { orderId } })).toMatchObject({
+      attachment: "clip",
+      title: "Palley Hond · Met sleutelhanger · Klemmetje",
+    });
+
+    const figurine = await newPreview();
+    await addPreviewToCart(null, { previewId: figurine, animal: "cat", edition: "figure", attachment: "clip" });
+    expect(await prisma.cartLine.findFirstOrThrow({ where: { previewId: figurine } })).toMatchObject({ attachment: null });
+
+    expect(addToCartSchema.safeParse({ previewId, animal: "dog", edition: "keychain" }).success).toBe(false);
+    expect(addToCartSchema.safeParse({ previewId, animal: "cat", edition: "figure" }).success).toBe(true);
   });
 
   it("uses the shipping price an admin set, and refuses disabled options", async () => {

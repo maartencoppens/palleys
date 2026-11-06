@@ -1,21 +1,26 @@
 import { z } from "zod";
-import { animals, editions, type Animal, type Edition } from "@/data/options";
+import { animals, attachments, editions, type Animal, type Attachment, type Edition } from "@/data/options";
 import { MAX_NOTES_LENGTH } from "@/data/checkout";
 import { MAX_LINE_QUANTITY } from "@/data/pricing";
+import type { Locale } from "@/core/locale/config";
 
 const animalValues = animals.map((a) => a.value) as [Animal, ...Animal[]];
 const editionValues = editions.map((e) => e.value) as [Edition, ...Edition[]];
 
 export const animalSchema = z.enum(animalValues);
 export const editionSchema = z.enum(editionValues);
+export const attachmentSchema = z.enum(attachments.map((a) => a.value) as [Attachment, ...Attachment[]]);
 
 // The client sends a preview, a choice and notes. Never a price.
-export const addToCartSchema = z.object({
-  previewId: z.uuid(),
-  animal: animalSchema,
-  edition: editionSchema,
-  notes: z.string().trim().max(MAX_NOTES_LENGTH).optional(),
-});
+export const addToCartSchema = z
+  .object({
+    previewId: z.uuid(),
+    animal: animalSchema,
+    edition: editionSchema,
+    attachment: attachmentSchema.optional(),
+    notes: z.string().trim().max(MAX_NOTES_LENGTH).optional(),
+  })
+  .refine((input) => input.edition !== "keychain" || input.attachment, { path: ["attachment"] });
 
 export const addCollectibleToCartSchema = z.object({ collectibleId: z.uuid() });
 
@@ -23,8 +28,9 @@ export const removeFromCartSchema = z.object({ lineId: z.uuid() });
 
 export const updateCartLineSchema = z.object({
   lineId: z.uuid(),
-  quantity: z.number().int().min(1).max(MAX_LINE_QUANTITY),
-});
+  quantity: z.number().int().min(1).max(MAX_LINE_QUANTITY).optional(),
+  attachment: attachmentSchema.optional(),
+}).refine((input) => input.quantity !== undefined || input.attachment, { path: ["quantity"] });
 
 export type AddToCartInput = z.infer<typeof addToCartSchema>;
 export type AddCollectibleToCartInput = z.infer<typeof addCollectibleToCartSchema>;
@@ -37,10 +43,13 @@ export type Money = { amount: number; currencyCode: string };
 export type CartLineView = {
   id: string;
   kind: "personalized" | "collectible";
-  productTitle: string;
-  /** Null for a collectible. */
-  animal: string | null;
-  edition: string | null;
+  /** The collectible's name per language; a personalised Palley gets its name from the shop's texts. */
+  productTitles: Record<Locale, string>;
+  /** The choices as values, which the shop shows in its language. Null for a collectible. */
+  animal: Animal | null;
+  edition: Edition | null;
+  /** Every keychain has one, a figurine doesn't. */
+  attachment: Attachment | null;
   notes: string | null;
   quantity: number;
   unitCents: number;

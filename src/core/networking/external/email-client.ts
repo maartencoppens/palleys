@@ -9,7 +9,20 @@ import { env } from "@/core/utils/env";
 
 const TIMEOUT_MS = 15_000;
 
-export class EmailError extends Error {}
+export class EmailError extends Error {
+  constructor(
+    public readonly status: number | "no response" | "unknown",
+    /** Resend's own explanation, e.g. that the domain isn't verified. Addresses are stripped: this ends up in logs. */
+    public readonly detail: string | null,
+  ) {
+    super(`Resend request failed (${status})${detail ? `: ${detail}` : ""}`);
+  }
+}
+
+function resendMessage(data: unknown) {
+  const message = (data as { message?: unknown } | undefined)?.message;
+  return typeof message === "string" ? message.replace(/\S+@\S+/g, "[e-mail]").slice(0, 200) : null;
+}
 
 export function isEmailConfigured() {
   return Boolean(env.RESEND_API_KEY && env.EMAIL_FROM);
@@ -46,7 +59,7 @@ export async function sendEmail(input: {
     );
     return true;
   } catch (error) {
-    const status = axios.isAxiosError(error) ? (error.response?.status ?? "no response") : "unknown";
-    throw new EmailError(`Resend request failed (${status})`);
+    if (!axios.isAxiosError(error)) throw new EmailError("unknown", null);
+    throw new EmailError(error.response?.status ?? "no response", resendMessage(error.response?.data));
   }
 }

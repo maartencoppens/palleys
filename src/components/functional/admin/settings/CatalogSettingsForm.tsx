@@ -38,7 +38,7 @@ export function CatalogSettingsForm({ settings }: { settings: CatalogSettings })
     <form onSubmit={submit} className="flex flex-col gap-6">
       <SettingsCard
         title="Prijzen"
-        intro="Incl. btw. Geldt meteen voor nieuwe bestellingen; bestaande orders houden hun prijs."
+        intro="Geldt meteen voor nieuwe bestellingen; bestaande orders houden hun prijs."
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <div>

@@ -17,11 +17,11 @@ export function StatCard({
   return (
     <Link
       href={href}
-      className="rounded-3xl bg-white p-6 transition hover:-translate-y-0.5 hover:shadow-[0_16px_40px_-24px_rgb(7_88_71/0.45)]"
+      className="rounded-3xl bg-white p-4 transition hover:-translate-y-0.5 hover:shadow-[0_16px_40px_-24px_rgb(7_88_71/0.45)] sm:p-6"
     >
       <p className="font-label text-sm font-semibold text-text-muted">{label}</p>
       <p
-        className={`mt-2 font-display text-4xl font-medium tabular-nums ${highlight ? "text-[#a3341a]" : "text-medium-green"}`}
+        className={`mt-2 font-display text-3xl font-medium tabular-nums sm:text-4xl ${highlight ? "text-[#a3341a]" : "text-medium-green"}`}
       >
         {value}
       </p>

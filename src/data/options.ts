@@ -9,16 +9,24 @@ import { buildSku, PRODUCT_HANDLE } from "./products";
 import { ALLOWED_IMAGE_TYPES, MAX_PHOTOS_PER_PREVIEW, MAX_UPLOAD_BYTES } from "./uploads";
 
 export const SHOPIFY_PRODUCT_HANDLE = PRODUCT_HANDLE;
-export const PALLEY_SIZE = "Ongeveer 3,7 cm aan de langste kant";
 
 export type Option<Value extends string> = { value: Value; label: string; shopifyValue: string; skuCode: string };
 
+// Labels here are the backoffice's and the order title's, in Dutch; the shop's are in core/locale/messages.
 // Option1 "Uitvoering".
 export const editions = [
   { value: "keychain", label: "Met sleutelhanger", shopifyValue: "Met sleutelhanger", skuCode: "KEY" },
   { value: "figure", label: "Enkel figuurtje", shopifyValue: "Zonder sleutelhanger", skuCode: "FIG" },
 ] as const satisfies readonly Option<string>[];
 export type Edition = (typeof editions)[number]["value"];
+
+// How a keychain goes on the keys: a Palley "Met sleutelhanger" and every collectible. No SKU or price difference.
+export const attachments = [
+  { value: "clip", label: "Klemmetje" },
+  { value: "key-ring", label: "Sleutelring" },
+] as const;
+export type Attachment = (typeof attachments)[number]["value"];
+export const DEFAULT_ATTACHMENT: Attachment = "clip";
 
 // Option2 "Dier", ordered by how common the pet is rather than as in the export.
 // `animalType` is the matching backoffice code (data/animals.ts), prefilled when the order is paid.
@@ -60,18 +68,10 @@ export const MAX_PHOTOS = MAX_PHOTOS_PER_PREVIEW;
 export const MAX_PHOTO_BYTES = MAX_UPLOAD_BYTES;
 export const ACCEPTED_PHOTO_TYPES: readonly string[] = ALLOWED_IMAGE_TYPES;
 export const ACCEPTED_PHOTO_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
-export const ACCEPTED_PHOTO_LABEL = "JPG, PNG of WebP";
 export const MAX_PHOTO_SIZE_LABEL = `${MAX_UPLOAD_BYTES / 1024 / 1024} MB`;
 
 /** How sharp an uploaded photo looks, judged by its shortest side in pixels. */
 export type PhotoQuality = "great" | "ok" | "small" | "unknown";
-
-export const photoQualityMessage: Record<PhotoQuality, string> = {
-  great: "Top, mooi scherp!",
-  ok: "Ziet er goed uit.",
-  small: "Deze foto is vrij klein – een scherpere geeft een mooier resultaat.",
-  unknown: "We checken de kwaliteit voor je.",
-};
 
 export const qualityFromSize = (width: number, height: number): PhotoQuality => {
   const shortestSide = Math.min(width, height);
@@ -83,8 +83,4 @@ export const qualityFromSize = (width: number, height: number): PhotoQuality => 
 export type StepId = "choose" | "upload" | "order";
 export type StepStatus = "done" | "active" | "upcoming";
 
-export const steps: { id: StepId; label: string; title: string }[] = [
-  { id: "choose", label: "Kiezen", title: "Kies je Palley" },
-  { id: "upload", label: "Uploaden", title: "Upload je foto’s" },
-  { id: "order", label: "Bestellen", title: "Nakijken & bestellen" },
-];
+export const STEP_IDS: StepId[] = ["choose", "upload", "order"];

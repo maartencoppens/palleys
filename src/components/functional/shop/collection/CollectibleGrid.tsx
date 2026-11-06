@@ -1,15 +1,18 @@
 import type { CollectibleView } from "@/core/modules/collectibles/types";
 import ProductCard from "@/components/functional/shop/home/ProductCard";
+import { getMessages } from "@/core/locale/server";
 
-export function CollectibleCard({ collectible }: { collectible: CollectibleView }) {
+export async function CollectibleCard({ collectible }: { collectible: CollectibleView }) {
+  const { collection: m } = await getMessages();
   return (
     <ProductCard
       slug={collectible.slug}
-      brand="Palleys"
+      brand={m.brand}
       name={collectible.name}
       price={collectible.priceCents / 100}
       image={collectible.imageUrl!}
-      tag={collectible.soldOut ? "Uitverkocht" : (collectible.tag ?? undefined)}
+      tag={collectible.soldOut ? m.soldOut : (collectible.tag ?? undefined)}
+      soldOut={collectible.soldOut}
     />
   );
 }

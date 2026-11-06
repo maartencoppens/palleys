@@ -1,5 +1,6 @@
 import Image from "next/image";
 import type { RefObject } from "react";
+import { useMessages } from "@/core/locale/client";
 import type { StepStatus } from "@/data/options";
 
 type PanelProps = {
@@ -34,6 +35,7 @@ export default function Panel({
   headingRef,
   children,
 }: PanelProps) {
+  const { create } = useMessages();
   return (
     <section
       id={id}
@@ -64,12 +66,12 @@ export default function Panel({
               alt=""
               aria-hidden
             />
-            Klaar
+            {create.panelDone}
           </span>
         )}
         {isNext && status === "upcoming" && (
           <span className="shrink-0 font-label text-base font-bold text-orange">
-            Volgende
+            {create.panelNext}
           </span>
         )}
       </header>

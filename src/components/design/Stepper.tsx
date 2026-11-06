@@ -1,16 +1,12 @@
 import Image from "next/image";
-import { steps, type StepId, type StepStatus } from "@/data/options";
+import { useMessages } from "@/core/locale/client";
+import { fill } from "@/core/locale/fill";
+import { STEP_IDS, type StepId, type StepStatus } from "@/data/options";
 
 const circleClassName: Record<StepStatus, string> = {
   done: "bg-medium-green",
   active: "bg-coral text-off-white",
   upcoming: "border-2 border-accent-highlights bg-white text-text-primary",
-};
-
-const statusText: Record<StepStatus, string> = {
-  done: "voltooid",
-  active: "huidige stap",
-  upcoming: "nog niet gestart",
 };
 
 /*
@@ -22,20 +18,22 @@ export default function Stepper({
 }: {
   status: Record<StepId, StepStatus>;
 }) {
+  const { create } = useMessages();
   return (
-    <nav aria-label="Voortgang van je bestelling">
+    <nav aria-label={create.stepper.label}>
       <ol className="flex items-center gap-3 md:gap-4">
-        {steps.map((step, index) => {
-          const stepStatus = status[step.id];
-          const isLast = index === steps.length - 1;
+        {STEP_IDS.map((step, index) => {
+          const stepStatus = status[step];
+          const isLast = index === STEP_IDS.length - 1;
+          const label = create.steps[step];
 
           return (
             <li
-              key={step.id}
+              key={step}
               className={`flex items-center gap-3 md:gap-4 ${isLast ? "" : "flex-1"}`}
             >
               <a
-                href={`#${step.id}`}
+                href={`#${step}`}
                 className="flex shrink-0 items-center gap-3 rounded-full"
                 aria-current={stepStatus === "active" ? "step" : undefined}
               >
@@ -57,10 +55,10 @@ export default function Stepper({
                 <span
                   className={`hidden font-display text-xl font-medium sm:inline md:text-2xl ${stepStatus === "upcoming" ? "text-text-primary" : "text-medium-green"}`}
                 >
-                  {step.label}
+                  {label}
                 </span>
                 <span className="sr-only">
-                  {`Stap ${index + 1}: ${step.label}, ${statusText[stepStatus]}`}
+                  {fill(create.stepper.step, { number: index + 1, label, status: create.stepper[stepStatus] })}
                 </span>
               </a>
               {!isLast && (

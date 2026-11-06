@@ -1,4 +1,5 @@
 import { api } from "@/core/networking/api";
+import type { Attachment } from "@/data/options";
 import type { AddCollectibleToCartInput, AddToCartInput, CartView } from "./types";
 
 // Client-side wrappers around app/api/cart. The cart token stays in an httpOnly cookie.
@@ -20,6 +21,11 @@ export async function postAddCollectibleToCart(input: AddCollectibleToCartInput)
 
 export async function patchCartLine(lineId: string, quantity: number) {
   const { data } = await api.patch<{ cart: CartView | null }>("/cart", { lineId, quantity });
+  return data.cart;
+}
+
+export async function patchCartLineAttachment(lineId: string, attachment: Attachment) {
+  const { data } = await api.patch<{ cart: CartView | null }>("/cart", { lineId, attachment });
   return data.cart;
 }
 

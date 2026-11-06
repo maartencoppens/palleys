@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { animals, editions } from "@/data/options";
 import { fromEuroInput, toEuroInput } from "@/core/utils/format";
-import { catalogSettingsSchema, companySettingsSchema, siteContentSchema } from "./types";
+import { catalogSettingsSchema, companySettingsSchema, localizedSiteContentSchema, siteContentSchema } from "./types";
 
 const prices = { keychain: 2799, figurine: 2799 };
 
@@ -27,6 +27,11 @@ describe("site content", () => {
     expect(siteContentSchema.safeParse(content).success).toBe(true);
     expect(siteContentSchema.safeParse({ ...content, infoBannerMessages: [] }).success).toBe(false);
   });
+
+  it("is kept per language, and every language is needed", () => {
+    expect(localizedSiteContentSchema.safeParse({ nl: content, en: content }).success).toBe(true);
+    expect(localizedSiteContentSchema.safeParse({ nl: content }).success).toBe(false);
+  });
 });
 
 describe("company settings", () => {
@@ -34,7 +39,6 @@ describe("company settings", () => {
     legalName: "Palleys",
     address: "Straat 1, 9000 Gent",
     enterpriseNumber: "0000.000.000",
-    vatNumber: "BE0000.000.000",
     email: "hallo@palleys.be",
     phone: "",
     socials: { instagram: "https://instagram.com/palleys", tiktok: "", facebook: "" },

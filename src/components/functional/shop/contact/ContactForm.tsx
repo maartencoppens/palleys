@@ -7,10 +7,12 @@ import {
   sendContactMessage,
 } from "@/core/modules/contact/service";
 import { Label, Input, Textarea } from "@/components/design/form";
+import { useMessages } from "@/core/locale/client";
 
-const initialState: ContactState = { status: "idle", message: "" };
+const initialState: ContactState = { status: "idle" };
 
 export default function ContactForm() {
+  const { contact: m } = useMessages();
   const [state, formAction, pending] = useActionState(
     sendContactMessage,
     initialState,
@@ -25,13 +27,13 @@ export default function ContactForm() {
       <div className="flex flex-col gap-5 md:gap-8">
         <div className="grid gap-5 md:grid-cols-2 md:gap-12">
           <div className="flex flex-col gap-3">
-            <Label htmlFor="contact-name">Je naam</Label>
+            <Label htmlFor="contact-name">{m.name}</Label>
             <Input
               id="contact-name"
               name="name"
               type="text"
               autoComplete="name"
-              placeholder="Jan Janssens"
+              placeholder={m.namePlaceholder}
               defaultValue={state.values?.name}
               required
               className="h-14 md:h-16"
@@ -39,13 +41,13 @@ export default function ContactForm() {
           </div>
 
           <div className="flex flex-col gap-3">
-            <Label htmlFor="contact-email">E-mailadres</Label>
+            <Label htmlFor="contact-email">{m.email}</Label>
             <Input
               id="contact-email"
               name="email"
               type="email"
               autoComplete="email"
-              placeholder="jij@voorbeeld.be"
+              placeholder={m.emailPlaceholder}
               defaultValue={state.values?.email}
               required
               className="h-14 md:h-16"
@@ -54,11 +56,11 @@ export default function ContactForm() {
         </div>
 
         <div className="flex flex-col gap-3">
-          <Label htmlFor="contact-message">Je bericht</Label>
+          <Label htmlFor="contact-message">{m.message}</Label>
           <Textarea
             id="contact-message"
             name="message"
-            placeholder="Waarmee kunnen we je helpen?"
+            placeholder={m.messagePlaceholder}
             defaultValue={state.values?.message}
             required
             rows={4}
@@ -73,7 +75,7 @@ export default function ContactForm() {
           disabled={pending}
           className="group flex h-[60px] w-full items-center justify-center gap-6 rounded-pill bg-accent-highlights px-2xl text-2xl leading-[19.5px] font-extrabold text-button-primary-text transition hover:bg-accent-highlights-hover active:scale-[0.99] disabled:cursor-wait disabled:opacity-70 md:h-[72px] md:gap-[34px] md:text-[32px]"
         >
-          {pending ? "Versturen…" : "Verstuur bericht"}
+          {pending ? m.sending : m.send}
           <Image
             className="shrink-0 transition-transform group-hover:translate-x-1"
             src="/images/arrow-lg.svg"
@@ -89,7 +91,7 @@ export default function ContactForm() {
           aria-live="polite"
           className={`min-h-7 text-center text-lg font-semibold ${state.status === "error" ? "text-[#8a2410]" : "text-medium-green"}`}
         >
-          {state.message}
+          {state.code ? m[state.code] : ""}
         </p>
       </div>
     </form>

@@ -33,7 +33,16 @@ Env vars (zie `.env.example`): `BANCONTACT_API_KEY`, `BANCONTACT_PAYMENT_PROFILE
 Bancontact aanvaardt enkel een **https**-return-URL. Lokaal testen: `npm run dev:https` en
 `APP_URL=https://localhost:3000` in `.env`. Een betaling verloopt na 20 minuten.
 
+**Testen zonder Bancontact:** zet `PAYMENT_PROVIDER=fake` in `.env` en herstart. De checkout stuurt dan naar
+`/dev/test-betaling`, waar je kiest hoe de betaling afloopt (gelukt, mislukt, geannuleerd, verlopen). De rest van de flow is de
+echte. In productie staat dit altijd uit: `next build` en `next start` negeren de instelling en de pagina geeft een 404.
+Zonder Bancontact-sleutels en zonder `fake` blijft afrekenen dicht, ook als bestellen aan staat in de instellingen ("Betalen is
+tijdelijk niet mogelijk"). De instellingenpagina meldt dat.
+
 Terugbetalen gebeurt voorlopig via het Bancontact Pro-portaal; markeer het daarna in de backoffice als afgehandeld.
+
+De app moet achter een reverse proxy draaien die `x-forwarded-for` aanvult. De rate limits lezen de laatste waarde daarin;
+zonder proxy kan een bezoeker die waarde zelf kiezen en de limieten omzeilen.
 
 Cron op de VPS (elke 10 minuten), sluit onbetaalde orders en ruimt winkelmandjes op:
 
@@ -42,6 +51,25 @@ curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" https://palleys.be/api
 ```
 
 Juridische to-do's: `docs/legal/go-live-checklist.md`.
+
+## Talen
+
+De winkel is er in het Nederlands (hoofdtaal, `/create`) en het Engels (`/en/create`); de backoffice blijft Nederlands.
+`src/proxy.ts` stuurt adressen zonder taal door naar `/nl/...`, en alles onder `src/app/[lang]` kent zijn taal uit de URL. De
+bezoeker wisselt met NL | EN in de navbar; een bestelling onthoudt haar taal voor de bevestigingsmail en de terugkeerpagina.
+
+Alle teksten staan in `src/core/locale/messages`, één bestand per taal. In een Server Component: `await getMessages()` uit
+`core/locale/server`; in een Client Component: `useMessages()` uit `core/locale/client`. Gebruik voor interne links `Link` uit
+`core/locale/client`, zodat de bezoeker in zijn taal blijft. Wat een admin beheert (FAQ, banner, levertijd) staat per taal onder
+**Teksten**. Namen en beschrijvingen van collectibles hebben maar één taal.
+
+**Een taal toevoegen:** kopieer `messages/en.ts`, vertaal, voeg de taal toe in `core/locale/config.ts` en `messages/index.ts` en in
+`DEFAULT_SITE_CONTENT` (`src/data/site-content.ts`). TypeScript en `messages.test.ts` weigeren ontbrekende teksten of placeholders.
+
+## Btw
+
+Palleys is als studentenonderneming in het Step Up-programma van Unizo vrijgesteld en rekent geen btw aan (`VAT_RATE_BASIS_POINTS = 0` in `src/data/pricing.ts`). Klanten betalen de productprijs plus de
+verzendkosten; `Order.vatCents` is 0. Oude orders met btw tonen die nog gewoon in de backoffice.
 
 ## Backoffice
 
@@ -59,6 +87,7 @@ item af zodra het gecontroleerd en klaar is, en pas als alles afgevinkt is, kan 
 | Bestellen | checkout aan/uit, boodschap | `ShopSettings` |
 | Gepersonaliseerde Palley | prijzen, uitvoeringen, dieren | `ShopSettings.catalog` |
 | Collectibles | producten toevoegen, aanpassen, verwijderen | tabel `Collectible` |
+| Kortingscodes | percentage of bedrag, voorwaarden, gebruik | tabel `DiscountCode` |
 | Verzending | prijs en aan/uit per optie | `ShopSettings.shippingOverrides` |
 | Teksten | infobanner, levertijd, retourtekst, FAQ | `ShopSettings.siteContent` |
 | Bedrijf & sociale media | wettelijke gegevens, profiel-URL's | `ShopSettings.company` |
@@ -75,6 +104,14 @@ staat, zoals op `/create`).
 via onze server (omgezet naar WebP) naar R2 en zijn publiek via `/api/collectibles/images/<bestand>`. Verwijderen archiveert:
 oude orders verwijzen er nog naar en terugzetten kan. Ze zijn niet op maat gemaakt, dus er geldt wel 14 dagen herroepingsrecht
 (`OrderItem.withdrawable`).
+
+**Kortingscodes** gelden bij het afrekenen op de producten, nooit op de verzending. Hoe vaak een code gebruikt is, wordt niet
+bijgehouden maar geteld: de orders met die code die niet geannuleerd of verlopen zijn. Een onbetaalde order houdt de code dus
+bezet tot ze sluit (de cron), en de laatste keer kan niet aan twee klanten tegelijk gaan (rijvergrendeling bij het aanmaken van
+de order). Is er niets meer te betalen, dan is de order meteen betaald, zonder Bancontact. Een gebruikte code kan niet
+verwijderd worden, alleen uitgezet.
+
+**Levering zonder verzending.** "Ophalen op campus Kantienberg" is een gewone leveroptie (aan/uit en prijs onder **Verzending**). "Vrienden en familie" verschijnt alleen met een kortingscode waarop "gratis persoonlijk overhandigen" aanstaat; de korting zelf mag dan leeg zijn. Beide vragen geen adres, gaan niet naar een vervoerder en staan in de check-in op "overhandigen". De klant op de hoogte brengen dat het klaarligt gebeurt voorlopig met de hand.
 
 **Order toevoegen** (`/admin/orders/new`), bv. voor een vriend: gewoon ordernummer, zelfde tabellen en zelfde verdere stappen,
 gemarkeerd met `Order.createdBy`. E-mail en adres zijn optioneel (overhandigen), de prijs per lijn kan aangepast worden en de

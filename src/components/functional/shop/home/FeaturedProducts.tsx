@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import Button from "@/components/design/Button";
 import SectionHeader from "@/components/design/SectionHeader";
 import { CollectibleCard, CollectibleCardSkeleton } from "@/components/functional/shop/collection/CollectibleGrid";
+import { getLocale, getMessages } from "@/core/locale/server";
 import { listPublishedCollectibles } from "@/core/modules/collectibles/service";
 import { HOME_COLLECTIBLE_LIMIT } from "@/data/collectibles";
 
@@ -13,12 +14,13 @@ const itemClassName = "w-[min(313px,80vw)] shrink-0 snap-start xl:w-auto";
 /* From the database, so without data-animate: this arrives after the page's animations have been set up. */
 async function LiveProducts() {
   await connection();
-  const collectibles = await listPublishedCollectibles(HOME_COLLECTIBLE_LIMIT).catch((error) => {
+  const [{ collection: m }, locale] = await Promise.all([getMessages(), getLocale()]);
+  const collectibles = await listPublishedCollectibles(locale, HOME_COLLECTIBLE_LIMIT).catch((error) => {
     console.error("[home] collectibles unavailable:", error instanceof Error ? error.message : error);
     return [];
   });
   if (collectibles.length === 0) {
-    return <p className="section-x text-center text-lg text-text-primary">Binnenkort vind je hier onze kant-en-klare Palleys.</p>;
+    return <p className="section-x text-center text-lg text-text-primary">{m.empty}</p>;
   }
   return (
     <>
@@ -30,7 +32,7 @@ async function LiveProducts() {
         ))}
       </ul>
       <Button href="/shop" size="large">
-        Bekijk de hele collectie
+        {m.viewAll}
       </Button>
     </>
   );
@@ -42,7 +44,8 @@ async function LiveProducts() {
  * From 1280px: four 313px cards, 31px apart. Below that the cards become a swipeable row
  * that snaps per card, which keeps the section within one screen on tablets and phones.
  */
-export default function FeaturedProducts() {
+export default async function FeaturedProducts() {
+  const { collection: m } = await getMessages();
   return (
     <section
       id="collectables"
@@ -50,8 +53,8 @@ export default function FeaturedProducts() {
       aria-labelledby="collectables-title"
     >
       <SectionHeader
-        tag="Klaar om mee te nemen"
-        title="Ontdek onze collectie"
+        tag={m.tag}
+        title={m.title}
         titleId="collectables-title"
       />
 

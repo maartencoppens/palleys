@@ -2,7 +2,10 @@ import Link from "next/link";
 import { requireAdminPage } from "@/core/modules/auth/service";
 import { listPreviewsForReview } from "@/core/modules/previews/service";
 import { formatDateTime } from "@/core/utils/format";
+import { PhotoThumbnails } from "@/components/functional/admin/PhotoThumbnails";
 import { PreviewStatusBadge } from "@/components/functional/admin/PreviewStatusBadge";
+
+export const instant = false;
 
 export default async function AdminReviewPage() {
   await requireAdminPage();
@@ -35,7 +38,7 @@ export default async function AdminReviewPage() {
         </div>
       ) : (
         <div className="mt-8 overflow-x-auto rounded-3xl bg-white">
-          <table className="w-full text-left text-sm">
+          <table className="admin-table w-full text-left text-sm">
             <thead className="border-b-[1.5px] border-off-white-dark font-label text-text-muted">
               <tr>
                 <th className="px-5 py-4 font-semibold">Foto&apos;s</th>
@@ -55,20 +58,8 @@ export default async function AdminReviewPage() {
                   key={preview.id}
                   className="border-b border-off-white-dark last:border-0 hover:bg-off-white/60"
                 >
-                  <td className="px-5 py-4">
-                    <div className="flex gap-1">
-                      {preview.photoUrls.map((url, index) => (
-                        /* Bewust <img>, niet next/image: klantfoto's (GDPR). */
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          key={url}
-                          src={url}
-                          alt={`Foto ${index + 1}`}
-                          loading="lazy"
-                          className="size-12 rounded-xl bg-off-white-dark object-cover"
-                        />
-                      ))}
-                    </div>
+                  <td data-label="Foto's" className="px-5 py-4">
+                    <PhotoThumbnails urls={preview.photoUrls} />
                   </td>
                   <td className="whitespace-nowrap px-5 py-4 font-semibold tabular-nums">
                     {preview.orderNumber ?? "—"}
@@ -76,14 +67,14 @@ export default async function AdminReviewPage() {
                       <span className="ml-2 font-normal text-text-muted">{preview.quantity}×</span>
                     )}
                   </td>
-                  <td className="whitespace-nowrap px-5 py-4 tabular-nums">
+                  <td data-label="Aangemaakt" className="whitespace-nowrap px-5 py-4 tabular-nums">
                     {formatDateTime(preview.createdAt)}
                   </td>
-                  <td className="px-5 py-4">
+                  <td data-label="Status" className="px-5 py-4">
                     <PreviewStatusBadge status={preview.status} />
                   </td>
-                  <td className="px-5 py-4 font-semibold">{preview.email ?? "—"}</td>
-                  <td
+                  <td data-label="E-mail" className="px-5 py-4 font-semibold">{preview.email ?? "—"}</td>
+                  <td data-label="Fout"
                     className="max-w-xs truncate px-5 py-4 text-text-muted"
                     title={preview.error ?? undefined}
                   >

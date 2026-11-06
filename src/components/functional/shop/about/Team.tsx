@@ -1,38 +1,24 @@
 import Image from "next/image";
 import SectionHeader from "@/components/design/SectionHeader";
+import { fill } from "@/core/locale/fill";
+import { getMessages } from "@/core/locale/server";
 
 type Member = {
   name: string;
-  role: string;
-  petName: string;
+  /** Until it's filled in, the card leaves the line out. */
+  petName?: string;
   /** Portrait in /public; until there is one, a coloured avatar with a person icon is shown. */
   photo?: string;
 };
 
-// TODO: fill in the real names, pets and portraits. Figma only has placeholders for these.
+// TODO: fill in the remaining pets and the portraits.
 const members: Member[] = [
-  { name: "Joran Vreye", role: "Founder & CEO", petName: "Baloe" },
-  { name: "Emie Van de Veire", role: "Finance", petName: "[pet name]" },
-  {
-    name: "Maarten Coppens",
-    role: "Marketing & social media",
-    petName: "Zorro",
-  },
-  {
-    name: "Reinhart Schepens",
-    role: "Design & 3D-modellering",
-    petName: "[pet name]",
-  },
-  {
-    name: "Bavo de Bondt",
-    role: "Productie & printen",
-    petName: "[pet name]",
-  },
-  {
-    name: "Lies De Praeter",
-    role: "Sales & klantenservice",
-    petName: "[pet name]",
-  },
+  { name: "Joran Vreye", petName: "Baloe" },
+  { name: "Emie Van de Veire" },
+  { name: "Maarten Coppens", petName: "Zorro" },
+  { name: "Reinhart Schepens" },
+  { name: "Bavo de Bondt" },
+  { name: "Lies De Praeter" },
 ];
 
 // Avatar colours repeat in the Figma order.
@@ -44,15 +30,17 @@ const avatarColours = [
 ];
 
 /* "Meet the humans behind the pals" (Figma: team): six member cards, 3 per row from 1024px, 2 on tablets. */
-export default function Team() {
+export default async function Team() {
+  const { about } = await getMessages();
+  const m = about.team;
   return (
     <section
       aria-labelledby="team-title"
       className="mx-auto flex max-w-[1440px] flex-col items-center stack section-x section-y"
     >
       <SectionHeader
-        tag="Het team"
-        title="De mensen achter de pals"
+        tag={m.tag}
+        title={m.title}
         titleId="team-title"
       />
 
@@ -62,7 +50,7 @@ export default function Team() {
       >
         {members.map((member, index) => (
           <li
-            key={member.role}
+            key={member.name}
             className="flex flex-col items-center gap-3 rounded-[32px] bg-white p-6 text-center md:p-8"
           >
             <div
@@ -90,19 +78,18 @@ export default function Team() {
             <h3 className="font-display text-2xl leading-[1.2] font-medium text-medium-green">
               {member.name}
             </h3>
-            <p className="font-label text-base font-bold text-orange">
-              {member.role}
-            </p>
-            <p className="flex items-center gap-2 rounded-full bg-off-white px-3.5 py-2 text-sm leading-[1.5] text-text-primary">
-              <Image
-                src="/images/about/paw-green.svg"
-                width={14.6626}
-                height={14.6659}
-                alt=""
-                aria-hidden
-              />
-              Trots baasje van {member.petName}
-            </p>
+            {member.petName && (
+              <p className="flex items-center gap-2 rounded-full bg-off-white px-3.5 py-2 text-sm leading-[1.5] text-text-primary">
+                <Image
+                  src="/images/about/paw-green.svg"
+                  width={14.6626}
+                  height={14.6659}
+                  alt=""
+                  aria-hidden
+                />
+                {fill(m.owner, { pet: member.petName })}
+              </p>
+            )}
           </li>
         ))}
       </ul>

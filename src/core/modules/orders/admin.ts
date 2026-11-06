@@ -11,6 +11,7 @@ import {
 import { getShopSettings } from "@/core/modules/settings/service";
 import { resolveDeliveryOption } from "@/core/modules/shipping/service";
 import { createToken, hashToken } from "@/core/utils/tokens";
+import { attachments, DEFAULT_ATTACHMENT } from "@/data/options";
 import { MANUAL_PAYMENT_PROVIDER } from "@/data/payment-methods";
 import { CURRENCY } from "@/data/pricing";
 import { HANDOVER_DELIVERY } from "@/data/shipping";
@@ -34,6 +35,7 @@ type LineData = {
   sku: string;
   size: string;
   edition: string | null;
+  attachment: string | null;
   animal: string | null;
   title: string;
   notes: string | null;
@@ -51,14 +53,17 @@ async function resolveLines(input: ManualOrderInput) {
     if (line.kind === "personalized") {
       const variant = variantFor(line.edition, line.animal);
       const labels = variantLabel(line.edition, line.animal);
+      const attachment = line.edition === "keychain" ? (line.attachment ?? null) : null;
+      const attachmentLabel = attachments.find((option) => option.value === attachment)?.label ?? null;
       return {
         previewId: randomUUID(),
         collectibleId: null,
         sku: variant.sku,
         size: variant.size,
         edition: line.edition,
+        attachment,
         animal: line.animal,
-        title: `${labels.title} · ${labels.edition}`,
+        title: [labels.title, labels.edition, attachmentLabel].filter(Boolean).join(" · "),
         notes: line.notes,
         quantity: line.quantity,
         unitCents: line.unitCents ?? priceFor(variant, catalog.prices),
@@ -73,6 +78,7 @@ async function resolveLines(input: ManualOrderInput) {
       sku: collectible.sku,
       size: DEFAULT_SIZE,
       edition: null,
+      attachment: line.attachment ?? DEFAULT_ATTACHMENT,
       animal: null,
       title: collectible.name,
       notes: line.notes,

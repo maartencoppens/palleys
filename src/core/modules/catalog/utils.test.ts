@@ -21,10 +21,14 @@ describe("variants", () => {
 });
 
 describe("VAT", () => {
-  it("extracts 21% VAT from a VAT-inclusive amount", () => {
-    expect(vatIncluded(12100)).toBe(2100);
-    expect(vatIncluded(2799)).toBe(486);
-    expect(vatIncluded(0)).toBe(0);
+  it("charges none: Palleys is exempt", () => {
+    expect(vatIncluded(2799)).toBe(0);
+  });
+
+  it("extracts VAT from an amount at a given rate", () => {
+    expect(vatIncluded(12100, 2100)).toBe(2100);
+    expect(vatIncluded(2799, 2100)).toBe(486);
+    expect(vatIncluded(0, 2100)).toBe(0);
   });
 
   it("supports another rate", () => {
@@ -33,7 +37,7 @@ describe("VAT", () => {
 });
 
 describe("computeTotals", () => {
-  it("adds lines and shipping, with VAT over the total", () => {
+  it("adds lines and shipping, without VAT", () => {
     const totals = computeTotals(
       [
         { unitCents: 2799, quantity: 2 },
@@ -41,7 +45,18 @@ describe("computeTotals", () => {
       ],
       495,
     );
-    expect(totals).toEqual({ subtotalCents: 8397, shippingCents: 495, totalCents: 8892, vatCents: 1543 });
+    expect(totals).toEqual({ subtotalCents: 8397, discountCents: 0, shippingCents: 495, totalCents: 8892, vatCents: 0 });
+  });
+
+  it("takes a discount off the products", () => {
+    const totals = computeTotals([{ unitCents: 2799, quantity: 1 }], 495, 280);
+    expect(totals).toEqual({ subtotalCents: 2799, discountCents: 280, shippingCents: 495, totalCents: 3014, vatCents: 0 });
+  });
+
+  it("refuses a discount larger than the products, so shipping can't be discounted away", () => {
+    expect(() => computeTotals([{ unitCents: 2799, quantity: 1 }], 495, 2800)).toThrow();
+    expect(() => computeTotals([{ unitCents: 2799, quantity: 1 }], 495, -1)).toThrow();
+    expect(() => computeTotals([{ unitCents: 2799, quantity: 1 }], 495, 1.5)).toThrow();
   });
 
   it("rejects non-integer or negative input", () => {

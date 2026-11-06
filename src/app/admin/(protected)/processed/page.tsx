@@ -6,6 +6,8 @@ import { formatDateTime } from "@/core/utils/format";
 import { Badge } from "@/components/design/Badge";
 import { ProcessedFileActions } from "@/components/functional/admin/ProcessedFileActions";
 
+export const instant = false;
+
 export default async function AdminProcessedPage() {
   await requireAdminPage();
   const { inProgress, printReady } = await getProcessingOverview();
@@ -75,7 +77,7 @@ function ProcessingTable({
 
   return (
     <div className="mt-4 overflow-x-auto rounded-3xl bg-white">
-      <table className="w-full text-left text-sm">
+      <table className="admin-table w-full text-left text-sm">
         <thead className="border-b-[1.5px] border-off-white-dark font-label text-text-muted">
           <tr>
             <th className="px-5 py-4 font-semibold">Bestandsnaam</th>
@@ -99,10 +101,10 @@ function ProcessingTable({
                     {item.baseName}
                   </Link>
                 </td>
-                <td className="px-5 py-4">
+                <td data-label="Aantal" className="px-5 py-4">
                   {item.quantity > 1 ? <Badge tone="waiting">{item.quantity}×</Badge> : "1"}
                 </td>
-                <td className="whitespace-nowrap px-5 py-4 text-text-muted">
+                <td data-label={dateLabel} className="whitespace-nowrap px-5 py-4 text-text-muted">
                   {date ? `${byOf(item)} · ${formatDateTime(date)}` : "—"}
                 </td>
                 <td className="px-5 py-4">

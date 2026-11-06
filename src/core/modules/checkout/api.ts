@@ -8,7 +8,7 @@ export async function fetchCheckoutConfig() {
   return data;
 }
 
-export async function postDeliveryOptions(address: { country: string; postalCode: string }) {
+export async function postDeliveryOptions(address: { country: string; postalCode?: string; discountCode?: string }) {
   const { data } = await api.post<{ options: DeliveryOptionView[] }>("/checkout/delivery-options", address);
   return data.options;
 }

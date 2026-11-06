@@ -1,9 +1,11 @@
 import "server-only";
 
-/** The visitor's IP as seen by our host (Vercel sets x-forwarded-for / x-real-ip). */
+/**
+ * The visitor's IP, for rate limits. Everything in x-forwarded-for can be sent by the visitor themself; only the last
+ * entry was added by our own reverse proxy. Reading the first one would let anyone dodge every limit with a made-up header.
+ */
 export function getClientIp(headers: Headers): string | null {
-  const forwarded = headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  return forwarded || headers.get("x-real-ip") || null;
+  return headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() || null;
 }
 
 export class CrossOriginError extends Error {}

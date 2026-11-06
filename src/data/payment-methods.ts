@@ -14,4 +14,5 @@ export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   transfer: "Overschrijving",
   gift: "Geschenk (geen betaling)",
   other: "Anders",
+  discount: "Gratis met kortingscode",
 };

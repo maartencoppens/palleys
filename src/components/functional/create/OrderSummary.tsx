@@ -1,27 +1,32 @@
 import Image from "next/image";
+import { useLocale, useMessages } from "@/core/locale/client";
 import { formatPrice } from "@/core/utils/format";
 
 type OrderSummaryProps = {
   pet: string | null;
   edition: string | null;
+  /** Null for a figurine: nothing to attach. */
+  attachment: string | null;
   /** File name for one photo, "3 photos" for several. */
   photos: string | null;
-  previewUrl: string | null;
   priceCents: number;
 };
 
-/* Figma: order-summary. Shows the visitor's own photo once uploaded, an example Palley before that. */
+/* Figma: order-summary. The image is always an example, never a preview of the real model. */
 export default function OrderSummary({
   pet,
   edition,
+  attachment,
   photos,
-  previewUrl,
   priceCents,
 }: OrderSummaryProps) {
+  const { summary: m } = useMessages().create;
+  const locale = useLocale();
   const rows = [
-    { label: "Huisdier", value: pet },
-    { label: "Palley", value: edition },
-    { label: "Foto’s", value: photos },
+    { label: m.pet, value: pet },
+    { label: m.palley, value: edition },
+    ...(attachment ? [{ label: m.attachment, value: attachment }] : []),
+    { label: m.photos, value: photos },
   ];
 
   return (
@@ -33,34 +38,20 @@ export default function OrderSummary({
         id="summary-title"
         className="font-display text-2xl leading-[1.2] font-bold text-medium-green md:text-[32px]"
       >
-        Jouw Palley
+        {m.title}
       </h2>
 
       <div className="relative grid h-[220px] place-items-center overflow-hidden rounded-3xl bg-light-yellow md:h-[260px]">
-        {previewUrl ? (
-          // A local object URL of the visitor's own photo, so a plain img is used.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={previewUrl}
-            alt="Je geüploade foto"
-            className="size-full object-cover"
-          />
-        ) : (
-          <Image
-            className="h-[200px] w-auto object-contain md:h-[240px]"
-            src="/images/products/golden-retriever.png"
-            width={300}
-            height={240}
-            alt="Voorbeeld: een Palley-sleutelhanger van een golden retriever"
-            sizes="300px"
-          />
-        )}
+        <Image
+          className="h-[200px] w-auto object-contain md:h-[240px]"
+          src="/images/products/golden-retriever.png"
+          width={300}
+          height={240}
+          alt={m.imageAlt}
+          sizes="300px"
+        />
       </div>
-      <p className="text-sm leading-[1.5] text-text-primary">
-        {previewUrl
-          ? "Een voorbeeld van je foto. Ons team maakt er een 3D-model van voor we printen."
-          : "Een voorbeeld-Palley. Upload je foto om hem hier te zien."}
-      </p>
+      <p className="text-sm leading-[1.5] text-text-primary">{m.example}</p>
 
       <dl className="flex flex-col gap-5">
         {rows.map((row) => (
@@ -83,14 +74,14 @@ export default function OrderSummary({
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between text-medium-green">
           <p className="font-display text-2xl leading-[1.2] font-medium">
-            Totaal
+            {m.total}
           </p>
           <p className="font-label text-[32px] leading-[normal] font-extrabold">
-            {formatPrice(priceCents / 100)}
+            {formatPrice(priceCents / 100, locale)}
           </p>
         </div>
         <p className="text-sm leading-[1.5] text-text-primary">
-          Incl. btw · verzendkosten bij het afrekenen
+          {m.exclShipping}
         </p>
       </div>
 
@@ -107,8 +98,7 @@ export default function OrderSummary({
           />
         </span>
         <p className="text-[15px] leading-[1.5] text-text-primary">
-          Met je Palley help je ook andere dieren: 50% van onze winst gaat naar
-          de bescherming van dieren en hun leefgebied.
+          {m.charity}
         </p>
       </div>
     </aside>

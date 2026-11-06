@@ -36,3 +36,4 @@ export function isCollectibleImageKey(key: string) {
 export function collectibleImageUrl(key: string | null) {
   return key ? `${COLLECTIBLE_IMAGE_ROUTE}/${key.slice(COLLECTIBLE_KEY_PREFIX.length + 1)}` : null;
 }
+

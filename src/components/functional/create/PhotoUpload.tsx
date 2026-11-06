@@ -4,15 +4,15 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import {
   ACCEPTED_PHOTO_EXTENSIONS,
-  ACCEPTED_PHOTO_LABEL,
   MAX_PHOTO_SIZE_LABEL,
   ACCEPTED_PHOTO_TYPES,
   MAX_PHOTO_BYTES,
   MAX_PHOTOS,
-  photoQualityMessage,
   qualityFromSize,
   type PhotoQuality,
 } from "@/data/options";
+import { useLocale, useMessages } from "@/core/locale/client";
+import { fill } from "@/core/locale/fill";
 import { formatFileSize } from "@/core/utils/format";
 
 export type UploadedPhoto = {
@@ -69,6 +69,8 @@ export default function PhotoUpload({
   onChange,
   error,
 }: PhotoUploadProps) {
+  const { upload: m } = useMessages().create;
+  const locale = useLocale();
   const inputRef = useRef<HTMLInputElement>(null);
   // Where keyboard focus goes after a photo is removed (its button disappears with it).
   const browseButtonRef = useRef<HTMLButtonElement>(null);
@@ -87,13 +89,11 @@ export default function PhotoUpload({
     const issues: string[] = [];
     const valid = files.filter((file) => {
       if (!isAccepted(file)) {
-        issues.push(`${file.name} is geen JPG-, PNG- of WebP-foto.`);
+        issues.push(fill(m.wrongType, { name: file.name }));
         return false;
       }
       if (file.size > MAX_PHOTO_BYTES) {
-        issues.push(
-          `${file.name} is ${formatFileSize(file.size)}; foto’s mogen maximaal ${MAX_PHOTO_SIZE_LABEL} zijn.`,
-        );
+        issues.push(fill(m.tooBig, { name: file.name, size: formatFileSize(file.size, locale), max: MAX_PHOTO_SIZE_LABEL }));
         return false;
       }
       return true;
@@ -102,9 +102,7 @@ export default function PhotoUpload({
     const accepted = valid.slice(0, Math.max(remaining, 0));
     const skipped = valid.slice(accepted.length);
     if (skipped.length > 0) {
-      issues.push(
-        `Je kunt maximaal ${MAX_PHOTOS} foto’s toevoegen, dus ${skipped.map((file) => file.name).join(", ")} ${skipped.length === 1 ? "is" : "zijn"} niet toegevoegd.`,
-      );
+      issues.push(fill(m.tooMany, { max: MAX_PHOTOS, names: skipped.map((file) => file.name).join(", ") }));
     }
 
     setProblems(issues);
@@ -151,8 +149,7 @@ export default function PhotoUpload({
   return (
     <div className="flex flex-col gap-4">
       <p id="photo-intro" className="text-base leading-[1.5] text-text-primary">
-        Voeg tot {MAX_PHOTOS} foto’s van je huisdier toe. Verschillende hoeken
-        helpen ons om elk vlekje juist te krijgen.
+        {fill(m.intro, { max: MAX_PHOTOS })}
       </p>
 
       <input
@@ -190,9 +187,9 @@ export default function PhotoUpload({
             />
           </span>
           <p className="font-display text-xl leading-[1.2] font-medium text-medium-green md:text-2xl">
-            {isDragging ? "Laat ze hier maar los" : "Sleep je foto’s hierheen"}
+            {isDragging ? m.dropActive : m.drop}
           </p>
-          <p className="text-base leading-[1.5] text-text-primary">of</p>
+          <p className="text-base leading-[1.5] text-text-primary">{m.or}</p>
           <button
             ref={browseButtonRef}
             type="button"
@@ -200,19 +197,18 @@ export default function PhotoUpload({
             aria-describedby="photo-intro photo-hint"
             className="w-full max-w-[277px] rounded-pill bg-medium-green px-2xl py-m text-xl leading-[19.5px] font-semibold text-button-primary-text transition hover:bg-medium-green-hover active:scale-[0.98] md:text-2xl"
           >
-            Kies bestanden
+            {m.browse}
           </button>
           <p
             id="photo-hint"
             className="text-base leading-[1.5] text-text-primary"
           >
-            {ACCEPTED_PHOTO_LABEL} · max. {MAX_PHOTO_SIZE_LABEL} per
-            foto
+            {fill(m.hint, { size: MAX_PHOTO_SIZE_LABEL })}
           </p>
         </div>
       ) : (
         <>
-          <ul className="flex flex-col gap-3" aria-label="Je foto’s">
+          <ul className="flex flex-col gap-3" aria-label={m.listLabel}>
             {photos.map((photo, index) => (
               <li
                 key={photo.id}
@@ -244,7 +240,7 @@ export default function PhotoUpload({
                     {photo.file.name}
                     {index === 0 && photos.length > 1 && (
                       <span className="ml-2 rounded-full bg-light-green px-2 py-0.5 align-middle text-xs font-bold text-medium-green">
-                        Voorbeeld
+                        {m.example}
                       </span>
                     )}
                   </p>
@@ -262,8 +258,7 @@ export default function PhotoUpload({
                       />
                     )}
                     <span>
-                      {formatFileSize(photo.file.size)} ·{" "}
-                      {photoQualityMessage[photo.quality]}
+                      {formatFileSize(photo.file.size, locale)} · {m.quality[photo.quality]}
                     </span>
                   </p>
                 </div>
@@ -271,7 +266,7 @@ export default function PhotoUpload({
                   type="button"
                   onClick={() => removePhoto(photo)}
                   className="grid size-11 shrink-0 place-items-center rounded-full transition-colors hover:bg-off-white-dark"
-                  aria-label={`Verwijder foto ${index + 1}: ${photo.file.name}`}
+                  aria-label={fill(m.remove, { number: index + 1, name: photo.file.name })}
                 >
                   <Image
                     src="/images/create/trash.svg"
@@ -286,8 +281,7 @@ export default function PhotoUpload({
 
           {isFull ? (
             <p className="rounded-[20px] bg-off-white px-4 py-3 text-base leading-[1.5] text-text-primary">
-              Dat is het maximum van {MAX_PHOTOS} foto’s. Verwijder er een om
-              een andere foto toe te voegen.
+              {fill(m.full, { max: MAX_PHOTOS })}
             </p>
           ) : (
             <div
@@ -296,13 +290,11 @@ export default function PhotoUpload({
             >
               <p className="text-base leading-[1.5] text-text-primary">
                 {isDragging ? (
-                  "Laat ze hier maar los"
+                  m.dropActive
                 ) : (
                   <>
-                    <span className="font-semibold">
-                      {photos.length} van {MAX_PHOTOS}
-                    </span>{" "}
-                    foto’s · je kunt er nog {remaining} toevoegen
+                    <span className="font-semibold">{fill(m.count, { count: photos.length, max: MAX_PHOTOS })}</span>{" "}
+                    {fill(m.countRest, { remaining })}
                   </>
                 )}
               </p>
@@ -313,11 +305,10 @@ export default function PhotoUpload({
                 aria-describedby="photo-hint-compact"
                 className="shrink-0 rounded-pill bg-medium-green px-6 py-3 font-label text-base font-semibold text-button-primary-text transition hover:bg-medium-green-hover active:scale-[0.98]"
               >
-                Nog een foto toevoegen
+                {m.add}
               </button>
               <p id="photo-hint-compact" className="sr-only">
-                {ACCEPTED_PHOTO_LABEL}, max. {MAX_PHOTO_SIZE_LABEL}{" "}
-                per foto
+                {fill(m.hint, { size: MAX_PHOTO_SIZE_LABEL })}
               </p>
             </div>
           )}
@@ -327,7 +318,7 @@ export default function PhotoUpload({
       {/* Announces the count after every change, without stealing focus. */}
       <p className="sr-only" aria-live="polite">
         {photos.length > 0
-          ? `${photos.length} van ${MAX_PHOTOS} foto’s toegevoegd.`
+          ? fill(m.announce, { count: photos.length, max: MAX_PHOTOS })
           : ""}
       </p>
 

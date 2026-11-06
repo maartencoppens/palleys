@@ -11,6 +11,9 @@ const STATUS: Record<CheckoutErrorCode, number> = {
   cart_empty: 409,
   preview_not_orderable: 409,
   delivery_option_invalid: 409,
+  address_required: 400,
+  discount_invalid: 409,
+  discount_min_subtotal: 409,
   payment_failed: 502,
 };
 
@@ -21,7 +24,9 @@ export function checkoutErrorResponse(error: unknown, context: string) {
     const fields = [...new Set(error.issues.map((issue) => String(issue.path[0] ?? "")))].filter(Boolean);
     return NextResponse.json({ error: "invalid_input", fields }, { status: 400 });
   }
-  if (error instanceof CheckoutError) return NextResponse.json({ error: error.code }, { status: STATUS[error.code] });
+  if (error instanceof CheckoutError) {
+    return NextResponse.json({ error: error.code, ...error.details }, { status: STATUS[error.code] });
+  }
   if (error instanceof RateLimitError) {
     return NextResponse.json(
       { error: "rate_limited" },

@@ -1,31 +1,13 @@
 import Image from "next/image";
-import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import CtaCard from "@/components/design/CtaCard";
+import { Link } from "@/core/locale/client";
+import { fill } from "@/core/locale/fill";
+import { getMessages } from "@/core/locale/server";
 import { getSiteSettings } from "@/core/modules/settings/service";
+import { PRIVACY_URL, TERMS_URL } from "@/data/checkout";
 import { SOCIAL_LINKS } from "@/data/company";
-
-const navigation = [
-  {
-    title: "Ontdek",
-    links: [
-      { label: "Maak je Palley", href: "/create" },
-      { label: "Shop de collectie", href: "/shop" },
-      { label: "Zo werkt het", href: "/#how-it-works" },
-      { label: "Over ons", href: "/about" },
-    ],
-  },
-  {
-    title: "Hulp nodig?",
-    links: [
-      { label: "Contact", href: "/#contact" },
-      { label: "Veelgestelde vragen", href: "/#faq" },
-      { label: "Verzending & levering", href: "/shipping" },
-      { label: "Retourneren", href: "/returns" },
-    ],
-  },
-];
 
 const socialIcons = [
   { key: "instagram", label: "Instagram", icon: "/images/footer/instagram.svg", size: 56 },
@@ -34,7 +16,7 @@ const socialIcons = [
 ] as const;
 
 /* The profile URLs come from /admin/settings/company; an empty one hides its icon. */
-function Socials({ urls }: { urls: Record<(typeof socialIcons)[number]["key"], string> }) {
+function Socials({ urls, label }: { urls: Record<(typeof socialIcons)[number]["key"], string>; label: string }) {
   return (
     <ul className="flex items-center gap-[38px]">
       {socialIcons
@@ -45,7 +27,7 @@ function Socials({ urls }: { urls: Record<(typeof socialIcons)[number]["key"], s
               href={urls[social.key]}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label={`Palleys op ${social.label}`}
+              aria-label={fill(label, { network: social.label })}
               className="grid size-[50px] place-items-center rounded-lg transition-transform hover:scale-110"
             >
               <Image className="max-w-none" src={social.icon} width={social.size} height={social.size} alt="" />
@@ -56,18 +38,11 @@ function Socials({ urls }: { urls: Record<(typeof socialIcons)[number]["key"], s
   );
 }
 
-async function LiveSocials() {
+async function LiveSocials({ label }: { label: string }) {
   await connection();
   const { company } = await getSiteSettings();
-  return <Socials urls={company.socials} />;
+  return <Socials urls={company.socials} label={label} />;
 }
-
-const legalLinks = [
-  { label: "Privacy", href: "/privacy" },
-  { label: "Algemene voorwaarden", href: "/algemene-voorwaarden" },
-  { label: "Cookiebeleid", href: "/cookies" },
-  { label: "Cookie-instellingen", href: "/cookies#settings" },
-];
 
 /* Cached, so the year is fixed when the page is prerendered instead of read on every request. */
 async function CurrentYear() {
@@ -101,11 +76,36 @@ type FooterProps = {
   ctaBackdropClassName?: string;
 };
 
-export default function Footer({
+export default async function Footer({
   top = "card",
   ctaBackdropClassName = "bg-light-green",
 }: FooterProps) {
   const cta = top === "card";
+  const { footer: m, nav } = await getMessages();
+  const navigation = [
+    {
+      title: m.discover,
+      links: [
+        { label: m.createPalley, href: "/create" },
+        { label: m.shopCollection, href: "/shop" },
+        { label: m.howItWorks, href: "/#how-it-works" },
+        { label: m.about, href: "/about" },
+      ],
+    },
+    {
+      title: m.help,
+      links: [
+        { label: m.contact, href: "/#contact" },
+        { label: m.faq, href: "/#faq" },
+      ],
+    },
+  ];
+  const legalLinks = [
+    { label: m.privacy, href: PRIVACY_URL },
+    { label: m.terms, href: TERMS_URL },
+    { label: m.cookiePolicy, href: "/cookies" },
+    { label: m.cookieSettings, href: "/cookies#settings" },
+  ];
 
   return (
     <footer
@@ -141,13 +141,14 @@ export default function Footer({
         <div
           className={`mx-auto flex w-full max-w-[var(--container-page)] flex-col gap-12 px-[clamp(20px,2.7vw,52px)] pb-4 xl:gap-[73px] ${cta ? "section-pt xl:pt-[clamp(120px,16.3vw,235px)]" : "pt-0"}`}
         >
-          <div className="flex flex-col gap-12 xl:flex-row xl:gap-10">
+          {/* From xl the brand and the three columns spread over the full width, so they line up with the line below. */}
+          <div className="flex flex-col gap-12 xl:flex-row xl:justify-between xl:gap-10">
             {/* Brand: logo, tagline and socials */}
             <div className="flex flex-col gap-8 xl:w-[clamp(300px,25.8vw,371px)] xl:shrink-0 xl:gap-[53px]">
               <div className="flex flex-col gap-5 xl:gap-[30px]">
                 <Link
                   href="/"
-                  aria-label="Palleys startpagina"
+                  aria-label={nav.homeLabel}
                   className="w-fit"
                 >
                   <Image
@@ -159,22 +160,22 @@ export default function Footer({
                   />
                 </Link>
                 <p className="font-label text-2xl leading-[normal] font-extrabold md:text-[32px]">
-                  A pal for your keys
+                  {m.tagline}
                 </p>
                 <p className="font-label text-xl leading-[normal] md:text-2xl">
-                  Je favoriete maatje,
+                  {m.subtextLine1}
                   <br />
-                  in zakformaat
+                  {m.subtextLine2}
                 </p>
               </div>
 
-              <Suspense fallback={<Socials urls={SOCIAL_LINKS} />}>
-                <LiveSocials />
+              <Suspense fallback={<Socials urls={SOCIAL_LINKS} label={m.social} />}>
+                <LiveSocials label={m.social} />
               </Suspense>
             </div>
 
             {/* Link columns */}
-            <div className="grid grid-cols-2 gap-x-6 gap-y-12 md:gap-x-12 lg:grid-cols-[auto_auto_1fr] lg:gap-x-[clamp(32px,4.2vw,61px)] xl:flex-1 min-[1440px]:grid-cols-[204px_321px_1fr]">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-12 md:gap-x-12 lg:grid-cols-[auto_auto_1fr] lg:gap-x-[clamp(32px,4.2vw,61px)] xl:contents">
               {navigation.map((column) => (
                 <nav
                   key={column.title}
@@ -194,16 +195,16 @@ export default function Footer({
                 </nav>
               ))}
 
-              <div className="col-span-2 flex flex-col items-start gap-5 lg:col-span-1">
-                <h2 className={headingClassName}>Goed doen</h2>
+              <div className="col-span-2 flex flex-col items-start gap-5 lg:col-span-1 xl:max-w-[clamp(280px,24vw,420px)]">
+                <h2 className={headingClassName}>{m.doingGood}</h2>
                 <p className="font-label text-base leading-[normal] md:text-2xl">
-                  50% van onze winst gaat naar dieren
+                  {m.charityText}
                 </p>
                 <Link
-                  href="/charity"
+                  href="/#charity"
                   className="group flex items-center gap-2.5 border-b border-light-green py-s text-xl leading-[19.5px] font-bold transition-colors hover:border-accent-highlights md:text-2xl"
                 >
-                  Ontdek ons goede doel
+                  {m.charityLink}
                   <span
                     className="grid h-[33.935px] w-[35.969px] place-items-center"
                     aria-hidden
@@ -232,7 +233,7 @@ export default function Footer({
                 aria-hidden
               />
               <span>
-                <CurrentYear /> Palleys. Alle rechten voorbehouden.
+                <CurrentYear /> {m.rights}
               </span>
             </p>
             <ul className="flex flex-wrap items-center">

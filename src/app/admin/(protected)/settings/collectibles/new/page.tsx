@@ -4,6 +4,8 @@ import { listCollectiblesForAdmin } from "@/core/modules/collectibles/service";
 import { CollectibleForm } from "@/components/functional/admin/settings/CollectibleForm";
 import { SettingsHeader } from "@/components/functional/admin/settings/SettingsParts";
 
+export const instant = false;
+
 export default async function NewCollectiblePage() {
   await requireAdminPage();
   const collectibles = await listCollectiblesForAdmin();

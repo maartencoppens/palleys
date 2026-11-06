@@ -1,7 +1,13 @@
 import { z } from "zod";
-import { CHECKOUT_LOCALES, FIELD_LIMITS } from "@/data/checkout";
+import { DEFAULT_LOCALE, LOCALES } from "@/core/locale/config";
+import { FIELD_LIMITS } from "@/data/checkout";
 import { POSTAL_CODE_PATTERNS, SHIPPING_COUNTRY_CODES } from "@/data/shipping";
+import { enteredDiscountCodeSchema } from "@/core/modules/discounts/types";
 import type { DeliveryOption } from "@/core/modules/shipping/types";
+
+// Only needed for a parcel: the service checks that once it knows the delivery option.
+const optionalAddressText = (max: number) =>
+  z.string().trim().optional().transform((value) => value || undefined).pipe(safeText(max).optional());
 
 const text = (max: number) => z.string().trim().min(1).max(max);
 // No HTML-ish characters in names and addresses: they end up in e-mails and on labels.
@@ -23,18 +29,20 @@ export const checkoutSchema = z
     firstName: safeText(FIELD_LIMITS.name),
     lastName: safeText(FIELD_LIMITS.name),
     phone: phoneSchema,
-    street: safeText(FIELD_LIMITS.street),
-    houseNumber: safeText(FIELD_LIMITS.houseNumber),
-    postalCode: z.string().trim().max(10),
-    city: safeText(FIELD_LIMITS.city),
+    street: optionalAddressText(FIELD_LIMITS.street),
+    houseNumber: optionalAddressText(FIELD_LIMITS.houseNumber),
+    postalCode: z.string().trim().max(10).optional().transform((value) => value || undefined),
+    city: optionalAddressText(FIELD_LIMITS.city),
     country: z.enum(SHIPPING_COUNTRY_CODES),
     deliveryOptionId: z.string().min(1).max(100),
+    // Only the code: what it's worth is worked out on the server.
+    discountCode: enteredDiscountCodeSchema.optional(),
     // LEGAL-REVIEW: must be an explicit, unticked-by-default checkbox in the form.
     acceptTerms: z.literal(true),
     marketingOptIn: z.boolean().default(false),
-    locale: z.enum(CHECKOUT_LOCALES).default("nl"),
+    locale: z.enum(LOCALES).default(DEFAULT_LOCALE),
   })
-  .refine((value) => POSTAL_CODE_PATTERNS[value.country].test(value.postalCode), {
+  .refine((value) => !value.postalCode || POSTAL_CODE_PATTERNS[value.country].test(value.postalCode), {
     path: ["postalCode"],
     message: "Invalid postal code",
   });
