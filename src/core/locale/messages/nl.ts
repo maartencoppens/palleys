@@ -231,19 +231,6 @@ export const nl = {
   },
 
   options: {
-    animals: {
-      dog: "Hond",
-      cat: "Kat",
-      rabbit: "Konijn",
-      "guinea-pig": "Cavia",
-      hamster: "Hamster",
-      mouse: "Muis",
-      rat: "Rat",
-      hedgehog: "Egel",
-      turtle: "Schildpad",
-      chameleon: "Kameleon",
-      snake: "Slang",
-    },
     editions: { keychain: "Met sleutelhanger", figure: "Enkel figuurtje" },
     attachments: { clip: "Klemmetje", "key-ring": "Sleutelring" },
   },

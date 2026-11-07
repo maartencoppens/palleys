@@ -1,5 +1,4 @@
 import { api } from "@/core/networking/api";
-import type { AnimalType } from "@/data/animals";
 import axios from "axios";
 import type { PreviewStatus } from "@/db/client";
 import type { PreviewActionResult, PrintDownload } from "./types";
@@ -47,11 +46,11 @@ export async function postDownloadModels(previewIds: string[]) {
 
 export async function postAnimalType(
   previewId: string,
-  animalType: AnimalType,
+  animalType: string,
 ) {
   const { data } = await api.post<{
     previewId: string;
-    animalType: AnimalType;
+    animalType: string;
   }>(`/admin/previews/${previewId}/animal-type`, { animalType });
   return data;
 }
@@ -126,4 +125,14 @@ export async function uploadCustomerPhotos(files: File[]) {
     ),
   );
   return { previewId: data.previewId, expiresAt: data.expiresAt };
+}
+
+export async function putPromptOverride(previewId: string, prompt: string) {
+  await api.put(`/admin/previews/${previewId}/prompt`, { prompt });
+}
+
+export async function uploadPose(previewId: string, file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  await api.post(`/admin/previews/${previewId}/pose`, form, { headers: { "Content-Type": "multipart/form-data" } });
 }

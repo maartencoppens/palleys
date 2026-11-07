@@ -5,10 +5,10 @@ import { uploadCustomerPhotos } from "@/core/modules/previews/api";
 import { postAddToCart } from "@/core/modules/cart/api";
 import type { CartView } from "@/core/modules/cart/types";
 import { useMessages } from "@/core/locale/client";
-import type { Animal, Attachment, Edition } from "@/data/options";
+import type { Attachment, Edition } from "@/data/options";
 
 type Photo = { id: string; file: File };
-type Input = { animal: Animal; edition: Edition; attachment?: Attachment; photos: Photo[]; notes: string };
+type Input = { animal: string; edition: Edition; attachment?: Attachment; photos: Photo[]; notes: string };
 type Status = "idle" | "uploading" | "adding" | "done";
 
 /**

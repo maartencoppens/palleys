@@ -4,7 +4,8 @@ import { useState } from "react";
 import type { CatalogSettings } from "@/core/modules/settings/types";
 import { fromEuroInput, toEuroInput } from "@/core/utils/format";
 import { Input } from "@/components/design/form";
-import { animals, editions, type Animal, type Edition } from "@/data/options";
+import { editions, type Edition } from "@/data/options";
+import { AnimalListEditor } from "./AnimalListEditor";
 import { MAX_PRODUCT_PRICE_CENTS } from "@/data/pricing";
 import { compactFieldClassName, fieldLabelClassName, SaveBar, SettingsCard } from "./SettingsParts";
 import { useSettingsSave } from "./useSettingsSave";
@@ -17,7 +18,8 @@ function toggled<T>(list: T[], value: T, off: boolean) {
 export function CatalogSettingsForm({ settings }: { settings: CatalogSettings }) {
   const [keychain, setKeychain] = useState(toEuroInput(settings.prices.keychain));
   const [figurine, setFigurine] = useState(toEuroInput(settings.prices.figurine));
-  const [disabledAnimals, setDisabledAnimals] = useState<Animal[]>(settings.disabledAnimals);
+  const [animals, setAnimals] = useState(settings.animals);
+  const [disabledAnimals, setDisabledAnimals] = useState<string[]>(settings.disabledAnimals);
   const [disabledEditions, setDisabledEditions] = useState<Edition[]>(settings.disabledEditions);
   const { save, saving, message, error, setError, setMessage } = useSettingsSave("catalog");
 
@@ -30,8 +32,11 @@ export function CatalogSettingsForm({ settings }: { settings: CatalogSettings })
       return;
     }
     if (disabledAnimals.length === animals.length) return setError("Laat minstens één dier aan staan");
+    if (animals.some((animal) => Object.values(animal.labels).some((label) => !label.trim()))) {
+      return setError("Elk dier heeft een naam nodig in elke taal");
+    }
     if (disabledEditions.length === editions.length) return setError("Laat minstens één uitvoering aan staan");
-    void save({ prices: { keychain: prices.keychain, figurine: prices.figurine }, disabledAnimals, disabledEditions });
+    void save({ prices: { keychain: prices.keychain, figurine: prices.figurine }, animals, disabledAnimals, disabledEditions });
   }
 
   return (
@@ -92,22 +97,18 @@ export function CatalogSettingsForm({ settings }: { settings: CatalogSettings })
         </ul>
       </SettingsCard>
 
-      <SettingsCard title="Dieren" intro="Zet een dier uit als je het tijdelijk niet kunt maken.">
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {animals.map((animal) => (
-            <li key={animal.value}>
-              <label className="flex cursor-pointer items-center gap-3 text-base font-semibold">
-                <input
-                  type="checkbox"
-                  checked={!disabledAnimals.includes(animal.value)}
-                  onChange={(event) => setDisabledAnimals((list) => toggled(list, animal.value, !event.target.checked))}
-                  className="size-5 accent-medium-green"
-                />
-                {animal.label}
-              </label>
-            </li>
-          ))}
-        </ul>
+      <SettingsCard
+        title="Dieren"
+        intro="Wat klanten kunnen kiezen in de configurator. Een nieuw dier staat na het opslaan overal: in de configurator, bij nieuwe orders en bij de AI-prompts (met de algemene prompt tot je het een eigen geeft). Zet een dier uit als je het tijdelijk niet kunt maken; verwijderen haalt het overal weg, bestaande orders houden het."
+      >
+        <AnimalListEditor
+          animals={animals}
+          disabled={disabledAnimals}
+          onChange={(nextAnimals, nextDisabled) => {
+            setAnimals(nextAnimals);
+            setDisabledAnimals(nextDisabled);
+          }}
+        />
       </SettingsCard>
 
       <SaveBar saving={saving} message={message} error={error} />

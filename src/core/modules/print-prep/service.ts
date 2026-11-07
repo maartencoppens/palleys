@@ -13,7 +13,9 @@ import {
 import { assertTransition } from "@/core/modules/previews/status";
 import { printFileBaseName } from "@/core/modules/previews/utils";
 import { PRINT_FILE_CONTENT_TYPE } from "@/data/uploads";
-import type { ProcessingItem, ProcessingOverview } from "./types";
+import { OPEN_ORDER_STATUSES } from "@/core/modules/orders/check-in";
+import { attachPreviewModel } from "@/core/modules/collectibles/service";
+import type { CollectiblePrintItem, ProcessingItem, ProcessingOverview } from "./types";
 import { isProcessedKeyOf, processedKey } from "./utils";
 
 // Uploaden mag bij een goedgekeurd model (eerste keer) of een verwerkt
@@ -82,7 +84,7 @@ export async function getProcessingOverview(): Promise<ProcessingOverview> {
 async function getUploadablePreview(id: string) {
   const preview = await prisma.preview.findUnique({
     where: { id },
-    select: { status: true, processedKey: true },
+    select: { status: true, processedKey: true, forCollectible: true },
   });
   if (!preview) throw new PreviewNotFoundError(id);
   if (!UPLOADABLE_STATUSES.includes(preview.status)) {
@@ -128,6 +130,11 @@ export async function confirmProcessedUpload(
   });
   if (count === 0) throw new PreviewConflictError("Status is intussen gewijzigd");
 
+  // A new collectible's model goes straight onto its collectible. If that fails, the preview page offers to retry.
+  if (preview.forCollectible) {
+    await attachPreviewModel(id, adminName).catch((err) => console.error(`[print-prep] model of ${id} not attached:`, err));
+  }
+
   if (preview.processedKey && preview.processedKey !== key) {
     try {
       await deleteObject(preview.processedKey);
@@ -153,4 +160,35 @@ export async function getProcessedDownloadUrl(id: string) {
   const fileName = `${printFileBaseName(preview)}-PRINT.zip`;
   const url = await createDownloadUrl(preview.processedKey, fileName);
   return { url, fileName };
+}
+
+/** Collectibles on open orders that nobody ticked off yet, oldest order first. */
+export async function getCollectiblePrintQueue(): Promise<CollectiblePrintItem[]> {
+  const items = await prisma.orderItem.findMany({
+    where: { collectibleId: { not: null }, checkedInAt: null, order: { status: { in: OPEN_ORDER_STATUSES } } },
+    orderBy: { order: { paidAt: "asc" } },
+    select: {
+      id: true,
+      quantity: true,
+      attachment: true,
+      title: true,
+      collectible: { select: { id: true, modelKey: true } },
+      order: { select: { id: true, number: true, paidAt: true } },
+    },
+  });
+  return items.flatMap((item) =>
+    item.collectible
+      ? {
+          itemId: item.id,
+          orderId: item.order.id,
+          orderNumber: item.order.number,
+          collectibleId: item.collectible.id,
+          name: item.title,
+          quantity: item.quantity,
+          attachment: item.attachment,
+          hasModel: item.collectible.modelKey !== null,
+          paidAt: item.order.paidAt?.toISOString() ?? null,
+        }
+      : [],
+  );
 }

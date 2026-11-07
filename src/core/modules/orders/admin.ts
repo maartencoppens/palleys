@@ -12,6 +12,7 @@ import { getShopSettings } from "@/core/modules/settings/service";
 import { resolveDeliveryOption } from "@/core/modules/shipping/service";
 import { createToken, hashToken } from "@/core/utils/tokens";
 import { attachments, DEFAULT_ATTACHMENT } from "@/data/options";
+import { findAnimal } from "@/core/modules/animals/utils";
 import { MANUAL_PAYMENT_PROVIDER } from "@/data/payment-methods";
 import { CURRENCY } from "@/data/pricing";
 import { HANDOVER_DELIVERY } from "@/data/shipping";
@@ -51,8 +52,11 @@ async function resolveLines(input: ManualOrderInput) {
 
   return input.lines.map((line): LineData => {
     if (line.kind === "personalized") {
-      const variant = variantFor(line.edition, line.animal);
-      const labels = variantLabel(line.edition, line.animal);
+      // Also an animal that's switched off for the website: by hand we can still make it. Not one that was removed.
+      const animal = findAnimal(catalog.animals, line.animal);
+      if (!animal) throw new OrderActionError("Dit dier staat niet meer in de lijst");
+      const variant = variantFor(line.edition, animal);
+      const labels = variantLabel(line.edition, animal);
       const attachment = line.edition === "keychain" ? (line.attachment ?? null) : null;
       const attachmentLabel = attachments.find((option) => option.value === attachment)?.label ?? null;
       return {

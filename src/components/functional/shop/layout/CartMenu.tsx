@@ -32,9 +32,14 @@ export const lineName = (line: CartLineView, { cart }: Texts, locale: Locale) =>
   line.kind === "personalized" ? cart.personalized : line.productTitles[locale];
 
 /** Hond · Met sleutelhanger · Klemmetje, in the shopper's language. Empty for a collectible. */
-export function lineChoices(line: CartLineView, { options }: Texts, { withAnimal = true, withAttachment = true } = {}) {
+export function lineChoices(
+  line: CartLineView,
+  { options }: Texts,
+  locale: Locale,
+  { withAnimal = true, withAttachment = true } = {},
+) {
   return [
-    withAnimal && line.animal ? options.animals[line.animal] : null,
+    withAnimal && line.animalLabels ? line.animalLabels[locale] : null,
     line.edition ? options.editions[line.edition] : null,
     withAttachment && line.attachment ? options.attachments[line.attachment] : null,
   ]
@@ -133,7 +138,7 @@ export default function CartMenu({ pinned, onOpenChange, onReveal }: CartMenuPro
 
   // Every line is the same product, so the pet tells them apart best.
   const miniTitle = (line: CartLineView) =>
-    line.animal ? fill(m.palleyLine, { animal: messages.options.animals[line.animal] }) : line.productTitles[locale];
+    line.animalLabels ? fill(m.palleyLine, { animal: line.animalLabels[locale] }) : line.productTitles[locale];
 
   return (
     <>
@@ -236,7 +241,7 @@ export default function CartMenu({ pinned, onOpenChange, onReveal }: CartMenuPro
                     <CartLinePhoto photoUrl={line.photoUrl} size={56} className="size-14 rounded-2xl" />
                     <div className="flex min-w-0 flex-1 flex-col items-start">
                       <p className="truncate font-label text-base font-bold">{miniTitle(line)}</p>
-                      {lineChoices(line, messages, { withAnimal: false }) && <p className="truncate text-sm">{lineChoices(line, messages, { withAnimal: false })}</p>}
+                      {lineChoices(line, messages, locale, { withAnimal: false }) && <p className="truncate text-sm">{lineChoices(line, messages, locale, { withAnimal: false })}</p>}
                       <div className="mt-1.5">
                         <QuantityStepper
                           size="small"

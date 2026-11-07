@@ -23,3 +23,16 @@ export type ProcessingOverview = {
   inProgress: ProcessingItem[]; // gedownload, wacht op de zip uit Blender
   printReady: ProcessingItem[]; // zip geüpload, klaar voor print
 };
+
+/** A collectible on a paid, open order that still has to be printed: from its own stored model. */
+export type CollectiblePrintItem = {
+  itemId: string;
+  orderId: string;
+  orderNumber: string;
+  collectibleId: string;
+  name: string;
+  quantity: number;
+  attachment: string | null;
+  hasModel: boolean;
+  paidAt: string | null;
+};

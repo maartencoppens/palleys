@@ -406,8 +406,8 @@ export default function CheckoutForm({ deliveryTime }: { deliveryTime: string })
                 <p className="font-label text-base font-bold text-text-primary">
                   {lineName(line, messages, locale)} {line.quantity > 1 && <span className="text-text-muted">× {line.quantity}</span>}
                 </p>
-                {lineChoices(line, messages, { withAttachment: false }) && (
-                  <p className="text-sm text-text-primary">{lineChoices(line, messages, { withAttachment: false })}</p>
+                {lineChoices(line, messages, locale, { withAttachment: false }) && (
+                  <p className="text-sm text-text-primary">{lineChoices(line, messages, locale, { withAttachment: false })}</p>
                 )}
                 {line.attachment && (
                   <fieldset disabled={savingAttachment === line.id} className="mt-1 disabled:opacity-60">

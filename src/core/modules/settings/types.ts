@@ -1,10 +1,13 @@
 import { z } from "zod";
-import { animals, editions, type Animal, type Edition } from "@/data/options";
+import { editions, type Edition } from "@/data/options";
 import { LOCALES, type Locale } from "@/core/locale/config";
 import { FIELD_LIMITS } from "@/data/checkout";
 import { MAX_PRODUCT_PRICE_CENTS } from "@/data/pricing";
 import { MAX_SHIPPING_PRICE_CENTS, STATIC_DELIVERY_OPTIONS } from "@/data/shipping";
 import { SITE_CONTENT_LIMITS } from "@/data/site-content";
+import { DEFAULT_ANIMALS } from "@/data/animals";
+import { MAX_PROMPT_LENGTH } from "@/data/prompts";
+import { animalListSchema } from "@/core/modules/animals/types";
 
 /*
  * The website configuration an admin manages in /admin/settings. Every section has its own form, schema and save, so
@@ -13,7 +16,6 @@ import { SITE_CONTENT_LIMITS } from "@/data/site-content";
  */
 
 const optionIds = STATIC_DELIVERY_OPTIONS.map((option) => option.id) as [string, ...string[]];
-const animalValues = animals.map((animal) => animal.value) as [Animal, ...Animal[]];
 const editionValues = editions.map((edition) => edition.value) as [Edition, ...Edition[]];
 
 export const shippingOverrideSchema = z.object({
@@ -35,10 +37,16 @@ const priceSchema = z.number().int().min(100).max(MAX_PRODUCT_PRICE_CENTS);
 export const catalogSettingsSchema = z
   .object({
     prices: z.object({ keychain: priceSchema, figurine: priceSchema }),
-    disabledAnimals: z.array(z.enum(animalValues)),
+    // Saved before animals could be managed: the starting list.
+    animals: animalListSchema.default(DEFAULT_ANIMALS),
+    disabledAnimals: z.array(z.string().max(40)),
     disabledEditions: z.array(z.enum(editionValues)),
   })
-  .refine((value) => value.disabledAnimals.length < animals.length, {
+  .refine((value) => value.disabledAnimals.every((disabled) => value.animals.some((animal) => animal.value === disabled)), {
+    path: ["disabledAnimals"],
+    message: "Een uitgezet dier staat niet in de lijst",
+  })
+  .refine((value) => value.disabledAnimals.length < value.animals.length, {
     path: ["disabledAnimals"],
     message: "Laat minstens één dier aan staan",
   })
@@ -79,12 +87,19 @@ export const companySettingsSchema = z.object({
   socials: z.object({ instagram: socialUrl, tiktok: socialUrl, facebook: socialUrl }),
 });
 
+// The pose prompt: a general one, and per animal code a full prompt of its own. Empty or missing = the general one.
+export const promptSettingsSchema = z.object({
+  base: z.string().trim().min(1).max(MAX_PROMPT_LENGTH),
+  animals: z.record(z.string().regex(/^[A-Z0-9]+$/).max(20), z.string().trim().max(MAX_PROMPT_LENGTH)),
+});
+
 export const SETTINGS_SECTION_SCHEMAS = {
   ordering: orderingSettingsSchema,
   shipping: shippingSettingsSchema,
   catalog: catalogSettingsSchema,
   content: localizedSiteContentSchema,
   company: companySettingsSchema,
+  prompts: promptSettingsSchema,
 } as const;
 
 export type SettingsSection = keyof typeof SETTINGS_SECTION_SCHEMAS;
@@ -101,12 +116,14 @@ export type CatalogSettings = z.infer<typeof catalogSettingsSchema>;
 export type SiteContent = z.infer<typeof siteContentSchema>;
 export type LocalizedSiteContent = Record<Locale, SiteContent>;
 export type CompanySettings = z.infer<typeof companySettingsSchema>;
+export type PromptSettings = z.infer<typeof promptSettingsSchema>;
 
 export type ShopSettings = OrderingSettings &
   ShippingSettings & {
     catalog: CatalogSettings;
     content: LocalizedSiteContent;
     company: CompanySettings;
+    prompts: PromptSettings;
     updatedBy: string | null;
     updatedAt: string | null;
   };

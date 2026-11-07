@@ -230,19 +230,6 @@ export const en: Messages = {
   },
 
   options: {
-    animals: {
-      dog: "Dog",
-      cat: "Cat",
-      rabbit: "Rabbit",
-      "guinea-pig": "Guinea pig",
-      hamster: "Hamster",
-      mouse: "Mouse",
-      rat: "Rat",
-      hedgehog: "Hedgehog",
-      turtle: "Tortoise",
-      chameleon: "Chameleon",
-      snake: "Snake",
-    },
     editions: { keychain: "With keychain", figure: "Figurine only" },
     attachments: { clip: "Clip", "key-ring": "Key ring" },
   },

@@ -194,9 +194,9 @@ export default function Cart({ deliveryTime, returnNote }: { deliveryTime: strin
                       )}
                     </div>
                   </div>
-                  {lineChoices(line, messages) && (
+                  {lineChoices(line, messages, locale) && (
                     <p className="text-sm leading-[1.5] text-text-primary md:text-base">
-                      {lineChoices(line, messages)}
+                      {lineChoices(line, messages, locale)}
                     </p>
                   )}
                   {line.notes && (
@@ -209,7 +209,7 @@ export default function Cart({ deliveryTime, returnNote }: { deliveryTime: strin
                       quantity={line.quantity}
                       onChange={(quantity) => changeQuantity(line.id, quantity)}
                       disabled={busyLine !== null}
-                      label={line.animal ? fill(m.palleyLine, { animal: messages.options.animals[line.animal] }) : line.productTitles[locale]}
+                      label={line.animalLabels ? fill(m.palleyLine, { animal: line.animalLabels[locale] }) : line.productTitles[locale]}
                     />
                     <button
                       type="button"

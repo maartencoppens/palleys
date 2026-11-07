@@ -62,7 +62,7 @@ export default async function AdminReviewPage() {
                     <PhotoThumbnails urls={preview.photoUrls} />
                   </td>
                   <td className="whitespace-nowrap px-5 py-4 font-semibold tabular-nums">
-                    {preview.orderNumber ?? "—"}
+                    {preview.orderNumber ?? (preview.forCollectible ? "Nieuwe collectible" : "—")}
                     {preview.quantity > 1 && (
                       <span className="ml-2 font-normal text-text-muted">{preview.quantity}×</span>
                     )}

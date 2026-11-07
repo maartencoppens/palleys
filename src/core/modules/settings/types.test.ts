@@ -1,20 +1,34 @@
 import { describe, expect, it } from "vitest";
-import { animals, editions } from "@/data/options";
+import { editions } from "@/data/options";
+import { DEFAULT_ANIMALS } from "@/data/animals";
 import { fromEuroInput, toEuroInput } from "@/core/utils/format";
-import { catalogSettingsSchema, companySettingsSchema, localizedSiteContentSchema, siteContentSchema } from "./types";
+import { DEFAULT_ANIMAL_PROMPTS, POSE_PROMPT } from "@/data/prompts";
+import { catalogSettingsSchema, companySettingsSchema, localizedSiteContentSchema, promptSettingsSchema, siteContentSchema } from "./types";
 
 const prices = { keychain: 2799, figurine: 2799 };
 
 describe("catalog settings", () => {
-  it("accepts prices and switched-off options", () => {
-    expect(catalogSettingsSchema.safeParse({ prices, disabledAnimals: ["snake"], disabledEditions: ["figure"] }).success).toBe(true);
+  it("accepts prices and switched-off options, and the starting animals when none were saved", () => {
+    const parsed = catalogSettingsSchema.safeParse({ prices, disabledAnimals: ["snake"], disabledEditions: ["figure"] });
+    expect(parsed.success).toBe(true);
+    expect(parsed.data?.animals).toEqual(DEFAULT_ANIMALS);
+  });
+
+  it("takes an added animal, and no duplicates or half-named ones", () => {
+    const parrot = { value: "papegaai", code: "PAPEGAAI", labels: { nl: "Papegaai", en: "Parrot" } };
+    const parse = (animals: object[]) => catalogSettingsSchema.safeParse({ prices, animals, disabledAnimals: [], disabledEditions: [] }).success;
+    expect(parse([...DEFAULT_ANIMALS, parrot])).toBe(true);
+    expect(parse([...DEFAULT_ANIMALS, { ...parrot, value: "dog" }])).toBe(false);
+    expect(parse([...DEFAULT_ANIMALS, { ...parrot, code: "HOND" }])).toBe(false);
+    expect(parse([...DEFAULT_ANIMALS, { ...parrot, labels: { nl: "Papegaai", en: " " } }])).toBe(false);
+    expect(parse([])).toBe(false);
   });
 
   it("guards against typos and an empty shop", () => {
     const parse = (value: object) => catalogSettingsSchema.safeParse({ prices, disabledAnimals: [], disabledEditions: [], ...value }).success;
     expect(parse({ prices: { keychain: 50, figurine: 2799 } })).toBe(false);
     expect(parse({ prices: { keychain: 279900, figurine: 2799 } })).toBe(false);
-    expect(parse({ disabledAnimals: animals.map((animal) => animal.value) })).toBe(false);
+    expect(parse({ disabledAnimals: DEFAULT_ANIMALS.map((animal) => animal.value) })).toBe(false);
     expect(parse({ disabledEditions: editions.map((edition) => edition.value) })).toBe(false);
     expect(parse({ disabledAnimals: ["dinosaur"] })).toBe(false);
   });
@@ -59,5 +73,16 @@ describe("price fields", () => {
     expect(fromEuroInput("abc")).toBeNull();
     expect(fromEuroInput("-1")).toBeNull();
     expect(toEuroInput(2799)).toBe("27,99");
+  });
+});
+
+describe("prompt settings", () => {
+  it("accepts the starting prompts, an animal without one and a new animal, but needs the general prompt", () => {
+    const parse = (value: object) => promptSettingsSchema.safeParse(value).success;
+    expect(parse({ base: POSE_PROMPT, animals: DEFAULT_ANIMAL_PROMPTS })).toBe(true);
+    expect(parse({ base: POSE_PROMPT, animals: {} })).toBe(true);
+    expect(parse({ base: POSE_PROMPT, animals: { PAPEGAAI: "A parrot." } })).toBe(true);
+    expect(parse({ base: " ", animals: DEFAULT_ANIMAL_PROMPTS })).toBe(false);
+    expect(parse({ base: POSE_PROMPT, animals: { "kat!": "x" } })).toBe(false);
   });
 });

@@ -4,7 +4,7 @@ import "server-only";
 import { prisma } from "@/db/client";
 import { canTransition } from "@/core/modules/previews/status";
 import { createDownloadUrl, objectExists } from "@/core/networking/external/storage-client";
-import { DEFAULT_SIZE, getVariant, isSize, priceFor, variantFor, variantLabel } from "@/core/modules/catalog/utils";
+import { DEFAULT_SIZE, isSize, priceFor, variantFor, variantLabel } from "@/core/modules/catalog/utils";
 import { findOrderableCollectible } from "@/core/modules/collectibles/service";
 import { collectibleImageUrl } from "@/core/modules/collectibles/utils";
 import { getShopSettings } from "@/core/modules/settings/service";
@@ -12,9 +12,10 @@ import type { CatalogSettings } from "@/core/modules/settings/types";
 import { createToken, hashToken } from "@/core/utils/tokens";
 import { CART_TTL_MS } from "@/data/checkout";
 import { CURRENCY, MAX_LINE_QUANTITY, MAX_ORDER_LINES } from "@/data/pricing";
-import { attachments, DEFAULT_ATTACHMENT, type Animal, type Attachment, type Edition } from "@/data/options";
+import { attachments, DEFAULT_ATTACHMENT, type Attachment, type Edition } from "@/data/options";
+import { findAnimal } from "@/core/modules/animals/utils";
 import type { KeychainSize } from "@/data/sizes";
-import { animalSchema, attachmentSchema, editionSchema } from "./types";
+import { attachmentSchema, editionSchema } from "./types";
 import type {
   AddCollectibleToCartInput,
   AddToCartInput,
@@ -114,8 +115,9 @@ export type ResolvedCartLine = {
       collectibleId: null;
       edition: Edition;
       attachment: Attachment | null;
-      animal: Animal;
+      animal: string;
       animalLabel: string;
+      animalLabels: Record<Locale, string>;
       editionLabel: string;
       attachmentLabel: string | null;
       imageUrl: null;
@@ -128,6 +130,7 @@ export type ResolvedCartLine = {
       attachment: Attachment;
       animal: null;
       animalLabel: null;
+      animalLabels: null;
       editionLabel: null;
       attachmentLabel: string;
       imageUrl: string | null;
@@ -179,6 +182,7 @@ function resolveLine(line: StoredLine, catalog: CatalogSettings): ResolvedCartLi
         LOCALES.map((locale) => [locale, localizedTexts({ ...collectible, description: null, tag: null }, locale).name]),
       ) as Record<Locale, string>,
       animalLabel: null,
+      animalLabels: null,
       editionLabel: null,
       attachmentLabel: labelOf(attachment),
       notes: null,
@@ -190,11 +194,11 @@ function resolveLine(line: StoredLine, catalog: CatalogSettings): ResolvedCartLi
 
   if (!line.previewId || !line.preview || !isPreviewOrderable(line.preview)) return null;
   const edition = editionSchema.safeParse(line.edition);
-  const animal = animalSchema.safeParse(line.animal);
-  if (!edition.success || !animal.success || !isSize(line.size)) return null;
-  const variant = variantFor(edition.data, animal.data, line.size);
-  if (!getVariant(variant.sku, variant.size)) return null;
-  const labels = variantLabel(edition.data, animal.data);
+  // An animal that was removed from the list can't be bought anymore.
+  const animal = findAnimal(catalog.animals, line.animal);
+  if (!edition.success || !animal || !isSize(line.size)) return null;
+  const variant = variantFor(edition.data, animal, line.size);
+  const labels = variantLabel(edition.data, animal);
   const attachment = edition.data === "keychain" ? chosenAttachment(line.attachment) : null;
   const attachmentLabel = attachment && labelOf(attachment);
   const title = [labels.title, labels.edition, attachmentLabel].filter(Boolean).join(" · ");
@@ -205,13 +209,14 @@ function resolveLine(line: StoredLine, catalog: CatalogSettings): ResolvedCartLi
     collectibleId: null,
     edition: edition.data,
     attachment,
-    animal: animal.data,
+    animal: animal.value,
     size: line.size,
     sku: variant.sku,
     title,
     // The shop names a Palley from its choices in its own texts.
     titles: Object.fromEntries(LOCALES.map((locale) => [locale, title])) as Record<Locale, string>,
     animalLabel: labels.animal,
+    animalLabels: animal.labels,
     editionLabel: labels.edition,
     attachmentLabel,
     notes: line.notes,
@@ -279,6 +284,7 @@ async function toView(lines: ResolvedCartLine[]): Promise<CartView> {
     kind: line.kind,
     productTitles: line.titles,
     animal: line.animal,
+    animalLabels: line.animalLabels,
     edition: line.edition,
     attachment: line.attachment,
     notes: line.notes,
@@ -333,7 +339,8 @@ export async function addPreviewToCart(
   await assertPreviewCanBeOrdered(input.previewId);
 
   const { catalog } = await getShopSettings();
-  if (catalog.disabledAnimals.includes(input.animal) || catalog.disabledEditions.includes(input.edition)) {
+  const animalOnSale = findAnimal(catalog.animals, input.animal) && !catalog.disabledAnimals.includes(input.animal);
+  if (!animalOnSale || catalog.disabledEditions.includes(input.edition)) {
     throw new CartError("option_unavailable");
   }
 

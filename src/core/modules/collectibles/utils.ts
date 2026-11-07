@@ -37,3 +37,21 @@ export function collectibleImageUrl(key: string | null) {
   return key ? `${COLLECTIBLE_IMAGE_ROUTE}/${key.slice(COLLECTIBLE_KEY_PREFIX.length + 1)}` : null;
 }
 
+// The 3D model: the print-ready zip, private, under a name we choose. Only an admin downloads it, with a signed link.
+const MODEL_FOLDER = `${COLLECTIBLE_KEY_PREFIX}/models`;
+const MODEL_FILE_NAME = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.zip$/;
+
+export function collectibleModelKey(fileName: string) {
+  return `${MODEL_FOLDER}/${fileName}`;
+}
+
+export function isCollectibleModelKey(key: string) {
+  return key.startsWith(`${MODEL_FOLDER}/`) && MODEL_FILE_NAME.test(key.slice(MODEL_FOLDER.length + 1));
+}
+
+/** "Golden Retriever.zip" stays, anything odd becomes the SKU: the name ends up in a download header. */
+export function modelDownloadName(fileName: string | null, sku: string) {
+  const clean = fileName?.replace(/[^\w .()-]/g, "").trim();
+  return clean?.toLowerCase().endsWith(".zip") ? clean : `${sku}-PRINT.zip`;
+}
+

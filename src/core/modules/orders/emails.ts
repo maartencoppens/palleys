@@ -4,7 +4,10 @@ import { fill } from "@/core/locale/fill";
 import { MESSAGES, type Messages } from "@/core/locale/messages";
 import { COMPANY } from "@/data/company";
 import { TERMS_URL } from "@/data/checkout";
-import type { Animal, Attachment, Edition } from "@/data/options";
+import type { Attachment, Edition } from "@/data/options";
+import { DEFAULT_ANIMALS } from "@/data/animals";
+import { findAnimal } from "@/core/modules/animals/utils";
+import type { AnimalOption } from "@/core/modules/animals/types";
 import { DEFAULT_SITE_CONTENT } from "@/data/site-content";
 import { localizedTexts } from "@/core/modules/collectibles/translations";
 
@@ -49,6 +52,8 @@ export type ConfirmationOrder = {
 type ConfirmationSettings = {
   company?: Pick<typeof COMPANY, "legalName" | "address" | "enterpriseNumber" | "email">;
   deliveryTime?: string;
+  /** The live animal list, for the animal's name in the customer's language. */
+  animals?: AnimalOption[];
 };
 
 const escapeHtml = (value: string) =>
@@ -61,8 +66,8 @@ function withdrawalNote(items: ConfirmationOrder["items"], m: Messages["email"])
 }
 
 /** OrderItem.title is Dutch for the backoffice: a Palley is named from its options, a collectible keeps its name and adds its attachment. */
-function itemTitle(item: ConfirmationOrder["items"][number], messages: Messages, locale: Locale) {
-  const { animals, editions, attachments } = messages.options;
+function itemTitle(item: ConfirmationOrder["items"][number], messages: Messages, locale: Locale, animals: AnimalOption[]) {
+  const { editions, attachments } = messages.options;
   if (!item.animal || !item.edition) {
     const name = item.collectible
       ? localizedTexts({ name: item.title, description: null, tag: null, translations: item.collectible.translations }, locale).name
@@ -70,7 +75,8 @@ function itemTitle(item: ConfirmationOrder["items"][number], messages: Messages,
     return [name, item.attachment ? (attachments[item.attachment as Attachment] ?? item.attachment) : null].filter(Boolean).join(" · ");
   }
   return [
-    fill(messages.email.itemTitle, { animal: animals[item.animal as Animal] ?? item.animal }),
+    // A removed animal: the order still has its Dutch title.
+    fill(messages.email.itemTitle, { animal: findAnimal(animals, item.animal)?.labels[locale] ?? item.animal }),
     editions[item.edition as Edition] ?? item.edition,
     item.attachment ? (attachments[item.attachment as Attachment] ?? item.attachment) : null,
   ]
@@ -81,7 +87,7 @@ function itemTitle(item: ConfirmationOrder["items"][number], messages: Messages,
 export function buildOrderConfirmation(
   order: ConfirmationOrder,
   appUrl: string,
-  { company = COMPANY, deliveryTime }: ConfirmationSettings = {},
+  { company = COMPANY, deliveryTime, animals = DEFAULT_ANIMALS }: ConfirmationSettings = {},
 ) {
   const locale = toLocale(order.locale);
   const messages = MESSAGES[locale];
@@ -113,7 +119,7 @@ export function buildOrderConfirmation(
     .map(
       (item) => `
         <tr>
-          <td style="padding:8px 0">${escapeHtml(itemTitle(item, messages, locale))} × ${item.quantity}${
+          <td style="padding:8px 0">${escapeHtml(itemTitle(item, messages, locale, animals))} × ${item.quantity}${
             item.notes ? `<br><span style="color:#666;font-size:13px">“${escapeHtml(item.notes)}”</span>` : ""
           }</td>
           <td style="padding:8px 0;text-align:right;white-space:nowrap">${euro(item.unitCents * item.quantity)}</td>
@@ -156,7 +162,7 @@ export function buildOrderConfirmation(
     m.intro,
     `${m.orderNumber}: ${order.number}`,
     "",
-    ...order.items.map((item) => `- ${itemTitle(item, messages, locale)} × ${item.quantity}: ${euro(item.unitCents * item.quantity)}`),
+    ...order.items.map((item) => `- ${itemTitle(item, messages, locale, animals)} × ${item.quantity}: ${euro(item.unitCents * item.quantity)}`),
     ...(discountLine ? [`${discountLine}: - ${euro(order.discountCents)}`] : []),
     `${shippingLine}: ${euro(order.shippingCents)}`,
     `${m.total}: ${euro(order.totalCents)}`,

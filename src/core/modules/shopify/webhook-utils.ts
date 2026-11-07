@@ -1,7 +1,6 @@
 import { z } from "zod";
-import { animals } from "@/data/options";
+import { shopifyAnimals } from "@/data/options";
 import { LINE_ATTRIBUTES } from "@/data/shopify";
-import type { AnimalType } from "@/data/animals";
 import type { OrderPaidPayload } from "./webhook-types";
 
 type LineProperties = OrderPaidPayload["line_items"][number]["properties"];
@@ -14,7 +13,7 @@ export function previewIdOf(properties: LineProperties): string | null {
 }
 
 /** PAL-GP-KEY-DOG → "HOND" (backoffice code), or null for an unknown SKU. */
-export function animalTypeFromSku(sku: string | null | undefined): AnimalType | null {
+export function animalTypeFromSku(sku: string | null | undefined): string | null {
   const skuCode = sku?.split("-").slice(3).join("-");
-  return animals.find((a) => a.skuCode === skuCode)?.animalType ?? null;
+  return shopifyAnimals.find((a) => a.skuCode === skuCode)?.animalType ?? null;
 }

@@ -10,6 +10,7 @@ import { attachments } from "@/data/options";
 import { MANUAL_PAYMENT_PROVIDER, PAYMENT_METHOD_LABELS } from "@/data/payment-methods";
 import { Badge } from "@/components/design/Badge";
 import { OrderActions } from "@/components/functional/admin/OrderActions";
+import { CollectibleModelButton } from "@/components/functional/admin/orders/CollectibleModelButton";
 import { ItemCheckInButton } from "@/components/functional/admin/orders/ItemCheckInButton";
 import { OrderPaymentPanel } from "@/components/functional/admin/orders/OrderPaymentPanel";
 import { OrderProgressPanel } from "@/components/functional/admin/orders/OrderProgressPanel";
@@ -108,8 +109,23 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
                             {item.photoUrl ? "Naar preview" : "Foto's toevoegen"}
                           </Link>
                         </>
+                      ) : item.collectibleId && item.collectibleHasModel ? (
+                        <>
+                          <Badge tone="success">Collectible, vast 3D-model</Badge>
+                          <CollectibleModelButton collectibleId={item.collectibleId} />
+                        </>
                       ) : (
-                        <Badge tone="success">Collectible, geen pipeline</Badge>
+                        <>
+                          <Badge tone="waiting">Collectible zonder 3D-model</Badge>
+                          {item.collectibleId && (
+                            <Link
+                              href={`/admin/settings/collectibles/${item.collectibleId}`}
+                              className="font-label text-sm font-bold text-medium-green underline underline-offset-4 hover:text-orange"
+                            >
+                              Model uploaden
+                            </Link>
+                          )}
+                        </>
                       )}
                     </div>
                     {open ? (

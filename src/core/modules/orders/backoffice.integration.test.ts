@@ -42,12 +42,16 @@ vi.mock("@/core/modules/payments/providers", () => ({
   },
 }));
 
+// R2 as a map: what a test puts there can be read back, and a key in `missing` was never uploaded.
+const storage = vi.hoisted(() => ({ objects: new Map<string, Buffer>(), missing: new Set<string>() }));
+
 vi.mock("@/core/networking/external/storage-client", () => ({
-  objectExists: async () => true,
-  createDownloadUrl: async (key: string) => `https://r2.test/${key}`,
-  putObject: async () => undefined,
-  deleteObject: async () => undefined,
-  getObject: async () => Buffer.from(""),
+  objectExists: async (key: string) => !storage.missing.has(key),
+  createDownloadUrl: async (key: string, name?: string) => `https://r2.test/${key}${name ? `?name=${name}` : ""}`,
+  createUploadUrl: async (key: string) => `https://r2.test/upload/${key}`,
+  putObject: async (key: string, body: Buffer) => void storage.objects.set(key, body),
+  deleteObject: async (key: string) => void storage.objects.delete(key),
+  getObject: async (key: string) => storage.objects.get(key) ?? Buffer.from(""),
 }));
 
 const mail = vi.hoisted(() => ({ sent: [] as { to: string; text: string }[] }));
@@ -67,7 +71,13 @@ const { startCheckout } = await import("@/core/modules/checkout/service");
 const { checkoutSchema } = await import("@/core/modules/checkout/types");
 const {
   archiveCollectible,
+  CollectibleFromPreviewError,
+  CollectibleModelMissingError,
   createCollectible,
+  attachPreviewModel,
+  startCollectibleGeneration,
+  createModelUpload,
+  getCollectibleModelDownload,
   getCollectibleForAdmin,
   InvalidCollectibleImageError,
   listPublishedCollectibles,
@@ -78,6 +88,10 @@ const {
 const { collectibleInputSchema } = await import("@/core/modules/collectibles/types");
 const { createManualOrder, setItemCheckIn, updateOrderStatus } = await import("./admin");
 const { getOrderForAdmin, listOrdersForCheckIn } = await import("./service");
+const { confirmProcessedUpload, getCollectiblePrintQueue } = await import("@/core/modules/print-prep/service");
+const { approvePreview, setPromptOverride, uploadPose } = await import("@/core/modules/previews/service");
+const { updateSettingsSection, getShopSettings } = await import("@/core/modules/settings/service");
+const { DEFAULT_ANIMALS } = await import("@/data/animals");
 const { manualOrderSchema } = await import("./types");
 const { expireStaleOrders, handlePaymentWebhook, createManualOrderPaymentLink, recordManualPayment, ManualPaymentNotAllowedError } = await import(
   "@/core/modules/payments/service"
@@ -147,7 +161,9 @@ afterAll(async () => {
   await prisma.order.deleteMany({ where: { id: { in: ids } } });
   await prisma.preview.deleteMany({ where: { id: { in: items.flatMap((item) => item.previewId ?? []) } } });
   await prisma.cart.deleteMany({ where: { lines: { some: { collectibleId: { in: createdCollectibles } } } } });
+  const generated = await prisma.collectible.findMany({ where: { id: { in: createdCollectibles } }, select: { sourcePreviewId: true } });
   await prisma.collectible.deleteMany({ where: { id: { in: createdCollectibles } } });
+  await prisma.preview.deleteMany({ where: { id: { in: generated.flatMap((row) => row.sourcePreviewId ?? []) } } });
   await prisma.shopSettings.deleteMany({ where: { id: 1 } });
   await prisma.$disconnect();
 });
@@ -473,5 +489,135 @@ describe("check-in per order", () => {
     await expect(updateOrderStatus(paid.orderId, { status: "CANCELLED" }, ADMIN)).rejects.toThrow("huidige status");
     await updateOrderStatus(paid.orderId, { status: "REFUNDED" }, ADMIN);
     expect((await loadOrder(paid.orderId)).status).toBe("REFUNDED");
+  });
+});
+
+describe("collectible 3D models", () => {
+  it("keeps one uploaded model per collectible, and refuses a model that never arrived", async () => {
+    const { key } = await createModelUpload();
+    expect(key).toMatch(/^collectibles\/models\/[0-9a-f-]{36}\.zip$/);
+    storage.missing.add(key);
+    await expect(newCollectible({ modelKey: key, modelFileName: "hond.zip" })).rejects.toBeInstanceOf(CollectibleModelMissingError);
+
+    storage.missing.delete(key);
+    const { id } = await newCollectible({ modelKey: key, modelFileName: "Golden Retriever.zip" });
+    expect(await getCollectibleForAdmin(id)).toMatchObject({ modelKey: key, modelFileName: "Golden Retriever.zip" });
+    const download = await getCollectibleModelDownload(id);
+    expect(download.fileName).toBe("Golden Retriever.zip");
+    expect(download.url).toContain(key);
+    expect(collectibleInputSchema.safeParse({ ...(await newCollectible()).input, modelKey: "previews/x/processed-1.zip" }).success).toBe(false);
+  });
+
+  it("puts a paid collectible on the print list with its own model, without a preview", async () => {
+    const { key } = await createModelUpload();
+    const { id } = await newCollectible({ modelKey: key });
+    const { orderId } = await addOrder({
+      lines: [{ kind: "collectible", collectibleId: id, attachment: "key-ring", quantity: 2 }],
+      payment: { type: "paid", method: "cash" },
+    });
+    const order = await loadOrder(orderId);
+    expect(order.items[0]).toMatchObject({ previewId: null, collectibleId: id });
+    expect((await getOrderForAdmin(orderId))?.items[0].collectibleHasModel).toBe(true);
+    expect((await getCollectiblePrintQueue()).find((item) => item.orderId === orderId)).toMatchObject({
+      collectibleId: id,
+      quantity: 2,
+      attachment: "key-ring",
+      hasModel: true,
+    });
+
+    await setItemCheckIn(orderId, order.items[0].id, true, ADMIN);
+    expect((await getCollectiblePrintQueue()).some((item) => item.orderId === orderId)).toBe(false);
+  });
+
+  it("generates a new collectible apart from any order, with its own prompt, and puts the model on it by itself", async () => {
+    const { previewId, collectibleId } = await startCollectibleGeneration({ animalType: "KONIJN", prompt: "Een konijn, zonder staart." }, ADMIN);
+    createdCollectibles.push(collectibleId);
+    const preview = await prisma.preview.findUniqueOrThrow({ where: { id: previewId }, include: { orderItems: true } });
+    expect(preview).toMatchObject({ forCollectible: true, status: "PAID", animalType: "KONIJN", promptOverride: "Een konijn, zonder staart." });
+    expect(preview.orderItems).toHaveLength(0);
+    expect(await getCollectibleForAdmin(collectibleId)).toMatchObject({
+      name: "Nieuwe collectible: Konijn",
+      published: false,
+      sourcePreviewId: previewId,
+      modelKey: null,
+    });
+
+    await setPromptOverride(previewId, "Een konijn met hangoren.");
+    expect((await prisma.preview.findUniqueOrThrow({ where: { id: previewId } })).promptOverride).toBe("Een konijn met hangoren.");
+    await expect(attachPreviewModel(previewId, ADMIN)).rejects.toBeInstanceOf(CollectibleFromPreviewError);
+
+    // Through the pipeline (pose, model, approval are tested elsewhere), up to the Blender zip on Processed.
+    const pose = await sharp({ create: { width: 64, height: 64, channels: 3, background: "#ffffff" } }).png().toBuffer();
+    storage.objects.set(`previews/${previewId}/pose.png`, pose);
+    await prisma.preview.update({ where: { id: previewId }, data: { status: "APPROVED", poseImageKey: `previews/${previewId}/pose.png` } });
+    const zip = `previews/${previewId}/processed-${randomUUID()}.zip`;
+    storage.objects.set(zip, Buffer.from("zip"));
+    await confirmProcessedUpload(previewId, zip, ADMIN);
+
+    const collectible = await getCollectibleForAdmin(collectibleId);
+    expect(collectible?.modelKey).toMatch(/^collectibles\/models\//);
+    expect(storage.objects.get(collectible!.modelKey!)?.toString()).toBe("zip");
+    expect(collectible?.imageKey).toMatch(/^collectibles\/[0-9a-f-]{36}\.webp$/);
+
+    // A better zip later replaces the model, the photo stays.
+    const better = `previews/${previewId}/processed-${randomUUID()}.zip`;
+    storage.objects.set(better, Buffer.from("zip v2"));
+    await confirmProcessedUpload(previewId, better, ADMIN);
+    const replaced = await getCollectibleForAdmin(collectibleId);
+    expect(storage.objects.get(replaced!.modelKey!)?.toString()).toBe("zip v2");
+    expect(storage.objects.has(collectible!.modelKey!)).toBe(false);
+    expect(replaced?.imageKey).toBe(collectible?.imageKey);
+
+    const customer = await addOrder();
+    await expect(setPromptOverride(customer.previews[0].previewId, "x")).rejects.toThrow("nieuwe collectible");
+    await expect(attachPreviewModel(customer.previews[0].previewId, ADMIN)).rejects.toThrow("voor een klant");
+  });
+
+  it("starts from a pose made elsewhere, with the general prompt, straight to the 3D model", async () => {
+    const { previewId, collectibleId } = await startCollectibleGeneration({ animalType: null, prompt: "A lion, lying down." }, ADMIN);
+    createdCollectibles.push(collectibleId);
+    expect((await getCollectibleForAdmin(collectibleId))?.name).toBe("Nieuwe collectible");
+
+    const pose = await sharp({ create: { width: 32, height: 32, channels: 3, background: "#ffffff" } }).jpeg().toBuffer();
+    await uploadPose(previewId, pose);
+    const preview = await prisma.preview.findUniqueOrThrow({ where: { id: previewId } });
+    expect(preview).toMatchObject({ status: "POSE_READY", animalType: null });
+    expect(preview.poseImageKey).toMatch(/\.png$/);
+
+    // A collectible needn't be one of the shop's animals to be approved.
+    await prisma.preview.update({ where: { id: previewId }, data: { status: "MODEL_READY" } });
+    await approvePreview(previewId);
+    expect((await prisma.preview.findUniqueOrThrow({ where: { id: previewId } })).status).toBe("APPROVED");
+    await expect(uploadPose(previewId, pose)).rejects.toThrow("goedgekeurd");
+
+    const customer = await addOrder();
+    await expect(uploadPose(customer.previews[0].previewId, pose)).rejects.toThrow("nieuwe collectible");
+  });
+});
+
+describe("animals managed in the backoffice", () => {
+  const parrot = { value: "papegaai", code: "PAPEGAAI", labels: { nl: "Papegaai", en: "Parrot" } };
+
+  it("sells an added animal under its own SKU, and refuses one that was removed", async () => {
+    const { catalog } = await getShopSettings();
+    await updateSettingsSection("catalog", { ...catalog, animals: [...DEFAULT_ANIMALS, parrot] }, ADMIN);
+    const { orderId } = await addOrder({ lines: [{ kind: "personalized", animal: "papegaai", edition: "keychain", quantity: 1 }] });
+    expect((await loadOrder(orderId)).items[0]).toMatchObject({ sku: "PAL-GP-KEY-PAPEGAAI", title: "Palley Papegaai · Met sleutelhanger" });
+    await expect(startCollectibleGeneration({ animalType: "DINO", prompt: "x" }, ADMIN)).rejects.toThrow("niet in de lijst");
+
+    await updateSettingsSection("catalog", { ...catalog, animals: DEFAULT_ANIMALS.filter((animal) => animal.value !== "snake") }, ADMIN);
+    await expect(addOrder({ lines: [{ kind: "personalized", animal: "snake", edition: "keychain", quantity: 1 }] })).rejects.toThrow(
+      "niet meer in de lijst",
+    );
+  });
+
+  it("prefills the preview's animal code from the live list when the order is paid", async () => {
+    const { catalog } = await getShopSettings();
+    await updateSettingsSection("catalog", { ...catalog, animals: [...DEFAULT_ANIMALS, parrot] }, ADMIN);
+    const { previews } = await addOrder({
+      lines: [{ kind: "personalized", animal: "papegaai", edition: "figure", quantity: 1 }],
+      payment: { type: "paid", method: "cash" },
+    });
+    expect((await prisma.preview.findUniqueOrThrow({ where: { id: previews[0].previewId } })).animalType).toBe("PAPEGAAI");
   });
 });

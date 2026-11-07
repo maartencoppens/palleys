@@ -1,7 +1,6 @@
 import "server-only";
 import { env } from "@/core/utils/env";
 import axios from "axios";
-import { POSE_PROMPT } from "@/data/prompts";
 import {
   GEMINI_INPUT_JPEG_QUALITY,
   GEMINI_INPUT_MAX_PX,
@@ -48,13 +47,13 @@ async function prepareImage(image: Buffer) {
     .toBuffer();
 }
 
-export async function generatePose(input: { images: Buffer[] }) {
+export async function generatePose(input: { images: Buffer[]; prompt: string }) {
   const prepared = await Promise.all(input.images.map(prepareImage));
   const body = {
     contents: [
       {
         parts: [
-          { text: POSE_PROMPT },
+          { text: input.prompt },
           ...prepared.map((image) => ({
             inline_data: {
               mime_type: "image/jpeg",

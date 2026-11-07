@@ -2,7 +2,7 @@ import "server-only";
 import { prisma } from "@/db/client";
 import { createDownloadUrl, objectExists } from "@/core/networking/external/storage-client";
 import { canTransition } from "@/core/modules/previews/status";
-import { animals, editions, getVariant } from "@/data/options";
+import { editions, getVariant, shopifyAnimals } from "@/data/options";
 import { LINE_ATTRIBUTES } from "@/data/shopify";
 import {
   addCartLines,
@@ -97,7 +97,7 @@ async function toView(cart: ShopifyCart): Promise<CartView> {
       id: line.id,
       previewId,
       productTitle: line.merchandise.product.title,
-      animal: labelFor(animals, option("Dier")),
+      animal: labelFor(shopifyAnimals, option("Dier")),
       edition: labelFor(editions, option("Uitvoering")),
       notes: attribute(line, LINE_ATTRIBUTES.notes),
       quantity: line.quantity,

@@ -9,11 +9,9 @@ import OrderSummary from "./OrderSummary";
 import PhotoTips from "./PhotoTips";
 import PhotoUpload, { type UploadedPhoto } from "./PhotoUpload";
 import {
-  animals,
   attachments,
   editions,
   STEP_IDS,
-  type Animal,
   type Attachment,
   type Edition,
   type StepId,
@@ -49,14 +47,14 @@ type ConfiguratorProps = {
 export default function Configurator({ catalog, deliveryTime, returnNote }: ConfiguratorProps) {
   const { create: m, options, common } = useMessages();
   const locale = useLocale();
-  const animalOptions = animals
+  const animalOptions = catalog.animals
     .filter((option) => !catalog.disabledAnimals.includes(option.value))
-    .map((option) => ({ value: option.value, label: options.animals[option.value] }));
+    .map((option) => ({ value: option.value, label: option.labels[locale] }));
   const editionOptions = editions
     .filter((option) => !catalog.disabledEditions.includes(option.value))
     .map((option) => ({ value: option.value, label: options.editions[option.value] }));
   const attachmentOptions = attachments.map((option) => ({ value: option.value, label: options.attachments[option.value] }));
-  const [animal, setAnimal] = useState<Animal | null>(null);
+  const [animal, setAnimal] = useState<string | null>(null);
   // Palleys are keychains first, so that's preselected (when on sale); switching to a figure is one tap.
   const [edition, setEdition] = useState<Edition>(editionOptions[0].value);
   const [attachment, setAttachment] = useState<Attachment>(attachments[0].value);
@@ -105,7 +103,7 @@ export default function Configurator({ catalog, deliveryTime, returnNote }: Conf
         ? photos[0].file.name
         : fill(m.summary.photosCount, { count: photos.length });
 
-  const animalLabel = animal ? options.animals[animal] : null;
+  const animalLabel = animalOptions.find((option) => option.value === animal)?.label ?? null;
   const editionLabel = options.editions[edition];
   const attachmentLabel = withKeychain ? options.attachments[attachment] : null;
   const complete: Record<StepId, boolean> = {

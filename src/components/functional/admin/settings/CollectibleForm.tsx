@@ -3,7 +3,13 @@
 import Image from "next/image";
 import { useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
-import { postCollectible, putCollectible, uploadCollectibleImage } from "@/core/modules/collectibles/api";
+import {
+  downloadCollectibleModel,
+  postCollectible,
+  putCollectible,
+  uploadCollectibleImage,
+  uploadCollectibleModel,
+} from "@/core/modules/collectibles/api";
 import {
   missingTranslations,
   TRANSLATED_LOCALES,
@@ -19,7 +25,7 @@ import Button from "@/components/design/Button";
 import { Input, Textarea } from "@/components/design/form";
 import { COLLECTIBLE_LIMITS } from "@/data/collectibles";
 import { MAX_PRODUCT_PRICE_CENTS } from "@/data/pricing";
-import { ALLOWED_IMAGE_TYPES, MAX_UPLOAD_BYTES } from "@/data/uploads";
+import { ALLOWED_IMAGE_TYPES, MAX_PRINT_FILE_BYTES, MAX_UPLOAD_BYTES } from "@/data/uploads";
 import { compactFieldClassName, fieldLabelClassName, SaveBar, SettingsCard } from "./SettingsParts";
 
 export function CollectibleForm({ collectible, nextSortOrder = 0 }: { collectible?: AdminCollectible; nextSortOrder?: number }) {
@@ -34,7 +40,10 @@ export function CollectibleForm({ collectible, nextSortOrder = 0 }: { collectibl
   const [published, setPublished] = useState(collectible?.published ?? true);
   const [soldOut, setSoldOut] = useState(collectible?.soldOut ?? false);
   const [image, setImage] = useState({ key: collectible?.imageKey ?? null, url: collectible?.imageUrl ?? null });
+  const [model, setModel] = useState({ key: collectible?.modelKey ?? null, fileName: collectible?.modelFileName ?? null });
+  const modelInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [modelBusy, setModelBusy] = useState<"upload" | "download" | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,6 +61,37 @@ export function CollectibleForm({ collectible, nextSortOrder = 0 }: { collectibl
       setError(getApiErrorMessage(e, "Uploaden mislukt"));
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function handleModel(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".zip")) return setError("Kies de printklare .zip uit Blender (OBJ + MTL + PNG).");
+    if (file.size > MAX_PRINT_FILE_BYTES) return setError("Dit bestand is groter dan 200 MB.");
+    setModelBusy("upload");
+    setError(null);
+    try {
+      const uploaded = await uploadCollectibleModel(file);
+      setModel({ key: uploaded.modelKey, fileName: uploaded.modelFileName });
+    } catch (e) {
+      setError(getApiErrorMessage(e, "Uploaden mislukt"));
+    } finally {
+      setModelBusy(null);
+    }
+  }
+
+  async function handleModelDownload() {
+    if (!collectible) return;
+    setModelBusy("download");
+    setError(null);
+    try {
+      await downloadCollectibleModel(collectible.id);
+    } catch (e) {
+      setError(getApiErrorMessage(e));
+    } finally {
+      setModelBusy(null);
     }
   }
 
@@ -79,6 +119,8 @@ export function CollectibleForm({ collectible, nextSortOrder = 0 }: { collectibl
       tag: tag.trim() || null,
       priceCents,
       imageKey: image.key,
+      modelKey: model.key,
+      modelFileName: model.key ? model.fileName : null,
       published,
       soldOut,
       sortOrder: Math.max(0, Number.parseInt(sortOrder, 10) || 0),
@@ -190,6 +232,57 @@ export function CollectibleForm({ collectible, nextSortOrder = 0 }: { collectibl
         </div>
       </SettingsCard>
 
+      <SettingsCard
+        title="3D-model"
+        intro="De printklare zip uit Blender (OBJ + MTL + PNG), maximaal 200 MB. Elke bestelling van deze collectible gebruikt dit model: er wordt nooit een nieuw gegenereerd."
+      >
+        <div className="flex flex-wrap items-center gap-4">
+          <p className="min-w-0 flex-1 text-base">
+            {model.key ? (
+              <>
+                <span className="font-semibold break-all">{model.fileName ?? "Model"}</span>
+                {model.key !== collectible?.modelKey && <span className="text-text-muted"> · nieuw, wordt bewaard bij opslaan</span>}
+              </>
+            ) : (
+              <span className="text-text-muted">Nog geen 3D-model</span>
+            )}
+          </p>
+          {collectible?.modelKey && model.key === collectible.modelKey && (
+            <Button
+              type="button"
+              variant="secondary"
+              loading={modelBusy === "download"}
+              loadingText="Bezig…"
+              disabled={modelBusy !== null}
+              onClick={handleModelDownload}
+            >
+              Download
+            </Button>
+          )}
+          <Button
+            type="button"
+            variant={model.key ? "secondary" : "primary"}
+            loading={modelBusy === "upload"}
+            loadingText="Uploaden…"
+            disabled={modelBusy !== null}
+            onClick={() => modelInputRef.current?.click()}
+          >
+            {model.key ? "Model vervangen" : "Model kiezen"}
+          </Button>
+          {model.key && (
+            <button
+              type="button"
+              disabled={modelBusy !== null}
+              onClick={() => setModel({ key: null, fileName: null })}
+              className="shrink-0 rounded font-label text-sm font-bold text-[#a3341a] underline underline-offset-4 disabled:opacity-50"
+            >
+              Verwijderen
+            </button>
+          )}
+          <input ref={modelInputRef} type="file" accept=".zip,application/zip" onChange={handleModel} className="hidden" />
+        </div>
+      </SettingsCard>
+
       <SettingsCard title="Op de website">
         <div className="flex flex-col gap-3">
           <label className="flex cursor-pointer items-center gap-3 text-base font-semibold">
@@ -229,7 +322,7 @@ export function CollectibleForm({ collectible, nextSortOrder = 0 }: { collectibl
         saving={saving}
         message={null}
         error={error}
-        disabled={uploading}
+        disabled={uploading || modelBusy === "upload"}
         label={collectible ? "Opslaan" : "Collectible toevoegen"}
       />
     </form>

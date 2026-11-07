@@ -23,9 +23,14 @@ export default async function AdminCollectiblesPage() {
         title="Collectibles"
         intro="Kant-en-klare modellen die klanten zo kunnen kopen, zonder foto. Ze slaan de AI-pipeline over en staan op /shop en de homepage."
         action={
-          <Button variant="primary" href="/admin/settings/collectibles/new">
-            Collectible toevoegen
-          </Button>
+          <div className="flex flex-wrap gap-3">
+            <Button variant="secondary" href="/admin/settings/collectibles/generate">
+              Nieuw model genereren
+            </Button>
+            <Button variant="primary" href="/admin/settings/collectibles/new">
+              Collectible toevoegen
+            </Button>
+          </div>
         }
       />
 
@@ -92,6 +97,9 @@ function CollectibleTable({ collectibles }: { collectibles: AdminCollectible[] }
                     <Badge tone="waiting">Verborgen</Badge>
                   )}
                   {collectible.soldOut && !collectible.archivedAt && <Badge tone="danger">Uitverkocht</Badge>}
+                  {!collectible.modelKey && !collectible.archivedAt && (
+                    <Badge tone="waiting">{collectible.sourcePreviewId ? "Model wordt gegenereerd" : "Geen 3D-model"}</Badge>
+                  )}
                   {collectible.missingTranslations.length > 0 && !collectible.archivedAt && (
                     <Badge tone="waiting">Vertaling ontbreekt</Badge>
                   )}

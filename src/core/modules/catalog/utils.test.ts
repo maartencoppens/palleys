@@ -1,22 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { computeTotals, getVariant, parcelFor, priceFor, variantFor, vatIncluded } from "./utils";
+import { DEFAULT_ANIMALS } from "@/data/animals";
+import { computeTotals, parcelFor, priceFor, variantFor, vatIncluded } from "./utils";
+
+const animal = (value: string) => DEFAULT_ANIMALS.find((option) => option.value === value)!;
 
 describe("variants", () => {
   it("builds the existing SKU scheme from a configurator choice", () => {
-    expect(variantFor("keychain", "dog").sku).toBe("PAL-GP-KEY-HOND");
-    expect(variantFor("figure", "guinea-pig").sku).toBe("PAL-GP-FIG-CAVIA");
-  });
-
-  it("looks a SKU back up and rejects unknown SKUs or sizes", () => {
-    expect(getVariant("PAL-GP-FIG-KAT")).toEqual({ sku: "PAL-GP-FIG-KAT", type: "figurine", species: "cat", size: "M" });
-    expect(getVariant("PAL-GP-KEY-DINO")).toBeNull();
-    expect(getVariant("PAL-GP-KEY-KAT", "XXL")).toBeNull();
-    expect(getVariant("PAL-GP-KEY-KAT", "__proto__")).toBeNull();
+    expect(variantFor("keychain", animal("dog")).sku).toBe("PAL-GP-KEY-HOND");
+    expect(variantFor("figure", animal("guinea-pig")).sku).toBe("PAL-GP-FIG-CAVIA");
+    expect(variantFor("keychain", { code: "PAPEGAAI" }).sku).toBe("PAL-GP-KEY-PAPEGAAI");
   });
 
   it("prices every variant from config, in cents", () => {
-    expect(priceFor(variantFor("keychain", "cat"))).toBe(2799);
-    expect(priceFor(variantFor("figure", "snake"))).toBe(2799);
+    expect(priceFor(variantFor("keychain", animal("cat")))).toBe(2799);
+    expect(priceFor(variantFor("figure", animal("snake")))).toBe(2799);
   });
 });
 

@@ -1,11 +1,12 @@
 import { z } from "zod";
+import { MAX_ANIMAL_PROMPT_LENGTH, MAX_PROMPT_LENGTH } from "@/data/prompts";
 import type { PreviewStatus } from "@/db/client";
 import {
   ALLOWED_IMAGE_TYPES,
   MAX_UPLOAD_BYTES,
   MAX_PHOTOS_PER_PREVIEW,
 } from "@/data/uploads";
-import { ANIMAL_TYPE_CODES } from "@/data/animals";
+import { animalOptionSchema } from "@/core/modules/animals/types";
 import { ADMIN_SETTABLE_STATUSES } from "./status";
 
 export const photoInputSchema = z.object({
@@ -27,8 +28,9 @@ export const statusOverrideSchema = z.object({
   reason: z.string().trim().min(3).max(500),
 });
 
+// A well-formed code; whether it's in the animal list is checked in the service.
 export const animalTypeSchema = z.object({
-  animalType: z.enum(ANIMAL_TYPE_CODES),
+  animalType: animalOptionSchema.shape.code,
 });
 
 export type CreateUploadInput = z.infer<typeof createUploadSchema>;
@@ -82,6 +84,13 @@ export type AdminPreviewDetail = {
   canStartModel: boolean;
   canSyncModel: boolean;
   animalType: string | null; // null = nog niet gekozen, anders een code uit ANIMAL_TYPE_CODES
+  // Gemaakt voor een nieuwe collectible (backoffice-order): de collectible die er al van gemaakt is, en of het kan.
+  forCollectible: boolean;
+  collectibleId: string | null;
+  /** Print-ready, but its model isn't on the collectible (the automatic copy failed): offer to retry. */
+  canAttachModel: boolean;
+  /** The prompt the next pose uses: the admin's own for a collectible, else the one from the settings. */
+  prompt: string;
 };
 
 export type AdminPreviewListItem = {
@@ -95,6 +104,7 @@ export type AdminPreviewListItem = {
 export type ReviewListItem = AdminPreviewListItem & {
   photoUrls: string[];
   orderNumber: string | null;
+  forCollectible: boolean; // een nieuwe collectible, los van een order
   quantity: number;
 };
 
@@ -122,3 +132,7 @@ export type AdminDashboard = {
   query: string;
   results: AdminPreviewListItem[];
 };
+
+export const promptOverrideSchema = z.object({
+  prompt: z.string().trim().min(1).max(MAX_PROMPT_LENGTH + MAX_ANIMAL_PROMPT_LENGTH),
+});

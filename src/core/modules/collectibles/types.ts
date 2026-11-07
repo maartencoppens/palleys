@@ -1,7 +1,10 @@
 import { z } from "zod";
 import { COLLECTIBLE_LIMITS } from "@/data/collectibles";
 import { MAX_PRODUCT_PRICE_CENTS } from "@/data/pricing";
-import { isCollectibleImageKey } from "./utils";
+import { MAX_PRINT_FILE_BYTES } from "@/data/uploads";
+import { animalOptionSchema } from "@/core/modules/animals/types";
+import { MAX_ANIMAL_PROMPT_LENGTH, MAX_PROMPT_LENGTH } from "@/data/prompts";
+import { isCollectibleImageKey, isCollectibleModelKey } from "./utils";
 import { collectibleTranslationsSchema, missingTranslations, type CollectibleTranslations } from "./translations";
 
 export { TRANSLATED_LOCALES, missingTranslations, type CollectibleTranslation, type CollectibleTranslations, type TranslatedLocale } from "./translations";
@@ -21,6 +24,8 @@ export const collectibleInputSchema = z
     tag: optionalText(COLLECTIBLE_LIMITS.tag),
     priceCents: z.number().int().min(100).max(MAX_PRODUCT_PRICE_CENTS),
     imageKey: z.string().refine(isCollectibleImageKey).nullable(),
+    modelKey: z.string().refine(isCollectibleModelKey).nullable().default(null),
+    modelFileName: z.string().trim().max(200).nullable().default(null),
     published: z.boolean(),
     soldOut: z.boolean(),
     sortOrder: z.number().int().min(0).max(9999),
@@ -51,6 +56,10 @@ export type CollectibleView = {
 
 export type AdminCollectible = CollectibleView & {
   sku: string;
+  modelKey: string | null;
+  modelFileName: string | null;
+  /** The backoffice order whose preview made this model, if any. */
+  sourcePreviewId: string | null;
   translations: CollectibleTranslations;
   /** Texts still missing in another language, as "en.name". */
   missingTranslations: string[];
@@ -60,3 +69,16 @@ export type AdminCollectible = CollectibleView & {
   archivedAt: string | null;
   orderedQuantity: number;
 };
+
+export const modelUploadSchema = z.object({ size: z.number().int().positive().max(MAX_PRINT_FILE_BYTES) });
+
+/**
+ * A new collectible's model: the animal whose prompt it started from (null = the general prompt, e.g. a lion), and the
+ * prompt as the admin left it.
+ */
+export const generateCollectibleSchema = z.object({
+  animalType: animalOptionSchema.shape.code.nullable(),
+  prompt: z.string().trim().min(1).max(MAX_PROMPT_LENGTH + MAX_ANIMAL_PROMPT_LENGTH),
+});
+
+export type GenerateCollectibleInput = z.infer<typeof generateCollectibleSchema>;

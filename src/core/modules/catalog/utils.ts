@@ -1,18 +1,18 @@
-import { animals, editions, type Animal, type Edition } from "@/data/options";
-import { PRODUCT_TYPES, SPECIES, buildSku, type ProductType, type Species } from "@/data/products";
+import { editions, type Edition } from "@/data/options";
+import { buildSku, type ProductType } from "@/data/products";
+import type { AnimalOption } from "@/core/modules/animals/types";
 import { UNIT_PRICE_CENTS, VAT_RATE_BASIS_POINTS } from "@/data/pricing";
 import { PACKAGING, PARCEL_BY_SIZE } from "@/data/shipping";
 import { KEYCHAIN_SIZES, type KeychainSize } from "@/data/sizes";
 
 /*
  * Pure catalog and price functions. Amounts are integer cents; nothing here trusts the client.
- * Edition/Animal are the configurator's values (data/options.ts), ProductType/Species the SKU's (data/products.ts).
+ * Edition is the configurator's value (data/options.ts), the animal comes from the live list (core/modules/animals).
  */
 
-export type Variant = { sku: string; type: ProductType; species: Species; size: KeychainSize };
+export type Variant = { sku: string; type: ProductType; animalCode: string; size: KeychainSize };
 
 const EDITION_TYPE: Record<Edition, ProductType> = { keychain: "keychain", figure: "figurine" };
-const animalSpecies = (animal: Animal): Species => (animal === "guinea-pig" ? "guinea_pig" : animal);
 
 export const DEFAULT_SIZE: KeychainSize = "M";
 
@@ -21,21 +21,9 @@ export function isSize(value: string): value is KeychainSize {
 }
 
 /** The variant for a configurator choice. */
-export function variantFor(edition: Edition, animal: Animal, size: KeychainSize = DEFAULT_SIZE): Variant {
+export function variantFor(edition: Edition, animal: Pick<AnimalOption, "code">, size: KeychainSize = DEFAULT_SIZE): Variant {
   const type = EDITION_TYPE[edition];
-  const species = animalSpecies(animal);
-  return { sku: buildSku(type, species), type, species, size };
-}
-
-/** Looks a SKU back up (PAL-GP-KEY-HOND + size). Null for anything we don't sell. */
-export function getVariant(sku: string, size: string = DEFAULT_SIZE): Variant | null {
-  if (!isSize(size)) return null;
-  for (const type of PRODUCT_TYPES) {
-    for (const species of SPECIES) {
-      if (buildSku(type, species) === sku) return { sku, type, species, size };
-    }
-  }
-  return null;
+  return { sku: buildSku(type, animal.code), type, animalCode: animal.code, size };
 }
 
 /** The price of a variant. `prices` are the live prices from the settings; without them the starting prices apply. */
@@ -51,8 +39,8 @@ export function editionPriceCents(edition: Edition, prices: Record<ProductType, 
 }
 
 /** Shopper-facing name of a line, e.g. "Palley Hond · Met sleutelhanger". */
-export function variantLabel(edition: Edition, animal: Animal) {
-  const animalLabel = animals.find((a) => a.value === animal)?.label ?? animal;
+export function variantLabel(edition: Edition, animal: Pick<AnimalOption, "labels">) {
+  const animalLabel = animal.labels.nl;
   const editionLabel = editions.find((e) => e.value === edition)?.label ?? edition;
   return { animal: animalLabel, edition: editionLabel, title: `Palley ${animalLabel}` };
 }

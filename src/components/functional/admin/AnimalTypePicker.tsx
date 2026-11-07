@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ANIMAL_TYPES, type AnimalType } from "@/data/animals";
+import type { AnimalOption } from "@/core/modules/animals/types";
 import { postAnimalType } from "@/core/modules/previews/api";
 import { getApiErrorMessage } from "@/core/networking/api";
 import Button from "@/components/design/Button";
@@ -10,14 +10,16 @@ import Button from "@/components/design/Button";
 type AnimalTypePickerProps = {
   previewId: string;
   value: string | null;
+  /** The live animal list (Gepersonaliseerde Palley). */
+  animals: AnimalOption[];
 };
 
-export function AnimalTypePicker({ previewId, value }: AnimalTypePickerProps) {
+export function AnimalTypePicker({ previewId, value, animals }: AnimalTypePickerProps) {
   const router = useRouter();
-  const [saving, setSaving] = useState<AnimalType | null>(null);
+  const [saving, setSaving] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleChoose(animalType: AnimalType) {
+  async function handleChoose(animalType: string) {
     setSaving(animalType);
     setError(null);
     try {
@@ -37,7 +39,7 @@ export function AnimalTypePicker({ previewId, value }: AnimalTypePickerProps) {
         role="group"
         aria-label="Diersoort"
       >
-        {ANIMAL_TYPES.map((option) => (
+        {animals.map((option) => (
           <Button
             key={option.code}
             variant={value === option.code ? "primary" : "secondary"}
@@ -45,7 +47,7 @@ export function AnimalTypePicker({ previewId, value }: AnimalTypePickerProps) {
             aria-disabled={saving !== null}
             onClick={() => saving === null && handleChoose(option.code)}
           >
-            {option.label}
+            {option.labels.nl}
           </Button>
         ))}
       </div>

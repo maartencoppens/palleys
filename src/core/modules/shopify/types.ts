@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { animals, editions, type Animal, type Edition } from "@/data/options";
+import { editions, shopifyAnimals, type Edition, type ShopifyAnimal } from "@/data/options";
 import { MAX_LINE_QUANTITY, MAX_NOTES_LENGTH } from "@/data/shopify";
 
-const animalValues = animals.map((a) => a.value) as [Animal, ...Animal[]];
+const animalValues = shopifyAnimals.map((a) => a.value) as [ShopifyAnimal, ...ShopifyAnimal[]];
 const editionValues = editions.map((e) => e.value) as [Edition, ...Edition[]];
 
 export const addToCartSchema = z.object({

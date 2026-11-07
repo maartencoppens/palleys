@@ -4,7 +4,6 @@
  * costs €27,99 and has SKU PAL-GP-{KEY|FIG}-{ANIMAL}. Labels are what the site shows; `shopifyValue`
  * is the exact option value in Shopify, `skuCode` the matching SKU part.
  */
-import type { AnimalType } from "./animals";
 import { buildSku, PRODUCT_HANDLE } from "./products";
 import { ALLOWED_IMAGE_TYPES, MAX_PHOTOS_PER_PREVIEW, MAX_UPLOAD_BYTES } from "./uploads";
 
@@ -28,9 +27,9 @@ export const attachments = [
 export type Attachment = (typeof attachments)[number]["value"];
 export const DEFAULT_ATTACHMENT: Attachment = "clip";
 
-// Option2 "Dier", ordered by how common the pet is rather than as in the export.
-// `animalType` is the matching backoffice code (data/animals.ts), prefilled when the order is paid.
-export const animals = [
+// Option2 "Dier" of the old Shopify product, only for the Shopify integration (orders from before our own checkout).
+// The shop's animals are managed in the backoffice: see core/modules/animals.
+export const shopifyAnimals = [
   { value: "dog", label: "Hond", shopifyValue: "Hond", skuCode: "HOND", animalType: "HOND" },
   { value: "cat", label: "Kat", shopifyValue: "Kat", skuCode: "KAT", animalType: "KAT" },
   { value: "rabbit", label: "Konijn", shopifyValue: "Konijn", skuCode: "KONIJN", animalType: "KONIJN" },
@@ -42,18 +41,18 @@ export const animals = [
   { value: "turtle", label: "Schildpad", shopifyValue: "Schildpad", skuCode: "SCHILDPAD", animalType: "SCHILDPAD" },
   { value: "chameleon", label: "Kameleon", shopifyValue: "Kameleon", skuCode: "KAMELEON", animalType: "KAMELEON" },
   { value: "snake", label: "Slang", shopifyValue: "Slang", skuCode: "SLANG", animalType: "SLANG" },
-] as const satisfies readonly (Option<string> & { animalType: AnimalType })[];
-export type Animal = (typeof animals)[number]["value"];
+] as const satisfies readonly (Option<string> & { animalType: string })[];
+export type ShopifyAnimal = (typeof shopifyAnimals)[number]["value"];
 
 export const findOption = <O extends Option<string>>(options: readonly O[], value: string | null) =>
   options.find((option) => option.value === value) ?? null;
 
 /** The Shopify variant for a choice: what the cart needs later. */
-export const getVariant = (edition: Edition, animal: Animal) => {
+export const getVariant = (edition: Edition, animal: ShopifyAnimal) => {
   const editionOption = findOption(editions, edition)!;
-  const animalOption = findOption(animals, animal)!;
+  const animalOption = findOption(shopifyAnimals, animal)!;
   return {
-    sku: buildSku(edition === "keychain" ? "keychain" : "figurine", animal === "guinea-pig" ? "guinea_pig" : animal),
+    sku: buildSku(edition === "keychain" ? "keychain" : "figurine", animalOption.skuCode),
     options: { Uitvoering: editionOption.shopifyValue, Dier: animalOption.shopifyValue },
   };
 };

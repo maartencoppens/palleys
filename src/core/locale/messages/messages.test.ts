@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { animals, attachments, editions } from "@/data/options";
+import { attachments, editions } from "@/data/options";
 import { LOCALES, DEFAULT_LOCALE, localizedPath, stripLocale } from "../config";
 import { fill } from "../fill";
 import { MESSAGES } from "./index";
@@ -25,9 +25,9 @@ describe("translations", () => {
       }
     });
 
+    // Animals aren't here: their names per language are managed with the animals (core/modules/animals).
     it(`${locale} names every option`, () => {
       const { options } = MESSAGES[locale];
-      expect(Object.keys(options.animals).sort()).toEqual(animals.map((a) => a.value).sort());
       expect(Object.keys(options.editions).sort()).toEqual(editions.map((e) => e.value).sort());
       expect(Object.keys(options.attachments).sort()).toEqual(attachments.map((a) => a.value).sort());
     });
@@ -35,7 +35,6 @@ describe("translations", () => {
 
   it("uses the same Dutch labels as the backoffice", () => {
     const { options } = MESSAGES.nl;
-    for (const animal of animals) expect(options.animals[animal.value]).toBe(animal.label);
     for (const edition of editions) expect(options.editions[edition.value]).toBe(edition.label);
     for (const attachment of attachments) expect(options.attachments[attachment.value]).toBe(attachment.label);
   });

@@ -52,6 +52,11 @@ model Preview {
   processedKey      String? // zip uit Blender, klaar voor print
   processedAt       DateTime?
   processedBy       String?
+  // Gemaakt om een collectible van te maken (backoffice-order), niet voor een klant.
+  forCollectible    Boolean               @default(false)
+  // De prompt voor deze ene generatie, door de admin aangepast. Leeg = de prompt uit de instellingen.
+  promptOverride    String?
+  collectible       Collectible?
   photos            PreviewPhoto[]
   statusChanges     PreviewStatusChange[]
   orderItems        OrderItem[]
@@ -220,25 +225,32 @@ model CartLine {
 // Kant-en-klare modellen die niet gepersonaliseerd zijn. Beheerd in /admin/settings/collectibles.
 // Verwijderen = archivedAt zetten: oude orders blijven ernaar verwijzen en herstellen kan altijd.
 model Collectible {
-  id           String      @id @default(uuid())
-  slug         String      @unique // in de URL (/shop/<slug>), verandert niet na het aanmaken
-  sku          String      @unique // PAL-COL-<SLUG>
-  name         String
-  description  String?
-  tag          String? // label op de kaart, bv. "Bestseller"
+  id              String      @id @default(uuid())
+  slug            String      @unique // in de URL (/shop/<slug>), verandert niet na het aanmaken
+  sku             String      @unique // PAL-COL-<SLUG>
+  name            String
+  description     String?
+  tag             String? // label op de kaart, bv. "Bestseller"
   // Naam, beschrijving en label in de andere talen: { "en": { "name": …, "description": …, "tag": … } }
-  translations Json        @default("{}")
-  priceCents   Int // incl. btw
-  imageKey     String? // R2-key onder collectibles/, publiek via /api/collectibles/images
-  published    Boolean     @default(false) // zichtbaar op de website
-  soldOut      Boolean     @default(false)
-  sortOrder    Int         @default(0)
-  archivedAt   DateTime?
-  updatedBy    String?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  cartLines    CartLine[]
-  orderItems   OrderItem[]
+  translations    Json        @default("{}")
+  priceCents      Int // incl. btw
+  imageKey        String? // R2-key onder collectibles/, publiek via /api/collectibles/images
+  // Het vaste 3D-model: de printklare zip (OBJ + MTL + PNG), zoals die uit Blender. Een bestelling gebruikt altijd dit
+  // model (via OrderItem.collectibleId), er wordt nooit een nieuw gegenereerd.
+  modelKey        String? // R2-key onder collectibles/models/, privé
+  modelFileName   String? // de naam van het geüploade bestand, voor de download
+  // De preview waaruit dit model gegenereerd is (een "nieuw collectible-model" op een backoffice-order), als die er is.
+  sourcePreviewId String?     @unique
+  sourcePreview   Preview?    @relation(fields: [sourcePreviewId], references: [id], onDelete: SetNull)
+  published       Boolean     @default(false) // zichtbaar op de website
+  soldOut         Boolean     @default(false)
+  sortOrder       Int         @default(0)
+  archivedAt      DateTime?
+  updatedBy       String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  cartLines       CartLine[]
+  orderItems      OrderItem[]
 
   @@index([published, archivedAt, sortOrder])
 }
@@ -410,6 +422,7 @@ model ShopSettings {
   catalog               Json? // prijzen en beschikbare opties van de gepersonaliseerde Palley
   siteContent           Json? // teksten op de website
   company               Json? // bedrijfsgegevens en sociale media
+  prompts               Json? // de Nano Banana-prompt: algemeen en per diersoort
   updatedBy             String?
   updatedAt             DateTime @updatedAt
 }

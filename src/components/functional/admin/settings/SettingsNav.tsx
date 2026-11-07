@@ -23,7 +23,10 @@ const GROUPS = [
   },
   {
     label: "Systeem",
-    links: [{ href: "/admin/settings/integrations", label: "Koppelingen" }],
+    links: [
+      { href: "/admin/settings/prompts", label: "AI-prompt" },
+      { href: "/admin/settings/integrations", label: "Koppelingen" },
+    ],
   },
 ];
 

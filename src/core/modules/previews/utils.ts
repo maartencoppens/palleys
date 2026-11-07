@@ -113,3 +113,8 @@ export function linkPrintFiles(input: {
 
   return { obj, mtl };
 }
+
+/** The prompt for one animal code: its own full prompt, or the general one when it has none (or there's no animal). */
+export function posePrompt(prompts: { base: string; animals: Partial<Record<string, string>> }, animalType: string | null) {
+  return (animalType && prompts.animals[animalType]?.trim()) || prompts.base.trim();
+}

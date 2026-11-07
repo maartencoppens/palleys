@@ -14,7 +14,8 @@ import { formatPrice, fromEuroInput, toEuroInput } from "@/core/utils/format";
 import Button from "@/components/design/Button";
 import { Input, Textarea } from "@/components/design/form";
 import { compactFieldClassName, fieldLabelClassName } from "@/components/functional/admin/settings/SettingsParts";
-import { animals, attachments, editions, type Animal, type Attachment, type Edition } from "@/data/options";
+import { attachments, editions, type Attachment, type Edition } from "@/data/options";
+import type { AnimalOption } from "@/core/modules/animals/types";
 import { MANUAL_PAYMENT_METHODS, PAYMENT_METHOD_LABELS, type ManualPaymentMethod } from "@/data/payment-methods";
 import { MAX_LINE_QUANTITY, MAX_ORDER_LINES } from "@/data/pricing";
 import { ALLOWED_IMAGE_TYPES, MAX_PHOTOS_PER_PREVIEW, MAX_UPLOAD_BYTES } from "@/data/uploads";
@@ -33,7 +34,7 @@ type ManualOrderFormProps = {
 type PersonalizedLine = {
   key: number;
   kind: "personalized";
-  animal: Animal;
+  animal: string;
   edition: Edition;
   attachment: Attachment;
   quantity: number;
@@ -64,7 +65,7 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [nextKey, setNextKey] = useState(1);
-  const [lines, setLines] = useState<Line[]>([newPersonalizedLine(0)]);
+  const [lines, setLines] = useState<Line[]>([newPersonalizedLine(0, catalog.animals)]);
   const [deliveryType, setDeliveryType] = useState<"handover" | "ship">("handover");
   const [optionId, setOptionId] = useState(deliveryOptions[0]?.id ?? "");
   const [shippingPrice, setShippingPrice] = useState<string | null>(null);
@@ -251,12 +252,12 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
                       <select
                         id={`animal-${index}`}
                         value={line.animal}
-                        onChange={(e) => updateLine(line.key, { animal: e.target.value as Animal })}
+                        onChange={(e) => updateLine(line.key, { animal: e.target.value })}
                         className={selectClassName}
                       >
-                        {animals.map((option) => (
+                        {catalog.animals.map((option) => (
                           <option key={option.value} value={option.value}>
-                            {option.label}
+                            {option.labels.nl}
                           </option>
                         ))}
                       </select>
@@ -383,7 +384,7 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
               type="button"
               variant="secondary"
               disabled={lines.length >= MAX_ORDER_LINES}
-              onClick={() => addLine(newPersonalizedLine(nextKey))}
+              onClick={() => addLine(newPersonalizedLine(nextKey, catalog.animals))}
             >
               Gepersonaliseerde Palley
             </Button>
@@ -507,7 +508,7 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
           {lines.map((line) => (
             <li key={line.key} className="flex justify-between gap-3">
               <span className="min-w-0 truncate">
-                {line.quantity} × {lineName(line, collectibles)}
+                {line.quantity} × {lineName(line, collectibles, catalog.animals)}
               </span>
               <span className="tabular-nums">{formatPrice(((unitCents(line) ?? 0) * line.quantity) / 100)}</span>
             </li>
@@ -574,13 +575,13 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
   );
 }
 
-function newPersonalizedLine(key: number): PersonalizedLine {
-  return { key, kind: "personalized", animal: "dog", edition: "keychain", attachment: attachments[0].value, quantity: 1, price: null, notes: "", photos: [] };
+function newPersonalizedLine(key: number, animals: AnimalOption[]): PersonalizedLine {
+  return { key, kind: "personalized", animal: animals[0].value, edition: "keychain", attachment: attachments[0].value, quantity: 1, price: null, notes: "", photos: [] };
 }
 
-function lineName(line: Line, collectibles: CollectibleView[]) {
+function lineName(line: Line, collectibles: CollectibleView[], animals: AnimalOption[]) {
   if (line.kind === "collectible") return collectibles.find((row) => row.id === line.collectibleId)?.name ?? "Collectible";
-  return `Palley ${animals.find((animal) => animal.value === line.animal)?.label ?? ""}`;
+  return `Palley ${animals.find((animal) => animal.value === line.animal)?.labels.nl ?? ""}`;
 }
 
 function Field({ label, id, children }: { label: string; id: string; children: React.ReactNode }) {

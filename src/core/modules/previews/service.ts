@@ -1,7 +1,8 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
+import sharp from "sharp";
 import { prisma, PreviewStatus } from "@/db/client";
-import type { AnimalType } from "@/data/animals";
+import { findAnimalByCode } from "@/core/modules/animals/utils";
 import {
   createDownloadUrl,
   createUploadUrl,
@@ -34,7 +35,9 @@ import {
   unpaidExpiry,
   isPhotoKeyOf,
   photoKey,
+  posePrompt,
 } from "./utils";
+import { getShopSettings } from "@/core/modules/settings/service";
 import type {
   AdminDashboard,
   AdminPreviewDetail,
@@ -216,13 +219,13 @@ export async function overrideStatus(
 export async function approvePreview(id: string) {
   const preview = await prisma.preview.findUnique({
     where: { id },
-    select: { status: true, animalType: true },
+    select: { status: true, animalType: true, forCollectible: true },
   });
   if (!preview) throw new PreviewNotFoundError();
 
   assertTransition(preview.status, PreviewStatus.APPROVED);
-  // Het diersoort staat in de bestandsnaam van de print: eerst kiezen.
-  if (!preview.animalType) {
+  // Het diersoort staat in de bestandsnaam van de print: eerst kiezen. Een collectible mag zonder (geen dier uit de lijst).
+  if (!preview.animalType && !preview.forCollectible) {
     throw new PreviewConflictError("Choose an animal type before approving");
   }
   // Alleen updaten als de status sinds het lezen niet veranderd is.
@@ -238,13 +241,72 @@ export async function approvePreview(id: string) {
 }
 
 // Mag in elke status: ook na goedkeuring kan een vergissing rechtgezet worden.
-export async function setAnimalType(id: string, animalType: AnimalType) {
+export async function setAnimalType(id: string, animalType: string) {
+  const { catalog } = await getShopSettings();
+  if (!findAnimalByCode(catalog.animals, animalType)) throw new PreviewConflictError("Dit dier staat niet in de lijst");
   const { count } = await prisma.preview.updateMany({
     where: { id },
     data: { animalType },
   });
   if (count === 0) throw new PreviewNotFoundError(id);
   return { previewId: id, animalType };
+}
+
+export class InvalidPoseImageError extends Error {}
+
+/**
+ * A pose made elsewhere, for a new collectible's model: it takes the place of a generated one, so the next step is the
+ * 3D model. Stored as PNG (what Meshy reads best). Like a new pose, it makes an existing model invalid.
+ */
+export async function uploadPose(id: string, image: Buffer): Promise<PreviewActionResult> {
+  const preview = await prisma.preview.findUnique({
+    where: { id },
+    select: {
+      status: true,
+      forCollectible: true,
+      poseImageKey: true,
+      glbKey: true,
+      objKey: true,
+      mtlKey: true,
+      textureKey: true,
+    },
+  });
+  if (!preview) throw new PreviewNotFoundError(id);
+  if (!preview.forCollectible) throw new PreviewConflictError("Een eigen pose kan alleen bij een nieuwe collectible");
+  // From where a new pose may be made: before the model is approved.
+  if (!canTransition(preview.status, PreviewStatus.GENERATING_POSE)) {
+    throw new PreviewConflictError("Dit model is al goedgekeurd: de pose ligt vast");
+  }
+
+  let png: Buffer;
+  try {
+    png = await sharp(image).rotate().png().toBuffer();
+  } catch {
+    throw new InvalidPoseImageError();
+  }
+  const key = poseImageKey(id, "image/png");
+  await putObject(key, png, "image/png");
+  const { count } = await prisma.preview.updateMany({
+    where: { id, status: preview.status },
+    data: { status: PreviewStatus.POSE_READY, poseImageKey: key, error: null, ...NO_MODEL, meshyTaskId: null },
+  });
+  if (count === 0) {
+    await deleteReplacedFiles([key]);
+    throw new PreviewConflictError("Status is intussen gewijzigd");
+  }
+  await deleteReplacedFiles([preview.poseImageKey, ...modelKeyList(preview)]);
+  return { previewId: id, status: PreviewStatus.POSE_READY };
+}
+
+/** The prompt for the next pose of a new collectible's model. Customers' Palleys follow the settings. */
+export async function setPromptOverride(id: string, prompt: string) {
+  const { count } = await prisma.preview.updateMany({ where: { id, forCollectible: true }, data: { promptOverride: prompt } });
+  if (count === 0) {
+    const exists = await prisma.preview.count({ where: { id } });
+    if (!exists) throw new PreviewNotFoundError(id);
+    throw new PreviewConflictError("Alleen bij een nieuwe collectible kun je de prompt per preview aanpassen");
+  }
+  return { previewId: id };
 }
 
 export async function generatePose(id: string): Promise<PreviewActionResult> {
@@ -281,7 +343,9 @@ export async function generatePose(id: string): Promise<PreviewActionResult> {
     const images = await Promise.all(
       preview.photos.map((photo) => getObject(photo.key)),
     );
-    const pose = await geminiGeneratePose({ images });
+    const { prompts } = await getShopSettings();
+    const prompt = preview.promptOverride?.trim() || posePrompt(prompts, preview.animalType);
+    const pose = await geminiGeneratePose({ images, prompt });
 
     const key = poseImageKey(id, pose.mimeType);
     await putObject(key, pose.image, pose.mimeType);
@@ -527,6 +591,10 @@ export async function getPreviewForAdmin(
       poseAttempts: true,
       animalType: true,
       meshyTaskId: true,
+      forCollectible: true,
+      processedKey: true,
+      collectible: { select: { id: true, modelKey: true } },
+      promptOverride: true,
       photos: {
         orderBy: { createdAt: "asc" },
         select: { id: true, key: true, uploadedBy: true },
@@ -586,9 +654,10 @@ export async function getPreviewForAdmin(
     animalType: preview.animalType,
     meshyTaskId: preview.meshyTaskId,
     meshyProgress,
+    // A collectible needn't be one of the shop's animals (a lion, a dragon); a customer's Palley needs its species.
     canApprove:
       canTransition(preview.status, PreviewStatus.APPROVED) &&
-      preview.animalType !== null,
+      (preview.animalType !== null || preview.forCollectible),
     canGeneratePose: canTransition(
       preview.status,
       PreviewStatus.GENERATING_POSE,
@@ -600,6 +669,14 @@ export async function getPreviewForAdmin(
     canSyncModel:
       preview.status === PreviewStatus.GENERATING_MODEL &&
       preview.meshyTaskId !== null,
+    forCollectible: preview.forCollectible,
+    collectibleId: preview.collectible?.id ?? null,
+    canAttachModel:
+      preview.forCollectible &&
+      !preview.collectible?.modelKey &&
+      preview.status === PreviewStatus.PRINT_READY &&
+      preview.processedKey !== null,
+    prompt: preview.promptOverride?.trim() || posePrompt((await getShopSettings()).prompts, preview.animalType),
   };
 }
 
@@ -624,6 +701,7 @@ export async function listPreviewsForReview(): Promise<ReviewListItem[]> {
       error: true,
       createdAt: true,
       orderNumber: true,
+      forCollectible: true,
       quantity: true,
       photos: { orderBy: { createdAt: "asc" }, select: { key: true } },
     },
@@ -639,6 +717,7 @@ export async function listPreviewsForReview(): Promise<ReviewListItem[]> {
       error: preview.error,
       createdAt: preview.createdAt.toISOString(),
       orderNumber: preview.orderNumber,
+      forCollectible: preview.forCollectible,
       quantity: preview.quantity,
       photoUrls: await Promise.all(
         preview.photos.map((photo) => createDownloadUrl(photo.key)),

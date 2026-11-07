@@ -194,6 +194,8 @@ export type AdminOrderDetail = {
     photoUrl: string | null;
     attachment: string | null;
     photoUrls: string[]; // de foto's van een gepersonaliseerde Palley, leeg bij een collectible
+    /** A collectible is printed from its own stored model; false when nobody uploaded one yet. */
+    collectibleHasModel: boolean;
   }[];
   payments: {
     id: string;

@@ -25,6 +25,17 @@ export default async function EditCollectiblePage({ params }: PageProps<"/admin/
         Terug naar collectibles
       </Link>
       <SettingsHeader title={collectible.name} />
+      {collectible.sourcePreviewId && (
+        <p className="-mt-2 text-sm text-text-muted">
+          {collectible.modelKey ? "Gegenereerd met de AI-pipeline." : "Het model wordt nog gegenereerd."}{" "}
+          <Link
+            href={`/admin/previews/${collectible.sourcePreviewId}`}
+            className="font-label font-bold text-medium-green underline underline-offset-4 hover:text-orange"
+          >
+            Naar de preview
+          </Link>
+        </p>
+      )}
       <CollectibleForm collectible={collectible} />
     </>
   );

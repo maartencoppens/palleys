@@ -5,9 +5,12 @@ import { prisma } from "@/db/client";
 import { COMPANY, SOCIAL_LINKS } from "@/data/company";
 import { UNIT_PRICE_CENTS } from "@/data/pricing";
 import { DEFAULT_SITE_CONTENT } from "@/data/site-content";
+import { DEFAULT_ANIMAL_PROMPTS, POSE_PROMPT } from "@/data/prompts";
+import { DEFAULT_ANIMALS } from "@/data/animals";
 import {
   catalogSettingsSchema,
   companySettingsSchema,
+  promptSettingsSchema,
   shippingSettingsSchema,
   localizedSiteContentSchema,
   siteContentSchema,
@@ -30,11 +33,13 @@ const DEFAULTS: ShopSettings = {
   shippingOverrides: {},
   catalog: {
     prices: { keychain: UNIT_PRICE_CENTS.keychain.M, figurine: UNIT_PRICE_CENTS.figurine.M },
+    animals: DEFAULT_ANIMALS,
     disabledAnimals: [],
     disabledEditions: [],
   },
   content: DEFAULT_SITE_CONTENT,
   company: { ...COMPANY, socials: SOCIAL_LINKS },
+  prompts: { base: POSE_PROMPT.trim(), animals: DEFAULT_ANIMAL_PROMPTS },
   updatedBy: null,
   updatedAt: null,
 };
@@ -63,6 +68,7 @@ export async function getShopSettings(): Promise<ShopSettings> {
     catalog: parsed(catalogSettingsSchema, row.catalog, DEFAULTS.catalog),
     content: parsedContent(row.siteContent),
     company: parsed(companySettingsSchema, row.company, DEFAULTS.company),
+    prompts: parsed(promptSettingsSchema, row.prompts, DEFAULTS.prompts),
     updatedBy: row.updatedBy,
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -91,7 +97,11 @@ const SECTION_DATA: { [S in SettingsSection]: (input: SettingsSectionInput<S>) =
   catalog: (input) => ({ catalog: input }),
   content: (input) => ({ siteContent: input }),
   company: (input) => ({ company: input }),
+  prompts: (input) => ({ prompts: input }),
 };
+
+/** The starting prompts, for the "back to the standard text" button. */
+export const DEFAULT_PROMPTS = DEFAULTS.prompts;
 
 export async function updateSettingsSection<S extends SettingsSection>(
   section: S,

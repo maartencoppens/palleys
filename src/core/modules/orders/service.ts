@@ -167,7 +167,7 @@ export async function getOrderForAdmin(id: string): Promise<AdminOrderDetail | n
               photos: { orderBy: { createdAt: "asc" }, select: { key: true } },
             },
           },
-          collectible: { select: { imageKey: true } },
+          collectible: { select: { imageKey: true, modelKey: true } },
         },
       },
       payments: { orderBy: { createdAt: "desc" } },
@@ -197,6 +197,7 @@ export async function getOrderForAdmin(id: string): Promise<AdminOrderDetail | n
         photoUrl: photoUrls[0] ?? collectibleImageUrl(item.collectible?.imageKey ?? null),
         photoUrls,
         attachment: item.attachment,
+        collectibleHasModel: Boolean(item.collectible?.modelKey),
       };
     }),
   );

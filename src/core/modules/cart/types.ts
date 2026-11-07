@@ -1,13 +1,14 @@
 import { z } from "zod";
-import { animals, attachments, editions, type Animal, type Attachment, type Edition } from "@/data/options";
+import { attachments, editions, type Attachment, type Edition } from "@/data/options";
+import { animalOptionSchema } from "@/core/modules/animals/types";
 import { MAX_NOTES_LENGTH } from "@/data/checkout";
 import { MAX_LINE_QUANTITY } from "@/data/pricing";
 import type { Locale } from "@/core/locale/config";
 
-const animalValues = animals.map((a) => a.value) as [Animal, ...Animal[]];
 const editionValues = editions.map((e) => e.value) as [Edition, ...Edition[]];
 
-export const animalSchema = z.enum(animalValues);
+// Any well-formed value; whether the shop still sells that animal is checked against the live list.
+export const animalSchema = animalOptionSchema.shape.value;
 export const editionSchema = z.enum(editionValues);
 export const attachmentSchema = z.enum(attachments.map((a) => a.value) as [Attachment, ...Attachment[]]);
 
@@ -46,7 +47,9 @@ export type CartLineView = {
   /** The collectible's name per language; a personalised Palley gets its name from the shop's texts. */
   productTitles: Record<Locale, string>;
   /** The choices as values, which the shop shows in its language. Null for a collectible. */
-  animal: Animal | null;
+  animal: string | null;
+  /** The animal's name per language, from the live list. Null for a collectible. */
+  animalLabels: Record<Locale, string> | null;
   edition: Edition | null;
   /** Every keychain has one, a figurine doesn't. */
   attachment: Attachment | null;

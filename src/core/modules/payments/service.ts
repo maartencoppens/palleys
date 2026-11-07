@@ -11,7 +11,8 @@ import { canTransitionOrder, orderStatusesThatCanTransitionTo } from "@/core/mod
 import { maskEmail } from "@/core/modules/orders/utils";
 import { localizedPath, toLocale } from "@/core/locale/config";
 import { getShopSettings } from "@/core/modules/settings/service";
-import { animals } from "@/data/options";
+import { findAnimal } from "@/core/modules/animals/utils";
+import type { AnimalOption } from "@/core/modules/animals/types";
 import { MANUAL_PAYMENT_PROVIDER, type ManualPaymentMethod } from "@/data/payment-methods";
 import { CURRENCY } from "@/data/pricing";
 import { PAYMENT_SYNC_MIN_INTERVAL_MS, PENDING_ORDER_MAX_AGE_MS } from "@/data/checkout";
@@ -237,9 +238,11 @@ async function closeUnpaidOrder(orderId: string, paymentId: string, to: OrderSta
   await moveOrder(orderId, to, source, `Betaalstatus van ${paymentId}`);
 }
 
-const animalTypeOf = (animal: string | null) => animals.find((a) => a.value === animal)?.animalType ?? null;
+// The preview's animal code (print file name, AI prompt) from the value the customer picked.
+const animalTypeOf = (animals: AnimalOption[], animal: string | null) => findAnimal(animals, animal)?.code ?? null;
 
 async function markOrderPaid(orderId: string, orderNumber: string, source: ProcessSource) {
+  const { catalog } = await getShopSettings();
   const conflicts = await prisma.$transaction(async (tx) => {
     const order = await tx.order.findUniqueOrThrow({
       where: { id: orderId },
@@ -281,7 +284,7 @@ async function markOrderPaid(orderId: string, orderNumber: string, source: Proce
         },
       });
       if (updated.count === 1) {
-        const animalType = animalTypeOf(item.animal);
+        const animalType = animalTypeOf(catalog.animals, item.animal);
         if (animalType) {
           // Prefill the animal the customer picked, unless an admin already chose one.
           await tx.preview.updateMany({ where: { id: item.previewId, animalType: null }, data: { animalType } });
@@ -340,8 +343,12 @@ async function sendConfirmationOnce(orderId: string, idempotencySuffix = "") {
     return;
   }
   try {
-    const { company, content } = await getShopSettings();
-    const mail = buildOrderConfirmation(order, env.APP_URL, { company, deliveryTime: content[toLocale(order.locale)].deliveryTime });
+    const { company, content, catalog } = await getShopSettings();
+    const mail = buildOrderConfirmation(order, env.APP_URL, {
+      company,
+      deliveryTime: content[toLocale(order.locale)].deliveryTime,
+      animals: catalog.animals,
+    });
     const sent = await sendEmail({ to: order.email, ...mail, idempotencyKey: `order-confirmation-${order.id}${idempotencySuffix}` });
     if (!sent) {
       console.warn(`[payments] confirmation for ${order.number} not sent: e-mail is not configured`);

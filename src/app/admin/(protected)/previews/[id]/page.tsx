@@ -11,7 +11,10 @@ import { PreviewStatusBadge } from "@/components/functional/admin/PreviewStatusB
 import { GeneratePoseButton } from "@/components/functional/admin/GeneratePoseButton";
 import { GenerateModelButton } from "@/components/functional/admin/GenerateModelButton";
 import { SyncModelButton } from "@/components/functional/admin/SyncModelButton";
+import { getShopSettings } from "@/core/modules/settings/service";
 import { AnimalTypePicker } from "@/components/functional/admin/AnimalTypePicker";
+import { AttachModelButton } from "@/components/functional/admin/AttachModelButton";
+import { PreviewPromptEditor } from "@/components/functional/admin/PreviewPromptEditor";
 import { PhotoManager } from "@/components/functional/admin/PhotoManager";
 import { StatusOverridePanel } from "@/components/functional/admin/StatusOverridePanel";
 import type { MeshyProgress } from "@/core/modules/previews/types";
@@ -28,8 +31,13 @@ export default async function AdminPreviewDetailPage({
   const parsed = paramsSchema.safeParse(await params);
   if (!parsed.success) notFound();
 
-  const preview = await getPreviewForAdmin(parsed.data.id);
+  const [preview, { catalog }] = await Promise.all([getPreviewForAdmin(parsed.data.id), getShopSettings()]);
   if (!preview) notFound();
+  // A preview from before an animal was removed keeps its code: show it as a choice so it stays visible.
+  const animals =
+    preview.animalType && !catalog.animals.some((animal) => animal.code === preview.animalType)
+      ? [...catalog.animals, { value: preview.animalType.toLowerCase(), code: preview.animalType, labels: { nl: preview.animalType, en: preview.animalType } }]
+      : catalog.animals;
 
   return (
     <main>
@@ -45,6 +53,7 @@ export default async function AdminPreviewDetailPage({
           Preview
         </h1>
         <PreviewStatusBadge status={preview.status} />
+        {preview.forCollectible && <Badge tone="success">Nieuwe collectible</Badge>}
       </div>
       <p className="mt-1 break-all font-mono text-sm text-text-muted">{preview.id}</p>
 
@@ -68,6 +77,32 @@ export default async function AdminPreviewDetailPage({
           />
         </div>
         <aside className="order-2 space-y-6 lg:order-none lg:row-span-2">
+          {preview.forCollectible && (
+            <section className="rounded-3xl bg-white p-6">
+              <h2 className="font-display text-xl font-medium text-medium-green">Nieuwe collectible</h2>
+              <p className="mt-2 text-sm text-text-muted">
+                Los van een order. Zodra de printklare zip op Processed staat, komt het model vanzelf op de collectible.
+              </p>
+              {preview.collectibleId && (
+                <Link
+                  href={`/admin/settings/collectibles/${preview.collectibleId}`}
+                  className="mt-3 inline-block font-label text-sm font-bold text-medium-green underline underline-offset-4 hover:text-orange"
+                >
+                  Naar de collectible
+                </Link>
+              )}
+              {preview.canAttachModel && <AttachModelButton previewId={preview.id} />}
+            </section>
+          )}
+          {preview.forCollectible && (
+            <section className="rounded-3xl bg-white p-6">
+              <h2 className="font-display text-xl font-medium text-medium-green">Prompt</h2>
+              <p className="mt-2 text-sm text-text-muted">
+                Alleen voor dit model. Pas aan en maak een nieuwe pose; de instellingen blijven zoals ze zijn.
+              </p>
+              <PreviewPromptEditor previewId={preview.id} prompt={preview.prompt} />
+            </section>
+          )}
           <section className="rounded-3xl bg-white p-6">
             <h2 className="font-display text-xl font-medium text-medium-green">Gegevens</h2>
             <dl className="mt-3 space-y-3 text-sm">
@@ -185,6 +220,7 @@ export default async function AdminPreviewDetailPage({
             <AnimalTypePicker
               previewId={preview.id}
               value={preview.animalType}
+              animals={animals}
             />
           </section>
           {preview.canApprove && (
