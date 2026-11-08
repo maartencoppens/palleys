@@ -41,18 +41,6 @@ export default function OrderSummary({
         {m.title}
       </h2>
 
-      <div className="relative grid h-[220px] place-items-center overflow-hidden rounded-3xl bg-light-yellow md:h-[260px]">
-        <Image
-          className="h-[200px] w-auto object-contain md:h-[240px]"
-          src="/images/products/golden-retriever.png"
-          width={300}
-          height={240}
-          alt={m.imageAlt}
-          sizes="300px"
-        />
-      </div>
-      <p className="text-sm leading-[1.5] text-text-primary">{m.example}</p>
-
       <dl className="flex flex-col gap-5">
         {rows.map((row) => (
           <div
