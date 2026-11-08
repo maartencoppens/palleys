@@ -18,6 +18,8 @@ const nextConfig: NextConfig = {
   // Same navigation behaviour as before the upgrade to 16.4; turning this on is a choice of its own.
   partialPrefetching: false,
   poweredByHeader: false,
+  // Local testing of Bancontact needs https: the dev server through a Cloudflare quick tunnel (dev only).
+  allowedDevOrigins: ["*.trycloudflare.com"],
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
