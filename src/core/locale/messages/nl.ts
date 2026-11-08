@@ -88,6 +88,19 @@ export const nl = {
     titleRest: "for your keys.",
     text: "Maak kennis met je Palley: je huisdier als 3D-geprinte sleutelhanger, gemaakt van je favoriete foto en met de hand afgewerkt. Je beste vriend, klein genoeg om overal mee te gaan.",
     collection: "Bekijk de collectie",
+    flow: {
+      label: "Van foto tot Palley",
+      step: "Stap {current} van {total}",
+      goTo: "Toon stap {number}: {title}",
+      pause: "Carrousel pauzeren",
+      play: "Carrousel afspelen",
+      steps: [
+        { title: "Jouw foto", alt: "Foto van een zwart-witte kat in het gras" },
+        { title: "AI-pose", alt: "Door AI gemaakte liggende pose van dezelfde kat" },
+        { title: "3D-model", alt: "3D-model van de kat, klaar om te printen" },
+        { title: "Je Palley", alt: "De afgewerkte Palley: de kat als sleutelhanger" },
+      ],
+    },
   },
 
   howItWorks: {

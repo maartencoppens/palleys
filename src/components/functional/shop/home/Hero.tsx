@@ -1,5 +1,6 @@
 import Button from "@/components/design/Button";
 import HeroArt from "./HeroArt";
+import HeroCarousel from "./HeroCarousel";
 import InfoBanner from "./InfoBanner";
 import Navbar from "@/components/functional/shop/layout/Navbar";
 import { getMessages } from "@/core/locale/server";
@@ -10,6 +11,9 @@ import { getMessages } from "@/core/locale/server";
  * corner uses the shared section radius, so it shrinks on smaller screens like the other sections.
  * The section has no background of its own: the artwork covers it completely, and a dark background
  * underneath would show as a thin rim along the rounded corner.
+ *
+ * The carousel with the steps from photo to Palley fills the empty right half from 1280px; on smaller
+ * screens it follows the copy, at the bottom of the first screen.
  */
 export default async function Hero() {
   const { hero: m, common } = await getMessages();
@@ -31,7 +35,7 @@ export default async function Hero() {
            * Vertically centred in the space under the navbar. The extra top padding reproduces the
            * Figma placement when the area below the banner is 780px tall; on other heights the block stays centred.
            */}
-          <div className="flex flex-1 flex-col items-start justify-center gap-8 pt-14 pb-40 md:gap-2xl lg:pt-[55px] lg:pb-0 lg:pl-[clamp(0px,3.02vw,58px)]">
+          <div className="flex flex-1 flex-col items-start justify-center gap-8 pt-14 pb-12 md:gap-2xl lg:pt-[55px] xl:pb-0 lg:pl-[clamp(0px,3.02vw,58px)]">
             <h1
               id="hero-title"
               className="font-display text-[clamp(2.375rem,1.2rem+4.6vw,4.875rem)] leading-[0.98] font-medium tracking-[-0.045em]"
@@ -61,6 +65,8 @@ export default async function Hero() {
               </Button>
             </div>
           </div>
+
+          <HeroCarousel m={m.flow} />
         </div>
       </div>
     </section>

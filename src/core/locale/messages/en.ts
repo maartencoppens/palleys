@@ -87,6 +87,19 @@ export const en: Messages = {
     titleRest: "for your keys.",
     text: "Meet your Palley: your pet as a 3D-printed keychain, made from your favourite photo and finished by hand. Your best friend, small enough to go anywhere with you.",
     collection: "View the collection",
+    flow: {
+      label: "From photo to Palley",
+      step: "Step {current} of {total}",
+      goTo: "Show step {number}: {title}",
+      pause: "Pause carousel",
+      play: "Play carousel",
+      steps: [
+        { title: "Your photo", alt: "Photo of a black-and-white cat in the grass" },
+        { title: "AI pose", alt: "AI-made lying pose of the same cat" },
+        { title: "3D model", alt: "3D model of the cat, ready to print" },
+        { title: "Your Palley", alt: "The finished Palley: the cat as a keychain" },
+      ],
+    },
   },
 
   howItWorks: {
