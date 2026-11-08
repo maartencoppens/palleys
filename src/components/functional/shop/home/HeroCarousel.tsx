@@ -35,12 +35,12 @@ const subscribeToReducedMotion = (onChange: () => void) => {
  * The wheel is plain CSS. Every photo sits on the pivot and gets
  *   rotate(angle) translateX(radius) rotate(-angle)
  * so it lands on the circle but stays upright. Turning the wheel only changes --flow-turn: the
- * transform transition then moves each photo along the arc. The position keeps counting up (never
- * wraps), so the wheel always turns the same way instead of spinning back.
+ * transform transition then moves each photo along the arc, counter-clockwise. The position keeps
+ * counting up (never wraps), so the wheel always turns the same way instead of spinning back.
  *
- *   desktop  from 1280px, where the copy leaves room: the active slot is on the left of the pivot (--flow-slot: 180deg).
- *            The next photo rises from the bottom right (--flow-dir: -1) and the previous one fades out at the
- *            top, clear of the navbar.
+ *   desktop  from 1280px, where the copy leaves room: the active slot is left of the pivot and tilted up a
+ *            little (--flow-slot: 210deg), so the next photo comes in from the right edge and arcs over to
+ *            it below the navbar; the previous one drops away at the bottom right.
  *   smaller  the active slot is on top (270deg), under the hero copy; the next photo comes in from the right.
  *
  * On desktop its box overlaps the end of the hero copy, so only the photo, caption and controls take clicks.
@@ -85,7 +85,7 @@ export default function HeroCarousel({ m }: HeroCarouselProps) {
       onFocus={() => setFocused(true)}
       onBlur={onBlur}
       style={{ "--flow-turn": `${position * STEP_ANGLE}deg` } as CSSProperties}
-      className="pointer-events-none relative flex flex-col items-center gap-l self-center pt-2 *:pointer-events-auto pb-24 [--flow-dir:1] [--flow-radius:calc(var(--flow-size)*1.08)] [--flow-size:min(54vw,240px)] [--flow-slot:270deg] md:pb-44 xl:absolute xl:inset-y-0 xl:right-[4%] xl:left-[54%] xl:justify-center xl:pt-24 xl:pb-0 xl:[--flow-dir:-1] xl:[--flow-radius:calc(var(--flow-size)*1.05)] xl:[--flow-size:clamp(260px,25vw,460px)] xl:[--flow-slot:180deg]"
+      className="pointer-events-none relative flex flex-col items-center gap-l self-center pt-2 *:pointer-events-auto pb-24 [--flow-radius:calc(var(--flow-size)*1.08)] [--flow-size:min(54vw,240px)] [--flow-slot:270deg] md:pb-44 xl:absolute xl:inset-y-0 xl:right-[4%] xl:left-[54%] xl:justify-center xl:pt-24 xl:pb-0 xl:[--flow-radius:calc(var(--flow-size)*1.05)] xl:[--flow-size:clamp(260px,25vw,460px)] xl:[--flow-slot:210deg]"
     >
       <div className="relative size-(--flow-size)">
         {/* The pivot: one radius away from the active slot, on the opposite side. Clicks go through the wheel to the controls. */}
@@ -105,16 +105,15 @@ export default function HeroCarousel({ m }: HeroCarouselProps) {
                   aria-hidden={distance !== 0}
                   style={
                     {
-                      "--angle": `calc(var(--flow-slot) + var(--flow-dir) * (${index * STEP_ANGLE}deg - var(--flow-turn)))`,
+                      "--angle": `calc(var(--flow-slot) + ${index * STEP_ANGLE}deg - var(--flow-turn))`,
                     } as CSSProperties
                   }
                   className="absolute top-[calc(var(--flow-size)/-2)] left-[calc(var(--flow-size)/-2)] size-(--flow-size) [transform:rotate(var(--angle))_translateX(var(--flow-radius))_rotate(calc(var(--angle)*-1))] transition-transform duration-1000 ease-[cubic-bezier(0.34,1.25,0.64,1)] motion-reduce:transition-none"
                 >
-                  {/* Opacity runs faster than the turn, so a photo that leaves is gone before it reaches the navbar. */}
                   <div
-                    className={`relative size-full transition-[scale,opacity] duration-1000 [transition-duration:1s,0.3s] motion-reduce:transition-none ${
+                    className={`relative size-full transition-[scale,opacity] duration-1000 motion-reduce:transition-none ${
                       distance === 0 ? "scale-100" : "scale-[0.58]"
-                    } ${distance === 2 ? "opacity-0" : distance === 3 ? "opacity-100 xl:opacity-0" : "opacity-100"}`}
+                    } ${distance === 2 ? "opacity-0" : "opacity-100"}`}
                   >
                     <Image
                       src={images[index]}
