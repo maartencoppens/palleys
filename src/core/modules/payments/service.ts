@@ -30,7 +30,7 @@ import type { ProviderPayment } from "./providers/types";
  * the Shopify webhook did. From there the AI pipeline takes over; nothing in it is touched here.
  */
 
-export type ProcessSource = "webhook" | "return-page" | "cron" | "checkout" | `admin:${string}`;
+export type ProcessSource = "webhook" | "webhook:sendcloud" | "return-page" | "cron" | "checkout" | `admin:${string}`;
 
 export class ManualPaymentNotAllowedError extends Error {}
 

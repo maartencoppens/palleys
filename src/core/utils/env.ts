@@ -34,6 +34,9 @@ const schema = z.object({
   RESEND_API_KEY: optional(z.string().min(1)),
   EMAIL_FROM: optional(z.string().min(3)), // e.g. "Palleys <bestellingen@palleys.be>", domain verified in Resend
   EMAIL_REPLY_TO: optional(z.email()),
+  // Sendcloud: the API integration's Secret Key (or Webhook Signature Key), which signs every webhook. Unset = the
+  // webhook route refuses every call.
+  SENDCLOUD_WEBHOOK_SECRET: optional(z.string().min(16)),
   // Bearer secret for /api/cron/* (expiring unpaid orders). Unset = the cron route refuses every call.
   CRON_SECRET: optional(z.string().min(32)),
 });

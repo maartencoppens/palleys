@@ -389,6 +389,8 @@ model Shipment {
   trackingCode         String?
   trackingUrl          String?
   labelKey             String? // R2-key van het label (signed URL in de admin)
+  providerStatus       String? // laatste status van de vervoerder via Sendcloud, bv. "Delivered"
+  providerStatusAt     DateTime? // wanneer die status inging: oudere webhooks (ze komen niet altijd op volgorde) worden genegeerd
   shippedAt            DateTime?
 }
 

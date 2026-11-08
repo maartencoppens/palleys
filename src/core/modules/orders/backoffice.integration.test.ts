@@ -92,6 +92,7 @@ const { confirmProcessedUpload, getCollectiblePrintQueue } = await import("@/cor
 const { approvePreview, setPromptOverride, uploadPose } = await import("@/core/modules/previews/service");
 const { updateSettingsSection, getShopSettings } = await import("@/core/modules/settings/service");
 const { DEFAULT_ANIMALS } = await import("@/data/animals");
+const { handleSendcloudWebhook } = await import("@/core/modules/shipping/sendcloud/service");
 const { manualOrderSchema } = await import("./types");
 const { expireStaleOrders, handlePaymentWebhook, createManualOrderPaymentLink, recordManualPayment, ManualPaymentNotAllowedError } = await import(
   "@/core/modules/payments/service"
@@ -619,5 +620,68 @@ describe("animals managed in the backoffice", () => {
       payment: { type: "paid", method: "cash" },
     });
     expect((await prisma.preview.findUniqueOrThrow({ where: { id: previews[0].previewId } })).animalType).toBe("PAPEGAAI");
+  });
+});
+
+describe("Sendcloud webhook", () => {
+  const parcelUpdate = (number: string, message: string, timestamp: number) => ({
+    action: "parcel_status_changed",
+    timestamp,
+    parcel: {
+      id: 987654,
+      tracking_number: "3SABCD123",
+      tracking_url: "https://tracking.sendcloud.sc/forward?carrier=bpost&code=3SABCD123",
+      status: { id: 1, message },
+      order_number: number,
+      name: "Vriend Testmans",
+      is_return: false,
+    },
+  });
+  const shipped = {
+    type: "ship",
+    optionId: "be-bpost-home",
+    street: "Straat",
+    houseNumber: "1",
+    postalCode: "9000",
+    city: "Gent",
+  };
+
+  it("keeps the tracking on the order, ships it once the carrier has it, and skips older updates", async () => {
+    const { orderId, number } = await addOrder({ delivery: shipped, payment: { type: "paid", method: "cash" } });
+
+    expect(await handleSendcloudWebhook(parcelUpdate(number, "Ready to send", 1_800_000_000))).toEqual({ outcome: "updated" });
+    let order = await loadOrder(orderId);
+    expect(order.status).toBe("PAID");
+    expect(order.shipment).toMatchObject({
+      provider: "sendcloud",
+      providerShipmentId: "987654",
+      trackingCode: "3SABCD123",
+      providerStatus: "Ready to send",
+      shippedAt: null,
+    });
+
+    expect(await handleSendcloudWebhook(parcelUpdate(number, "En route to sorting center", 1_800_000_600))).toEqual({ outcome: "shipped" });
+    order = await loadOrder(orderId);
+    expect(order.status).toBe("SHIPPED");
+    expect(order.shipment?.shippedAt?.getTime()).toBe(1_800_000_600_000);
+    expect(order.statusChanges.find((change) => change.toStatus === "SHIPPED")).toMatchObject({ source: "webhook:sendcloud" });
+
+    // Late, older one: nothing changes. A retry of the same one neither.
+    expect(await handleSendcloudWebhook(parcelUpdate(number, "Ready to send", 1_800_000_300))).toEqual({ outcome: "stale" });
+    expect(await handleSendcloudWebhook(parcelUpdate(number, "En route to sorting center", 1_800_000_600))).toEqual({ outcome: "stale" });
+
+    expect(await handleSendcloudWebhook(parcelUpdate(number, "Delivered", 1_800_090_000))).toEqual({ outcome: "updated" });
+    order = await loadOrder(orderId);
+    expect(order.shipment?.providerStatus).toBe("Delivered");
+    expect(order.statusChanges.some((change) => change.note === "Sendcloud: Delivered")).toBe(true);
+  });
+
+  it("answers parcels it can't place, returns and other events without touching anything", async () => {
+    expect(await handleSendcloudWebhook(parcelUpdate("PAL-1999-99999", "Delivered", 1_800_000_000))).toEqual({ outcome: "unknown_order" });
+    expect(await handleSendcloudWebhook(parcelUpdate("webshop-42", "Delivered", 1_800_000_000))).toEqual({ outcome: "unknown_order" });
+    const returned = parcelUpdate("PAL-1999-99999", "Delivered", 1_800_000_000);
+    expect(await handleSendcloudWebhook({ ...returned, parcel: { ...returned.parcel, is_return: true } })).toEqual({ outcome: "return" });
+    expect(await handleSendcloudWebhook({ action: "integration_updated", timestamp: 1 })).toEqual({ outcome: "other_action", action: "integration_updated" });
+    expect(await handleSendcloudWebhook({ action: "parcel_status_changed" })).toEqual({ outcome: "ignored" });
   });
 });
