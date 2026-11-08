@@ -8,7 +8,10 @@ import { tokenMatches } from "@/core/utils/tokens";
 import { collectibleImageUrl } from "@/core/modules/collectibles/utils";
 import { nextStepLabel, OPEN_ORDER_STATUSES, summarizeCheckIn } from "./check-in";
 import { PAID_ORDER_STATUSES } from "./status";
-import { formatOrderNumber, orderYear } from "./utils";
+import { invoiceCounterKey, ORDER_COUNTER_KEY, orderYear, palleyNameOf } from "./utils";
+import { batchRef, invoiceNumber, orderRef } from "@/core/utils/naming";
+import { nextCounterValue, type CounterClient } from "@/db/counters";
+import { ORDER_START } from "@/data/naming";
 import type { AdminOrderDetail, AdminOrderListItem, AdminOrderStats, OrderCheckInRow, OrderListQuery } from "./types";
 import type { OrderStatusView } from "@/core/modules/checkout/types";
 
@@ -16,15 +19,15 @@ const ORDER_LIST_LIMIT = 100;
 
 export class OrderNotFoundError extends Error {}
 
-/** Next number for the current year. Call inside the order's transaction. */
-export async function nextOrderNumber(tx: Pick<typeof prisma, "$queryRaw">) {
-  const year = orderYear();
-  // Row-locking upsert inside the order's transaction: concurrent checkouts wait, a rollback leaves no gap.
-  const [row] = await tx.$queryRaw<{ last: number }[]>`
-    INSERT INTO "OrderCounter" ("year", "last") VALUES (${year}, 1)
-    ON CONFLICT ("year") DO UPDATE SET "last" = "OrderCounter"."last" + 1
-    RETURNING "last"`;
-  return formatOrderNumber(year, row.last);
+/** Next order number (PLY1042): one running counter. Call inside the order's transaction. */
+export async function nextOrderNumber(tx: CounterClient) {
+  return orderRef(await nextCounterValue(tx, ORDER_COUNTER_KEY, ORDER_START));
+}
+
+/** Next invoice number (F2026-0001) for the year of `date`. Call inside the transaction that marks the order paid. */
+export async function nextInvoiceNumber(tx: CounterClient, date: Date = new Date()) {
+  const year = orderYear(date);
+  return invoiceNumber(year, await nextCounterValue(tx, invoiceCounterKey(year)));
 }
 
 // ---------- Customer (return page) ----------
@@ -34,11 +37,20 @@ export async function getOrderStatusForCustomer(orderId: string, token: string |
   if (!z.uuid().safeParse(orderId).success) return null;
   const order = await prisma.order.findUnique({
     where: { id: orderId },
-    select: { number: true, status: true, statusTokenHash: true },
+    select: {
+      number: true,
+      status: true,
+      statusTokenHash: true,
+      subtotalCents: true,
+      discountCents: true,
+      shippingCents: true,
+      totalCents: true,
+    },
   });
   // Same answer for "doesn't exist" and "wrong token", so ids can't be probed.
   if (!order || !tokenMatches(token, order.statusTokenHash)) return null;
-  return { number: order.number, status: order.status };
+  const { subtotalCents, discountCents, shippingCents, totalCents } = order;
+  return { number: order.number, status: order.status, amounts: { subtotalCents, discountCents, shippingCents, totalCents } };
 }
 
 // ---------- Admin ----------
@@ -73,6 +85,7 @@ export async function listOrdersForAdmin(query: OrderListQuery): Promise<AdminOr
       attentionReason: true,
       createdAt: true,
       paidAt: true,
+      shipment: { select: { deliveryType: true } },
       items: { select: { quantity: true } },
       payments: { orderBy: { createdAt: "desc" }, take: 1, select: { status: true, mode: true } },
     },
@@ -93,6 +106,7 @@ export async function listOrdersForAdmin(query: OrderListQuery): Promise<AdminOr
     attention: order.attentionReason !== null,
     createdAt: order.createdAt.toISOString(),
     paidAt: order.paidAt?.toISOString() ?? null,
+    deliveryType: order.shipment?.deliveryType ?? null,
   }));
 }
 
@@ -111,6 +125,7 @@ export async function listOrdersForCheckIn(): Promise<OrderCheckInRow[]> {
       createdBy: true,
       paidAt: true,
       shipment: { select: { deliveryType: true } },
+      batch: { select: { status: true } },
       items: { select: { checkedInAt: true, preview: { select: { status: true } } } },
     },
   });
@@ -128,7 +143,7 @@ export async function listOrdersForCheckIn(): Promise<OrderCheckInRow[]> {
       paidAt: order.paidAt?.toISOString() ?? null,
       handover,
       summary,
-      nextStep: nextStepLabel(order.status, summary, { handover }),
+      nextStep: nextStepLabel(order.status, summary, { handover, batchStatus: order.batch?.status ?? null }),
     };
   });
 }
@@ -159,6 +174,7 @@ export async function getOrderForAdmin(id: string): Promise<AdminOrderDetail | n
     where: { id },
     include: {
       items: {
+        orderBy: { position: "asc" },
         include: {
           preview: {
             select: {
@@ -172,6 +188,7 @@ export async function getOrderForAdmin(id: string): Promise<AdminOrderDetail | n
       },
       payments: { orderBy: { createdAt: "desc" } },
       shipment: true,
+      batch: { select: { id: true, number: true, status: true } },
       statusChanges: { orderBy: { createdAt: "desc" } },
     },
   });
@@ -189,7 +206,9 @@ export async function getOrderForAdmin(id: string): Promise<AdminOrderDetail | n
         checkedInAt: item.checkedInAt?.toISOString() ?? null,
         checkedInBy: item.checkedInBy,
         title: item.title,
-        sku: item.sku,
+        productCode: item.productCode,
+        // A Palley is only made once the order is paid.
+        palleyName: PAID_ORDER_STATUSES.includes(order.status) ? palleyNameOf({ ...item, order }) : null,
         size: item.size,
         quantity: item.quantity,
         unitCents: item.unitCents,
@@ -205,6 +224,8 @@ export async function getOrderForAdmin(id: string): Promise<AdminOrderDetail | n
   return {
     id: order.id,
     number: order.number,
+    invoiceNumber: order.invoiceNumber,
+    batch: order.batch && { id: order.batch.id, ref: batchRef(order.batch.number), status: order.batch.status },
     status: order.status,
     createdBy: order.createdBy,
     email: order.email,

@@ -159,7 +159,12 @@ function CollectibleTable({ items }: { items: CollectiblePrintItem[] }) {
         <tbody>
           {items.map((item) => (
             <tr key={item.itemId} className="border-b border-off-white-dark last:border-0">
-              <td className="px-5 py-4 font-semibold">{item.name}</td>
+              <td className="px-5 py-4 font-semibold">
+                {item.name}
+                {item.palleyName && (
+                  <span className="block font-mono text-xs font-normal break-all text-text-muted">{item.palleyName}</span>
+                )}
+              </td>
               <td data-label="Order" className="px-5 py-4">
                 <Link
                   href={`/admin/orders/${item.orderId}`}

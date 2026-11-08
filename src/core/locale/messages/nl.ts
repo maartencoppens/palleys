@@ -478,6 +478,7 @@ export const nl = {
       address_required: "Vul je volledige leveradres in.",
       discount_invalid: "Je kortingscode is niet (meer) geldig. We haalden hem weg: controleer je totaal en bestel opnieuw.",
       discount_min_subtotal: "Je bestelling komt niet meer aan het minimumbedrag van je kortingscode. We haalden hem weg: controleer je totaal en bestel opnieuw.",
+      total_changed: "De prijs is intussen gewijzigd. Controleer je nieuwe totaal en bestel opnieuw.",
       payment_failed: "We konden de betaling niet starten. Probeer het nog eens.",
       rate_limited: "Te veel pogingen. Wacht een paar minuten en probeer opnieuw.",
       invalid_input: "Controleer de gemarkeerde velden.",
@@ -520,6 +521,7 @@ export const nl = {
     checkAgain: "Opnieuw controleren",
     waitTitle: "Je betaling wordt verwerkt…",
     waitText: "Even geduld, dit duurt meestal maar een paar seconden.",
+    summaryTitle: "Overzicht",
   },
 
   // LEGAL-REVIEW: wording of the withdrawal exception, the right of withdrawal, the legal guarantee and the VAT exemption.
@@ -544,6 +546,18 @@ export const nl = {
     termsApply: "Op je bestelling gelden onze algemene voorwaarden",
     enterprise: "Ondernemingsnummer",
     itemTitle: "Palley {animal}",
+  },
+
+  // DRAFT: to be reviewed. Sent from the backoffice (Productie) for orders picked up on campus.
+  pickupEmail: {
+    location: "campus Kantienberg van Arteveldehogeschool in Gent",
+    readySubject: "Je bestelling {number} ligt klaar om af te halen",
+    readyTitle: "Je Palley is klaar, {name}!",
+    readyText: "Je bestelling {number} ligt klaar op {location}. We zijn niet elke dag op de campus: we mailen je wanneer je kunt langskomen. Noem je bestelnummer als je hem komt halen.",
+    updateSubject: "Afhalen van je bestelling {number}",
+    updateTitle: "Hoi {name},",
+    updateIntro: "Een update over het afhalen van je bestelling {number} op {location}:",
+    footer: "Vragen of past het niet? Antwoord gewoon op deze mail.",
   },
 
   legal: {

@@ -66,6 +66,7 @@ export default async function AdminReviewPage() {
                     {preview.quantity > 1 && (
                       <span className="ml-2 font-normal text-text-muted">{preview.quantity}×</span>
                     )}
+                    <span className="block font-mono text-xs font-normal text-text-muted">{preview.printName}</span>
                   </td>
                   <td data-label="Aangemaakt" className="whitespace-nowrap px-5 py-4 tabular-nums">
                     {formatDateTime(preview.createdAt)}

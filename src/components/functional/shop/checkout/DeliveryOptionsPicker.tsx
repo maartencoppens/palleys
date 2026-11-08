@@ -14,7 +14,7 @@ type DeliveryOptionsPickerProps = {
 
 /*
  * Radio list of delivery options, grouped by type. Prices come from our server; what's picked here is re-checked
- * at checkout. A service point picker (Sendcloud) slots in under "Afhaalpunt" once that provider is connected.
+ * at checkout.
  */
 export default function DeliveryOptionsPicker({ options, value, onChange, status, error }: DeliveryOptionsPickerProps) {
   const { shipping: m } = useMessages();

@@ -5,7 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo } from "react";
 import Button from "@/components/design/Button";
 import { publishCart } from "@/core/hooks/useCartSnapshot";
-import { useMessages } from "@/core/locale/client";
+import { useLocale, useMessages } from "@/core/locale/client";
+import { formatPrice } from "@/core/utils/format";
 import { fill, fillNodes } from "@/core/locale/fill";
 import { usePollStatus } from "@/core/hooks/usePollStatus";
 import { fetchOrderStatus } from "@/core/modules/orders/api";
@@ -20,7 +21,9 @@ const CLOSED: OrderStatusView["status"][] = ["CANCELLED", "EXPIRED"];
  * Bancontact, until the order is paid or closed. The link carries a token so nobody else can read the status.
  */
 export default function CheckoutReturn() {
-  const { orderReturn: m } = useMessages();
+  const messages = useMessages();
+  const { orderReturn: m } = messages;
+  const locale = useLocale();
   const params = useSearchParams();
   const orderId = params.get("order");
   const token = params.get("t");
@@ -68,6 +71,7 @@ export default function CheckoutReturn() {
         <p className="text-base text-text-primary md:text-lg">
           {fillNodes(m.paidText, { number: <strong className="font-label">{poll.data?.number}</strong> })}
         </p>
+        {poll.data && <PaidSummary amounts={poll.data.amounts} title={m.summaryTitle} labels={messages.checkout} free={messages.shipping.free} locale={locale} />}
         <Button variant="primary" href="/">
           {m.backToShop}
         </Button>
@@ -114,5 +118,47 @@ export default function CheckoutReturn() {
       <h1 className="font-display text-3xl font-bold text-medium-green">{m.waitTitle}</h1>
       <p className="text-base text-text-primary md:text-lg">{m.waitText}</p>
     </div>
+  );
+}
+
+/** What was paid: products, discount, delivery and total, the same lines as the checkout and the mail. */
+function PaidSummary({
+  amounts,
+  title,
+  labels,
+  free,
+  locale,
+}: {
+  amounts: OrderStatusView["amounts"];
+  title: string;
+  labels: { subtotal: string; discount: string; shipping: string; total: string };
+  free: string;
+  locale: ReturnType<typeof useLocale>;
+}) {
+  const price = (cents: number) => formatPrice(cents / 100, locale);
+  const row = "flex justify-between gap-4";
+  return (
+    <section aria-label={title} className="w-full max-w-sm">
+      <dl className="flex flex-col gap-2 border-y border-off-white-dark py-3 text-base">
+        <div className={row}>
+          <dt>{labels.subtotal}</dt>
+          <dd className="font-label font-semibold">{price(amounts.subtotalCents)}</dd>
+        </div>
+        {amounts.discountCents > 0 && (
+          <div className={`${row} text-medium-green`}>
+            <dt>{labels.discount}</dt>
+            <dd className="font-label font-semibold">- {price(amounts.discountCents)}</dd>
+          </div>
+        )}
+        <div className={row}>
+          <dt>{labels.shipping}</dt>
+          <dd className="font-label font-semibold">{amounts.shippingCents === 0 ? free : price(amounts.shippingCents)}</dd>
+        </div>
+        <div className={`${row} text-lg`}>
+          <dt className="font-semibold">{labels.total}</dt>
+          <dd className="font-label font-extrabold">{price(amounts.totalCents)}</dd>
+        </div>
+      </dl>
+    </section>
   );
 }

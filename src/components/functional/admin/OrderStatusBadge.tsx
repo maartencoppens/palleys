@@ -22,12 +22,17 @@ const PAYMENT_STATUS_DISPLAY: Record<PaymentStatus, { label: string; tone: Badge
   FAILED: { label: "Mislukt", tone: "danger" },
 };
 
-export function orderStatusLabel(status: OrderStatus) {
+// SHIPPED is the end for every order; how it left decides what we call it.
+const SHIPPED_LABEL: Record<string, string> = { PICKUP: "Opgehaald", HANDOVER: "Overhandigd" };
+
+export function orderStatusLabel(status: OrderStatus, deliveryType?: string | null) {
+  if (status === "SHIPPED" && deliveryType && SHIPPED_LABEL[deliveryType]) return SHIPPED_LABEL[deliveryType];
   return ORDER_STATUS_DISPLAY[status].label;
 }
 
-export function OrderStatusBadge({ status }: { status: OrderStatus }) {
-  const { label, tone } = ORDER_STATUS_DISPLAY[status];
+export function OrderStatusBadge({ status, deliveryType }: { status: OrderStatus; deliveryType?: string | null }) {
+  const { tone } = ORDER_STATUS_DISPLAY[status];
+  const label = orderStatusLabel(status, deliveryType);
   return <Badge tone={tone}>{label}</Badge>;
 }
 

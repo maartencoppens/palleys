@@ -16,6 +16,7 @@ import { AnimalTypePicker } from "@/components/functional/admin/AnimalTypePicker
 import { AttachModelButton } from "@/components/functional/admin/AttachModelButton";
 import { PreviewPromptEditor } from "@/components/functional/admin/PreviewPromptEditor";
 import { PhotoManager } from "@/components/functional/admin/PhotoManager";
+import { PoseComparison } from "@/components/functional/admin/PoseComparison";
 import { StatusOverridePanel } from "@/components/functional/admin/StatusOverridePanel";
 import type { MeshyProgress } from "@/core/modules/previews/types";
 
@@ -127,12 +128,13 @@ export default async function AdminPreviewDetailPage({
                       {preview.order.number}
                     </Link>
                   ) : (
-                    (preview.orderNumber ?? "—")
-                  )}
-                  {preview.shopifyOrderId && (
-                    <span className="block text-xs text-text-muted">Shopify {preview.shopifyOrderId}</span>
+                    "—"
                   )}
                 </dd>
+              </div>
+              <div>
+                <dt className="font-label font-semibold text-text-muted">Printnaam</dt>
+                <dd className="break-all font-mono text-xs">{preview.printName}</dd>
               </div>
               {preview.order?.notes && (
                 <div>
@@ -245,6 +247,9 @@ export default async function AdminPreviewDetailPage({
           <div className="grid grid-cols-2 gap-4">
             <Photo url={preview.poseImageUrl} caption="Pose" />
           </div>
+          {preview.poseImageUrl && preview.photos.length > 0 && (
+            <PoseComparison photoUrls={preview.photos.map((photo) => photo.url)} poseUrl={preview.poseImageUrl} />
+          )}
         </div>
       </div>
     </main>

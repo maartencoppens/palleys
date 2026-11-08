@@ -6,7 +6,8 @@ import { canTransition } from "@/core/modules/previews/status";
 import { createDownloadUrl, objectExists } from "@/core/networking/external/storage-client";
 import { DEFAULT_SIZE, isSize, priceFor, variantFor, variantLabel } from "@/core/modules/catalog/utils";
 import { findOrderableCollectible } from "@/core/modules/collectibles/service";
-import { collectibleImageUrl } from "@/core/modules/collectibles/utils";
+import { collectibleImageUrl, collectibleProductCode } from "@/core/modules/collectibles/utils";
+import { productCode } from "@/core/utils/naming";
 import { getShopSettings } from "@/core/modules/settings/service";
 import type { CatalogSettings } from "@/core/modules/settings/types";
 import { createToken, hashToken } from "@/core/utils/tokens";
@@ -63,7 +64,7 @@ const LINE_SELECT = {
       id: true,
       name: true,
       translations: true,
-      sku: true,
+      number: true,
       priceCents: true,
       imageKey: true,
       published: true,
@@ -87,7 +88,7 @@ type StoredLine = {
     id: string;
     name: string;
     translations: unknown;
-    sku: string;
+    number: number;
     priceCents: number;
     imageKey: string | null;
     published: boolean;
@@ -100,7 +101,8 @@ type StoredLine = {
 export type ResolvedCartLine = {
   id: string;
   size: KeychainSize;
-  sku: string;
+  /** P-RING-KAT or COL-CLP-007 (core/utils/naming.ts). */
+  productCode: string;
   /** Dutch, as the order item and the backoffice keep it. */
   title: string;
   /** What the shopper reads in each language. */
@@ -176,7 +178,7 @@ function resolveLine(line: StoredLine, catalog: CatalogSettings): ResolvedCartLi
       attachment,
       animal: null,
       size: DEFAULT_SIZE,
-      sku: collectible.sku,
+      productCode: collectibleProductCode(collectible.number, attachment),
       title: collectible.name,
       titles: Object.fromEntries(
         LOCALES.map((locale) => [locale, localizedTexts({ ...collectible, description: null, tag: null }, locale).name]),
@@ -211,7 +213,7 @@ function resolveLine(line: StoredLine, catalog: CatalogSettings): ResolvedCartLi
     attachment,
     animal: animal.value,
     size: line.size,
-    sku: variant.sku,
+    productCode: productCode({ kind: "P", edition: edition.data, attachment, animalCode: animal.code }),
     title,
     // The shop names a Palley from its choices in its own texts.
     titles: Object.fromEntries(LOCALES.map((locale) => [locale, title])) as Record<Locale, string>,

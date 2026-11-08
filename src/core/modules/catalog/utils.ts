@@ -1,8 +1,8 @@
 import { editions, type Edition } from "@/data/options";
-import { buildSku, type ProductType } from "@/data/products";
+import type { ProductType } from "@/data/products";
 import type { AnimalOption } from "@/core/modules/animals/types";
 import { UNIT_PRICE_CENTS, VAT_RATE_BASIS_POINTS } from "@/data/pricing";
-import { PACKAGING, PARCEL_BY_SIZE } from "@/data/shipping";
+import { PACKAGING, PALLEYS_PER_BOX, PARCEL_BY_SIZE } from "@/data/shipping";
 import { KEYCHAIN_SIZES, type KeychainSize } from "@/data/sizes";
 
 /*
@@ -10,7 +10,8 @@ import { KEYCHAIN_SIZES, type KeychainSize } from "@/data/sizes";
  * Edition is the configurator's value (data/options.ts), the animal comes from the live list (core/modules/animals).
  */
 
-export type Variant = { sku: string; type: ProductType; animalCode: string; size: KeychainSize };
+// What a choice is priced as. Its product code (P-RING-KAT) also needs the attachment: core/utils/naming.ts.
+export type Variant = { type: ProductType; animalCode: string; size: KeychainSize };
 
 const EDITION_TYPE: Record<Edition, ProductType> = { keychain: "keychain", figure: "figurine" };
 
@@ -23,7 +24,7 @@ export function isSize(value: string): value is KeychainSize {
 /** The variant for a configurator choice. */
 export function variantFor(edition: Edition, animal: Pick<AnimalOption, "code">, size: KeychainSize = DEFAULT_SIZE): Variant {
   const type = EDITION_TYPE[edition];
-  return { sku: buildSku(type, animal.code), type, animalCode: animal.code, size };
+  return { type, animalCode: animal.code, size };
 }
 
 /** The price of a variant. `prices` are the live prices from the settings; without them the starting prices apply. */
@@ -78,9 +79,11 @@ export function computeTotals(
 
 /** Parcel for a set of Palleys: packaging plus every copy. */
 export function parcelFor(items: { size: KeychainSize; quantity: number }[]) {
+  const copies = items.reduce((sum, item) => sum + item.quantity, 0);
+  const boxes = Math.max(1, Math.ceil(copies / PALLEYS_PER_BOX));
   const weightGrams = items.reduce(
     (sum, item) => sum + PARCEL_BY_SIZE[item.size].weightGrams * item.quantity,
-    PACKAGING.weightGrams,
+    boxes * PACKAGING.weightGrams,
   );
-  return { weightGrams, dimensionsCm: PACKAGING.dimensionsCm };
+  return { weightGrams, boxes, dimensionsCm: PACKAGING.dimensionsCm };
 }

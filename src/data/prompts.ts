@@ -21,7 +21,7 @@ Maintain the exact same facial identity and coat pattern as the reference photos
 All parts must be solid, filled-in, rounded shapes with no hollows, cavities, gaps or thin shells. Ears, tail and paws must be thick and solid. The inner ear is shown as a flat color area on a solid ear, not as a hollow. Use chunky, slightly simplified proportions, with legs and tail merged closely against the body and no open gaps between them. Natural, correct anatomy, clean closed silhouette with no thin protruding parts, and a wide, flat, stable base where the underside of the body rests on the ground. Orthographic camera angle, high detail on facial features.
 `;
 
-// Wat we per soort al weten, op SKU-code. Komt achter de algemene prompt in de startprompt van dat dier.
+// Wat we per soort al weten, op diercode. Komt achter de algemene prompt in de startprompt van dat dier.
 const SPECIES_NOTES: Record<string, string> = {
   KAT: "The animal is a cat. Keep the tail thick and wrapped closely around the body, with the paws tucked in. Ears are thick, solid triangles.",
   HOND: "The animal is a dog. Keep the breed's real ear shape (floppy or upright) but thick and solid, and the tail thick and resting against the body or hind legs.",

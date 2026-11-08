@@ -1,11 +1,10 @@
 import { UNPAID_UPLOAD_TTL_MS } from "@/data/retention";
 import { IMAGE_EXTENSIONS } from "@/data/uploads";
-import {
-  NO_ORDER_LABEL,
-  PREVIEW_KEY_PREFIX,
-  PRINT_NAME_PREFIX,
-} from "@/data/storage";
-import { formatDateCompact } from "@/core/utils/format";
+import { PREVIEW_KEY_PREFIX } from "@/data/storage";
+import { palleyFileName, previewRef } from "@/core/utils/naming";
+import { collectibleIdOf } from "@/core/modules/collectibles/utils";
+import { palleyNameOf } from "@/core/modules/orders/utils";
+import { PAID_ORDER_STATUSES } from "@/core/modules/orders/status";
 
 const MIME_BY_EXT: Record<string, string> = {
   ...Object.fromEntries(
@@ -66,29 +65,45 @@ export function modelKeys(previewId: string, taskId: string) {
   };
 }
 
-// PAL-<ordernummer>-<model>-<dier>-<orderdatum>, zonder extensie.
-// Zonder order (testpreviews) staat er NOORDER en valt de datum terug op
-// de aanmaakdatum. Alles wat geen letter of cijfer is, gaat eruit ("#1042").
-export function printFileBaseName(preview: {
+// What a preview's print name needs: its order line on a paid order, or the collectible it was made for.
+export const PRINT_NAME_SELECT = {
+  id: true,
+  forCollectible: true,
+  collectible: { select: { number: true, animalCode: true } },
+  orderItems: {
+    where: { order: { status: { in: PAID_ORDER_STATUSES } } },
+    select: { position: true, productCode: true, reprintNr: true, order: { select: { number: true } } },
+    take: 1,
+  },
+} as const;
+
+export type PrintNameSource = {
   id: string;
-  orderNumber: string | null;
-  animalType: string | null;
-  paidAt: Date | null;
-  createdAt: Date;
-}) {
-  const order = preview.orderNumber?.replace(/[^a-zA-Z0-9]/g, "");
-  return [
-    PRINT_NAME_PREFIX,
-    order || NO_ORDER_LABEL,
-    preview.id.slice(0, 8),
-    preview.animalType ?? "UNKNOWN",
-    formatDateCompact(preview.paidAt ?? preview.createdAt),
-  ].join("-");
+  forCollectible: boolean;
+  collectible: { number: number; animalCode: string | null } | null;
+  orderItems: { position: number; productCode: string; reprintNr: number; order: { number: string } }[];
+};
+
+/**
+ * The base name of a preview's print files, without extension (core/utils/naming.ts): the Palley's name once its order
+ * is paid (PAL-PLY1042-01-P-RING-KAT), the collectible's id for a new collectible's model (COL-007-HOND), and
+ * PRV-A3F9C2E1 for anything else. Never the customer's name.
+ */
+export function printBaseName(preview: PrintNameSource) {
+  const item = preview.orderItems[0];
+  const fromOrder = item ? palleyNameOf(item) : null;
+  const fromCollectible = preview.forCollectible && preview.collectible ? collectibleIdOf(preview.collectible) : null;
+  return fromOrder ?? fromCollectible ?? previewRef(preview.id);
+}
+
+/** The order a preview was paid in, through its order line. */
+export function paidOrderNumber(preview: Pick<PrintNameSource, "orderItems">) {
+  return preview.orderItems[0]?.order.number ?? null;
 }
 
 // Een OBJ verwijst via `mtllib` naar zijn MTL, en de MTL via `map_Kd` naar
 // de PNG. Dat gaat op bestandsnaam. De naam ligt pas vast bij het downloaden
-// (dier en order kunnen nog wijzigen), dus herschrijven we dan pas.
+// (de order kan nog betaald worden), dus herschrijven we dan pas.
 // Werkt met strings zodat het ook in de browser draait.
 export function linkPrintFiles(input: {
   obj: string;
@@ -100,13 +115,13 @@ export function linkPrintFiles(input: {
     throw new Error("Meshy returned the OBJ as a zip, expected a plain .obj");
   }
 
-  const mtllib = `mtllib ${input.baseName}.mtl`;
+  const mtllib = `mtllib ${palleyFileName(input.baseName, "mtl")}`;
   const obj = /^mtllib\s/m.test(input.obj)
     ? input.obj.replace(/^mtllib\s.*$/m, mtllib)
     : `${mtllib}\n${input.obj}`;
 
   const mtl = input.mtl
-    .replace(/^(\s*)map_Kd\s.*$/gm, `$1map_Kd ${input.baseName}.png`)
+    .replace(/^(\s*)map_Kd\s.*$/gm, `$1map_Kd ${palleyFileName(input.baseName, "texture")}`)
     // Andere texturen (normal, roughness, ...) downloaden we niet:
     // verwijzingen ernaar zouden in de slicer als ontbrekend bestand opduiken.
     .replace(/^\s*(map_(?!Kd\b)\w+|bump|norm|disp)\s.*(\r?\n|$)/gm, "");

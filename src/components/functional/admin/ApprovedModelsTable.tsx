@@ -13,6 +13,7 @@ import { buildPrintZip, saveFile } from "@/core/modules/previews/print-zip";
 
 type Model = {
   id: string;
+  printName: string;
   status: PreviewStatus;
   quantity: number;
   createdAt: string;
@@ -77,6 +78,7 @@ export function ApprovedModelsTable({ models }: { models: Model[] }) {
           <thead className="border-b-[1.5px] border-off-white-dark font-label text-text-muted">
             <tr>
               <th className="w-10 px-5 py-4" />
+              <th className="px-5 py-4 font-semibold">Naam</th>
               <th className="px-5 py-4 font-semibold">Aangemaakt</th>
               <th className="px-5 py-4 font-semibold">Aantal</th>
               <th className="px-5 py-4 font-semibold">Gedownload</th>
@@ -92,8 +94,11 @@ export function ApprovedModelsTable({ models }: { models: Model[] }) {
                     className="size-5 accent-medium-green"
                     checked={selected.includes(m.id)}
                     onChange={() => toggle(m.id)}
-                    aria-label={`Selecteer ${m.id}`}
+                    aria-label={`Selecteer ${m.printName}`}
                   />
+                </td>
+                <td data-label="Naam" className="px-5 py-4 font-mono text-xs break-all">
+                  {m.printName}
                 </td>
                 <td data-label="Aangemaakt" className="px-5 py-4 tabular-nums">
                   {formatDateTime(m.createdAt)}

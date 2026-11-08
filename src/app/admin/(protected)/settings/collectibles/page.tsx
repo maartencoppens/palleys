@@ -83,7 +83,7 @@ function CollectibleTable({ collectibles }: { collectibles: AdminCollectible[] }
                   </div>
                   <div className="min-w-0">
                     <p className="font-semibold">{collectible.name}</p>
-                    <p className="font-mono text-xs text-text-muted">{collectible.sku}</p>
+                    <p className="font-mono text-xs text-text-muted">{collectible.collectibleId ?? "Nog geen dier gekozen"}</p>
                   </div>
                 </div>
               </td>

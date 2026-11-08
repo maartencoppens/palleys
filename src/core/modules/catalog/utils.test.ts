@@ -5,10 +5,10 @@ import { computeTotals, parcelFor, priceFor, variantFor, vatIncluded } from "./u
 const animal = (value: string) => DEFAULT_ANIMALS.find((option) => option.value === value)!;
 
 describe("variants", () => {
-  it("builds the existing SKU scheme from a configurator choice", () => {
-    expect(variantFor("keychain", animal("dog")).sku).toBe("PAL-GP-KEY-HOND");
-    expect(variantFor("figure", animal("guinea-pig")).sku).toBe("PAL-GP-FIG-CAVIA");
-    expect(variantFor("keychain", { code: "PAPEGAAI" }).sku).toBe("PAL-GP-KEY-PAPEGAAI");
+  it("picks the price type and animal code of a configurator choice", () => {
+    expect(variantFor("keychain", animal("dog"))).toMatchObject({ type: "keychain", animalCode: "HOND" });
+    expect(variantFor("figure", animal("guinea-pig"))).toMatchObject({ type: "figurine", animalCode: "CAVIA" });
+    expect(variantFor("keychain", { code: "PAPEGAAI" }).animalCode).toBe("PAPEGAAI");
   });
 
   it("prices every variant from config, in cents", () => {
@@ -64,7 +64,9 @@ describe("computeTotals", () => {
 });
 
 describe("parcelFor", () => {
-  it("adds packaging to every copy", () => {
-    expect(parcelFor([{ size: "M", quantity: 3 }]).weightGrams).toBe(40 + 3 * 25);
+  it("weighs every copy and one box per two Palleys", () => {
+    expect(parcelFor([{ size: "M", quantity: 1 }])).toMatchObject({ weightGrams: 15 + 30, boxes: 1 });
+    expect(parcelFor([{ size: "M", quantity: 2 }])).toMatchObject({ weightGrams: 2 * 15 + 30, boxes: 1 });
+    expect(parcelFor([{ size: "M", quantity: 2 }, { size: "M", quantity: 1 }])).toMatchObject({ weightGrams: 3 * 15 + 2 * 30, boxes: 2 });
   });
 });

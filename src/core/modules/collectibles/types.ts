@@ -26,6 +26,7 @@ export const collectibleInputSchema = z
     imageKey: z.string().refine(isCollectibleImageKey).nullable(),
     modelKey: z.string().refine(isCollectibleModelKey).nullable().default(null),
     modelFileName: z.string().trim().max(200).nullable().default(null),
+    animalCode: animalOptionSchema.shape.code.nullable().default(null),
     published: z.boolean(),
     soldOut: z.boolean(),
     sortOrder: z.number().int().min(0).max(9999),
@@ -38,6 +39,10 @@ export const collectibleInputSchema = z
   .refine((value) => !value.published || value.imageKey !== null, {
     path: ["imageKey"],
     message: "Voeg een foto toe voor je dit product op de website zet",
+  })
+  .refine((value) => !value.published || value.animalCode !== null, {
+    path: ["animalCode"],
+    message: "Kies het dier voor je dit product op de website zet",
   });
 
 export type CollectibleInput = z.infer<typeof collectibleInputSchema>;
@@ -55,7 +60,10 @@ export type CollectibleView = {
 };
 
 export type AdminCollectible = CollectibleView & {
-  sku: string;
+  number: number;
+  animalCode: string | null;
+  /** COL-007-HOND, null while no animal is chosen. */
+  collectibleId: string | null;
   modelKey: string | null;
   modelFileName: string | null;
   /** The backoffice order whose preview made this model, if any. */

@@ -11,7 +11,7 @@ export const confirmPrintFileSchema = z.object({
 
 export type ProcessingItem = {
   id: string;
-  baseName: string; // PAL-..., zelfde naam als de download uit Goedgekeurd
+  baseName: string; // PAL-PLY1042-01-P-RING-KAT (of PRV-..., COL-...), zelfde naam als de download uit Goedgekeurd
   quantity: number; // aantal exemplaren om te printen
   downloadedAt: string | null;
   downloadedBy: string | null;
@@ -29,6 +29,8 @@ export type CollectiblePrintItem = {
   itemId: string;
   orderId: string;
   orderNumber: string;
+  /** PAL-PLY1042-02-COL-CLP-007; null for a line from before the naming standard. */
+  palleyName: string | null;
   collectibleId: string;
   name: string;
   quantity: number;

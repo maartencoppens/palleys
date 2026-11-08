@@ -37,12 +37,8 @@ model Preview {
   email             String?
   poseAttempts      Int                   @default(0)
   error             String?
-  shopifyOrderId    String?
-  // Ordernummer in de printbestandsnaam: PAL-2026-00042, of het Shopify-nummer (bv. "1042") voor oude orders.
-  orderNumber       String?               @map("shopifyOrderNumber")
   paidAt            DateTime? // orderdatum, gezet bij betaling (Bancontact-callback of statuscheck)
   animalType        String? // code uit src/data/animals.ts, gekozen door de admin
-  shopifyLineItemId String?               @unique
   quantity          Int                   @default(1) // aantal exemplaren van deze Palley in de order, gezet bij betaling
   createdAt         DateTime              @default(now())
   expiresAt         DateTime? // alleen voor niet-betaalde uploads, leeg na betaling
@@ -227,7 +223,9 @@ model CartLine {
 model Collectible {
   id              String      @id @default(uuid())
   slug            String      @unique // in de URL (/shop/<slug>), verandert niet na het aanmaken
-  sku             String      @unique // PAL-COL-<SLUG>
+  // Collectible-ID COL-007-HOND (core/utils/naming.ts): het nummer wordt nooit hergebruikt, ook niet na archiveren.
+  number          Int         @unique @default(autoincrement())
+  animalCode      String? // code uit de dierenlijst, gekozen door de admin
   name            String
   description     String?
   tag             String? // label op de kaart, bv. "Bestseller"
@@ -283,7 +281,8 @@ model DiscountCode {
 
 model Order {
   id                 String              @id @default(uuid())
-  number             String              @unique // PAL-2026-00042, sequentieel per jaar
+  number             String              @unique // PLY1042 (core/utils/naming.ts), één doorlopende teller; oude orders PAL-2026-00042
+  invoiceNumber      String?             @unique // F2026-0001, toegekend in dezelfde transactie waarin de order betaald wordt
   status             OrderStatus         @default(PENDING_PAYMENT)
   createdBy          String? // null = via de website, anders de admin die de order toevoegde
   cartId             String? // het mandje van deze order: na betaling verdwijnen de gekochte collectibles eruit
@@ -313,6 +312,9 @@ model Order {
   attentionReason    String? // iets klopte niet (bedrag, preview al betaald, ...): opvolgen in de backoffice
   confirmationSentAt DateTime?
   paidAt             DateTime?
+  // De printbatch voor JLC. Een order zit in hoogstens één batch, altijd volledig.
+  batchId            String?
+  batch              Batch?              @relation(fields: [batchId], references: [id], onDelete: Restrict)
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   items              OrderItem[]
@@ -323,6 +325,7 @@ model Order {
   @@index([status, createdAt])
   @@index([email])
   @@index([discountCodeId])
+  @@index([batchId])
 }
 
 model OrderItem {
@@ -333,7 +336,8 @@ model OrderItem {
   preview       Preview?     @relation(fields: [previewId], references: [id], onDelete: Restrict)
   collectibleId String? // kant-en-klaar: slaat de pipeline over
   collectible   Collectible? @relation(fields: [collectibleId], references: [id], onDelete: Restrict)
-  sku           String
+  position      Int // volgorde in de order, vanaf 1: het {nn} in de naam van de Palley
+  productCode   String // P-RING-KAT of COL-CLP-007, zoals bij het bestellen (core/utils/naming.ts)
   size          String
   edition       String?
   attachment    String? // clip | key-ring, alleen bij een sleutelhanger
@@ -345,8 +349,9 @@ model OrderItem {
   withdrawable  Boolean      @default(false) // gepersonaliseerd = uitzondering op het herroepingsrecht (art. VI.53, 3° WER)
   checkedInAt   DateTime? // een admin heeft dit item gecontroleerd en klaargelegd
   checkedInBy   String?
+  reprintNr     Int          @default(0) // > 0 = opnieuw geprint: de naam krijgt -R<n>
 
-  @@index([orderId])
+  @@unique([orderId, position])
   @@index([previewId])
   @@index([collectibleId])
 }
@@ -376,28 +381,65 @@ model Shipment {
   id                   String    @id @default(uuid())
   orderId              String    @unique
   order                Order     @relation(fields: [orderId], references: [id], onDelete: Restrict)
-  provider             String // static | sendcloud
+  provider             String // static
   deliveryOptionId     String
   deliveryType         String // HOME | SERVICE_POINT
   carrier              String // bpost, postnl, ...
   label                String // zoals de klant de optie zag
   priceCents           Int
-  checkoutIdentifier   String? // Sendcloud Dynamic Checkout, nodig om later de zending aan te maken
-  servicePointId       String?
-  servicePointSnapshot Json?
-  providerShipmentId   String?
-  trackingCode         String?
+  trackingCode         String? // handmatig ingevuld bij verzenden (bpost)
   trackingUrl          String?
-  labelKey             String? // R2-key van het label (signed URL in de admin)
-  providerStatus       String? // laatste status van de vervoerder via Sendcloud, bv. "Delivered"
-  providerStatusAt     DateTime? // wanneer die status inging: oudere webhooks (ze komen niet altijd op volgorde) worden genegeerd
-  shippedAt            DateTime?
+  shippedAt            DateTime? // verzonden, opgehaald of overhandigd
+  readyForPickupAt     DateTime? // afhalen: klaargelegd en de klant gemaild (één keer)
+  readyForPickupBy     String?
+  lastPickupUpdateAt   DateTime? // laatste update-mail over wanneer afhalen kan
 }
 
-// Ordernummers zonder gaten: de teller stijgt in dezelfde transactie als de order.
-model OrderCounter {
-  year Int @id
-  last Int @default(0)
+enum BatchStatus {
+  OPEN
+  SENT_TO_JLC
+  IN_POST_PRODUCTION
+  COMPLETED
+}
+
+// Printbatch voor JLC: betaalde, printklare orders samen. Overgangen in core/modules/batches/status.ts.
+model Batch {
+  id            String              @id @default(uuid())
+  number        Int                 @unique // BATCH-0001 (core/utils/naming.ts), uit de teller "batch"
+  status        BatchStatus         @default(OPEN)
+  createdAt     DateTime            @default(now())
+  createdBy     String
+  sentToJlcAt   DateTime?
+  sentToJlcBy   String?
+  receivedAt    DateTime?
+  receivedBy    String?
+  completedAt   DateTime?
+  note          String?
+  orders        Order[]
+  statusChanges BatchStatusChange[]
+
+  @@index([status, createdAt])
+}
+
+// Logboek van elke statuswijziging van een batch: wie en wanneer.
+model BatchStatusChange {
+  id         String       @id @default(uuid())
+  batchId    String
+  batch      Batch        @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  fromStatus BatchStatus?
+  toStatus   BatchStatus
+  source     String // admin:<naam> | system
+  note       String?
+  createdAt  DateTime     @default(now())
+
+  @@index([batchId])
+}
+
+// Tellers zonder gaten: de waarde stijgt in dezelfde transactie als wat ze nummert.
+// Sleutels: "order" (doorlopend) en "invoice-<jaar>".
+model Counter {
+  key  String @id
+  last Int    @default(0)
 }
 
 // Logboek van elke statuswijziging van een order: wie of wat (webhook, cron, admin) en wanneer.
@@ -434,4 +476,22 @@ model RequestLimit {
   key         String   @id
   count       Int
   windowStart DateTime
+}
+
+// Wat er van een verwijderde order bewaard blijft (bv. een testorder): wie, wanneer en waarom, zonder klantgegevens.
+// Een ordernummer of factuurnummer wordt nooit opnieuw uitgedeeld; hier staat waarom het ontbreekt.
+model DeletedOrder {
+  id             String   @id @default(uuid())
+  orderId        String // de id van de verwijderde order
+  number         String
+  invoiceNumber  String?
+  status         String // de status op het moment van verwijderen
+  totalCents     Int
+  paymentSummary String // bv. "bancontact live PAID 100" per betaling, of "geen"
+  orderCreatedAt DateTime
+  reason         String
+  deletedBy      String
+  deletedAt      DateTime @default(now())
+
+  @@index([number])
 }

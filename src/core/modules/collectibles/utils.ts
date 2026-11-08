@@ -1,4 +1,6 @@
-import { COLLECTIBLE_IMAGE_ROUTE, COLLECTIBLE_KEY_PREFIX, COLLECTIBLE_SKU_PREFIX } from "@/data/collectibles";
+import { COLLECTIBLE_EDITION, COLLECTIBLE_IMAGE_ROUTE, COLLECTIBLE_KEY_PREFIX } from "@/data/collectibles";
+import type { Attachment } from "@/data/options";
+import { collectibleId, productCode } from "@/core/utils/naming";
 
 /** "Golden Retriever!" → "golden-retriever". Accents go, so the URL stays plain. */
 export function slugify(name: string) {
@@ -12,8 +14,14 @@ export function slugify(name: string) {
     .replace(/-+$/, "");
 }
 
-export function skuForSlug(slug: string) {
-  return `${COLLECTIBLE_SKU_PREFIX}-${slug.toUpperCase()}`;
+/** COL-CLP-007: what an order line for this collectible is, with the attachment the customer chose. */
+export function collectibleProductCode(collectibleNr: number, attachment: Attachment) {
+  return productCode({ kind: "COL", edition: COLLECTIBLE_EDITION, attachment, collectibleNr });
+}
+
+/** COL-007-HOND, or null while no animal is chosen for it. */
+export function collectibleIdOf(collectible: { number: number; animalCode: string | null }) {
+  return collectible.animalCode ? collectibleId(collectible.number, collectible.animalCode) : null;
 }
 
 /** File names we generate ourselves: a UUID plus .webp. Anything else never reaches R2. */
@@ -49,9 +57,4 @@ export function isCollectibleModelKey(key: string) {
   return key.startsWith(`${MODEL_FOLDER}/`) && MODEL_FILE_NAME.test(key.slice(MODEL_FOLDER.length + 1));
 }
 
-/** "Golden Retriever.zip" stays, anything odd becomes the SKU: the name ends up in a download header. */
-export function modelDownloadName(fileName: string | null, sku: string) {
-  const clean = fileName?.replace(/[^\w .()-]/g, "").trim();
-  return clean?.toLowerCase().endsWith(".zip") ? clean : `${sku}-PRINT.zip`;
-}
 

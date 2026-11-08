@@ -6,10 +6,6 @@ export const TERMS_VERSION = "2026-11-04b-concept";
 export const TERMS_URL = "/algemene-voorwaarden";
 export const PRIVACY_URL = "/privacy";
 
-// Human-readable order number: PAL-2026-00042. Sequential per year, assigned in the same transaction as the order.
-export const ORDER_NUMBER_PREFIX = "PAL";
-export const ORDER_NUMBER_DIGITS = 5;
-
 // Orders still waiting for payment after this long are checked at Bancontact and closed (cron).
 // Bancontact Pro payments expire after 20 minutes.
 export const PENDING_ORDER_MAX_AGE_MS = 30 * 60 * 1000;

@@ -7,7 +7,9 @@ import { createToken, hashToken } from "@/core/utils/tokens";
 import { EmailError, sendEmail } from "@/core/networking/external/email-client";
 import { statusesThatCanTransitionTo } from "@/core/modules/previews/status";
 import { buildOrderConfirmation } from "@/core/modules/orders/emails";
-import { canTransitionOrder, orderStatusesThatCanTransitionTo } from "@/core/modules/orders/status";
+import { canTransitionOrder, orderStatusesThatCanTransitionTo, PAID_ORDER_STATUSES } from "@/core/modules/orders/status";
+import { nextInvoiceNumber } from "@/core/modules/orders/service";
+import { syncBatchAfterOrderMove } from "@/core/modules/batches/sync";
 import { maskEmail } from "@/core/modules/orders/utils";
 import { localizedPath, toLocale } from "@/core/locale/config";
 import { getShopSettings } from "@/core/modules/settings/service";
@@ -26,11 +28,11 @@ import type { ProviderPayment } from "./providers/types";
  * Idempotent: the conditional updates only move an order or preview when its current status allows it, so the same
  * webhook twice (or webhook + return page at once) changes nothing the second time.
  *
- * On PAID the previews move UPLOADED → PAID, which puts them in the backoffice's "Te reviewen" list, exactly as
- * the Shopify webhook did. From there the AI pipeline takes over; nothing in it is touched here.
+ * On PAID the order gets its invoice number and the previews move UPLOADED → PAID, which puts them in the
+ * backoffice's "Te reviewen" list. From there the AI pipeline takes over; nothing in it is touched here.
  */
 
-export type ProcessSource = "webhook" | "webhook:sendcloud" | "return-page" | "cron" | "checkout" | `admin:${string}`;
+export type ProcessSource = "webhook" | "return-page" | "cron" | "checkout" | `admin:${string}`;
 
 export class ManualPaymentNotAllowedError extends Error {}
 
@@ -215,12 +217,15 @@ export async function processPayment(payment: ProviderPayment, source: ProcessSo
 export async function moveOrder(orderId: string, to: OrderStatus, source: ProcessSource, note?: string) {
   const from = await prisma.order.findUnique({ where: { id: orderId }, select: { status: true } });
   if (!from || !canTransitionOrder(from.status, to)) return false;
-  return prisma.$transaction(async (tx) => {
+  const moved = await prisma.$transaction(async (tx) => {
     const { count } = await tx.order.updateMany({ where: { id: orderId, status: from.status }, data: { status: to } });
     if (count === 0) return false;
     await tx.orderStatusChange.create({ data: { orderId, fromStatus: from.status, toStatus: to, source, note } });
     return true;
   });
+  // Its batch follows: a refund leaves an open batch, the last order out completes one.
+  if (moved) await syncBatchAfterOrderMove(orderId, to);
+  return moved;
 }
 
 async function closeUnpaidOrder(orderId: string, paymentId: string, to: OrderStatus, source: ProcessSource) {
@@ -260,6 +265,12 @@ async function markOrderPaid(orderId: string, orderNumber: string, source: Proce
     });
     if (count === 0) return null; // already paid: webhook retry or a parallel sync
 
+    // Only now, in the same transaction: an order that never gets paid uses no invoice number, a retry uses none twice.
+    await tx.order.updateMany({
+      where: { id: orderId, invoiceNumber: null },
+      data: { invoiceNumber: await nextInvoiceNumber(tx, paidAt) },
+    });
+
     await tx.orderStatusChange.create({ data: { orderId, fromStatus: order.status, toStatus: "PAID", source } });
 
     // A paid preview drops out of the cart by itself, a collectible can be bought again: take the bought ones out here.
@@ -271,12 +282,11 @@ async function markOrderPaid(orderId: string, orderNumber: string, source: Proce
     const problems: string[] = [];
     for (const item of order.items) {
       if (!item.previewId) continue; // a collectible has no pipeline to start
-      // Same fields the Shopify webhook set; the review list and the print file name read these.
+      // The review list reads these; the order and the print file name come through the order line.
       const updated = await tx.preview.updateMany({
         where: { id: item.previewId, status: { in: statusesThatCanTransitionTo("PAID") } },
         data: {
           status: "PAID",
-          orderNumber,
           email: order.email,
           paidAt,
           quantity: item.quantity,
@@ -293,12 +303,19 @@ async function markOrderPaid(orderId: string, orderNumber: string, source: Proce
       }
       const preview = await tx.preview.findUnique({
         where: { id: item.previewId },
-        select: { status: true, orderNumber: true },
+        select: {
+          status: true,
+          orderItems: {
+            where: { orderId: { not: orderId }, order: { status: { in: PAID_ORDER_STATUSES } } },
+            select: { order: { select: { number: true } } },
+            take: 1,
+          },
+        },
       });
-      if (preview?.orderNumber === orderNumber) continue; // already ours
+      const otherOrder = preview?.orderItems[0]?.order.number;
       problems.push(
         preview
-          ? `Preview ${item.previewId.slice(0, 8)} had al status ${preview.status}${preview.orderNumber ? ` (order ${preview.orderNumber})` : ""}: mogelijk dubbel betaald, terugbetalen?`
+          ? `Preview ${item.previewId.slice(0, 8)} had al status ${preview.status}${otherOrder ? ` (order ${otherOrder})` : ""}: mogelijk dubbel betaald, terugbetalen?`
           : `Preview ${item.previewId.slice(0, 8)} bestaat niet meer`,
       );
     }

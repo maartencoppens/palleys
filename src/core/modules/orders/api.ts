@@ -52,3 +52,13 @@ export async function postPaymentLink(orderId: string) {
   const { data } = await api.post<{ checkoutUrl: string }>(`/admin/orders/${orderId}/payment`, { type: "bancontact" });
   return data;
 }
+
+export async function patchOrderDetails(orderId: string, input: Record<string, unknown>) {
+  const { data } = await api.patch<{ changed: string[] }>(`/admin/orders/${orderId}`, input);
+  return data;
+}
+
+export async function deleteOrderForGood(orderId: string, input: { confirmNumber: string; reason: string; confirmPaid: boolean }) {
+  const { data } = await api.delete<{ number: string }>(`/admin/orders/${orderId}`, { data: input });
+  return data;
+}

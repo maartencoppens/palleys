@@ -52,6 +52,24 @@ curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" https://palleys.be/api
 
 Juridische to-do's: `docs/legal/go-live-checklist.md`.
 
+## Naamgeving
+
+Alle ID's, productcodes en bestandsnamen komen uit `src/core/utils/naming.ts` (codes en prefixen in `src/data/naming.ts`);
+nergens anders worden ze met de hand samengesteld. De database bewaart de onderdelen, de namen worden berekend.
+
+| Wat | Voorbeeld |
+| --- | --- |
+| Order (`Order.number`, Bancontact-referentie) | `PLY1042` (één doorlopende teller, start bij 1001) |
+| Factuur (`Order.invoiceNumber`, pas bij betaling) | `F2026-0001` |
+| Preview zonder betaalde order | `PRV-A3F9C2E1` |
+| Collectible | `COL-007-HOND` |
+| Productcode | `P-RING-KAT`, `COL-CLP-007` |
+| Palley (fysiek exemplaar, printbestanden) | `PAL-PLY1042-01-P-RING-KAT`, herdruk `…-R1` |
+
+R2-keys blijven op UUID's; leesbare namen krijgt een bestand pas bij het downloaden. Na de migratie `naming_standard`
+zet `npm run db:backfill-naming` bestaande rijen recht (eerst zonder vlag: alleen tonen; `--apply` om te schrijven;
+`--renumber-orders` geeft oude orders `PAL-2026-…` ook een `PLY`-nummer, enkel voor testdata). Twee keer draaien verandert niets.
+
 ## Talen
 
 De winkel is er in het Nederlands (hoofdtaal, `/create`) en het Engels (`/en/create`); de backoffice blijft Nederlands.
@@ -118,29 +136,3 @@ gemarkeerd met `Order.createdBy`. E-mail en adres zijn optioneel (overhandigen),
 voorwaarden blijven leeg omdat de klant ze niet online aanvaardde. Betalen kan op drie manieren: Bancontact-betaallink (de klant
 scant de QR met de app; kan zodra Bancontact Pro gekoppeld is), al betaald (contant, overschrijving, geschenk) of later. Zo'n
 order blijft open tot ze betaald of geannuleerd is: de cron sluit ze niet, en een verlopen betaallink kan opnieuw gemaakt worden.
-
-## Shopify (headless, wordt uitgefaseerd)
-
-Niet meer gebruikt door de winkel; alleen de oude webhook blijft voor lopende orders. Wat er nog weg moet:
-`docs/shopify-exit/inventory.md` (fase 7).
-
-
-Env vars (see `.env.example`):
-
-- `SHOPIFY_STORE_DOMAIN`: `jouwshop.myshopify.com` (of alleen `jouwshop`)
-- `SHOPIFY_API_VERSION`: bv. `2026-10` (zelfde versie voor Storefront en Admin)
-- `SHOPIFY_STOREFRONT_PRIVATE_TOKEN`: private token van het Headless-kanaal (server-only)
-- `SHOPIFY_CLIENT_ID` / `SHOPIFY_CLIENT_SECRET`: Dev Dashboard-app in dezelfde organisatie als de shop.
-  De app haalt zelf een Admin-token op (client credentials grant, ~24u geldig) en verifieert webhooks met het secret.
-
-Setup in Shopify:
-
-1. Headless-kanaal: product `gepersonaliseerde-palley` publiceren naar dat kanaal, anders vindt de cart de varianten niet.
-   SKU's moeten exact `PAL-GP-{KEY|FIG}-{DIER}` zijn (zie `src/data/options.ts`).
-2. Dev Dashboard-app: scopes `read_orders`, `write_orders`; app installeren op de shop.
-3. Webhook `orders/paid` → `https://<APP_URL>/api/webhooks/shopify-orders-paid`
-   (in de app-config via Shopify CLI, of via de Admin API-mutation `webhookSubscriptionCreate`).
-
-Flow: `/create` uploadt foto's naar R2 (`/api/uploads`) → `/api/cart` zet de variant in de Shopify-cart met
-`_previewId` als verborgen line attribute → klant rekent af op Shopify's checkout → `orders/paid` zet de preview op `PAID`.
-Lukt dat niet (verlopen preview, dubbel betaald), dan krijgt de order de tag `palleys-preview-probleem`.

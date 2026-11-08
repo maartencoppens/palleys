@@ -14,6 +14,8 @@ const GROUPS = [
       { href: "/admin/review", label: "Te reviewen" },
       { href: "/admin/approved", label: "Goedgekeurd" },
       { href: "/admin/processed", label: "Processed" },
+      { href: "/admin/batches", label: "Batches" },
+      { href: "/admin/production", label: "Productie" },
     ],
   },
   {

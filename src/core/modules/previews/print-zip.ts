@@ -1,7 +1,6 @@
 import axios from "axios";
 import { strToU8, zipSync, type Zippable } from "fflate";
-import { formatDateCompact } from "@/core/utils/format";
-import { PRINT_NAME_PREFIX } from "@/data/storage";
+import { downloadZipName, palleyFileName } from "@/core/utils/naming";
 import type { PrintDownload } from "./types";
 import { linkPrintFiles } from "./utils";
 
@@ -19,7 +18,7 @@ async function fetchBytes(url: string) {
   return new Uint8Array(res.data);
 }
 
-// Eén model → PAL-...zip met daarin PAL-....obj, .mtl en .png.
+// Eén model → PAL-....zip met daarin PAL-....obj, .mtl en .png (of PRV-..., COL-...).
 async function buildModelZip(download: PrintDownload) {
   const [rawObj, rawMtl, texture] = await Promise.all([
     fetchText(download.urls.obj),
@@ -34,10 +33,10 @@ async function buildModelZip(download: PrintDownload) {
 
   const name = download.baseName;
   return zipSync({
-    [`${name}.obj`]: strToU8(obj),
-    [`${name}.mtl`]: strToU8(mtl),
+    [palleyFileName(name, "obj")]: strToU8(obj),
+    [palleyFileName(name, "mtl")]: strToU8(mtl),
     // Een PNG is al gecomprimeerd: nog eens comprimeren kost alleen tijd.
-    [`${name}.png`]: [texture, { level: 0 }],
+    [palleyFileName(name, "texture")]: [texture, { level: 0 }],
   });
 }
 
@@ -47,17 +46,12 @@ export async function buildPrintZip(downloads: PrintDownload[]) {
   const modelZips: Zippable = {};
   for (const download of downloads) {
     const zip = await buildModelZip(download);
-    if (downloads.length === 1) {
-      return { fileName: `${download.baseName}.zip`, data: zip };
-    }
-    modelZips[`${download.baseName}.zip`] = [zip, { level: 0 }];
+    const fileName = palleyFileName(download.baseName, "model");
+    if (downloads.length === 1) return { fileName, data: zip };
+    modelZips[fileName] = [zip, { level: 0 }];
   }
 
-  const date = formatDateCompact(new Date());
-  return {
-    fileName: `${PRINT_NAME_PREFIX}-batch-${date}-${downloads.length}.zip`,
-    data: zipSync(modelZips),
-  };
+  return { fileName: downloadZipName(new Date(), downloads.length), data: zipSync(modelZips) };
 }
 
 // Laat de browser de zip opslaan.

@@ -5,10 +5,12 @@ import { itemStage, nextStepLabel, OPEN_ORDER_STATUSES, summarizeCheckIn } from 
 import { getOrderForAdmin } from "@/core/modules/orders/service";
 import { paymentProvider } from "@/core/modules/payments/providers";
 import { formatDateTime, formatPrice } from "@/core/utils/format";
-import { isPersonalDelivery } from "@/data/shipping";
+import { isPersonalDelivery, needsShippingAddress } from "@/data/shipping";
 import { attachments } from "@/data/options";
 import { MANUAL_PAYMENT_PROVIDER, PAYMENT_METHOD_LABELS } from "@/data/payment-methods";
 import { Badge } from "@/components/design/Badge";
+import { DeleteOrderPanel } from "@/components/functional/admin/orders/DeleteOrderPanel";
+import { EditOrderDetails } from "@/components/functional/admin/orders/EditOrderDetails";
 import { OrderActions } from "@/components/functional/admin/OrderActions";
 import { CollectibleModelButton } from "@/components/functional/admin/orders/CollectibleModelButton";
 import { ItemCheckInButton } from "@/components/functional/admin/orders/ItemCheckInButton";
@@ -50,12 +52,24 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
         <h1 className="font-display text-[clamp(2rem,1.4rem+1.8vw,3rem)] leading-[1.22] font-medium text-medium-green">
           {order.number}
         </h1>
-        <OrderStatusBadge status={order.status} />
+        <OrderStatusBadge status={order.status} deliveryType={order.shipment?.deliveryType} />
         {order.createdBy && <Badge>Handmatig toegevoegd door {order.createdBy}</Badge>}
       </div>
       <p className="mt-1 text-sm text-text-muted">
         Besteld {formatDateTime(order.createdAt)}
         {order.paidAt && ` · betaald ${formatDateTime(order.paidAt)}`}
+        {order.invoiceNumber && ` · factuur ${order.invoiceNumber}`}
+        {order.batch && (
+          <>
+            {" · "}
+            <Link
+              href={order.batch.status === "OPEN" ? "/admin/batches" : "/admin/production"}
+              className="font-semibold text-medium-green underline underline-offset-4"
+            >
+              {order.batch.ref}
+            </Link>
+          </>
+        )}
       </p>
 
       {order.attentionReason && (
@@ -91,7 +105,8 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
                       {item.title} × {item.quantity}
                     </p>
                     <p className="font-mono text-xs text-text-muted">
-                      {item.sku} · maat {item.size}
+                      {item.productCode} · maat {item.size}
+                      {item.palleyName && <span className="block break-all">{item.palleyName}</span>}
                     </p>
                     {/* A Palley has it in its title. */}
                     {item.kind === "collectible" && item.attachment && (
@@ -286,7 +301,34 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
               Bevestigingsmail:{" "}
               {order.confirmationSentAt ? formatDateTime(order.confirmationSentAt) : confirmable ? "niet verstuurd" : "—"}
             </p>
+            <EditOrderDetails
+              orderId={order.id}
+              customer={{ firstName: order.firstName, lastName: order.lastName, email: order.email, phone: order.phone }}
+              address={
+                order.address && {
+                  street: order.address.street,
+                  houseNumber: order.address.houseNumber ?? "",
+                  postalCode: order.address.postalCode ?? "",
+                  city: order.address.city ?? "",
+                }
+              }
+              needsAddress={needsShippingAddress(order.shipment?.deliveryType)}
+              addressLocked={order.status === "SHIPPED"}
+              hasShipment={order.shipment !== null}
+              trackingCode={order.shipment?.trackingCode ?? null}
+              items={order.items.map((item) => ({ id: item.id, title: item.title, notes: item.notes }))}
+            />
           </section>
+
+          <DeleteOrderPanel
+            orderId={order.id}
+            number={order.number}
+            invoiceNumber={order.invoiceNumber}
+            paidWithRealMoney={order.payments.some((payment) => payment.status === "PAID" && payment.amountCents > 0 && payment.mode !== "test")}
+            paymentStillOpen={order.payments.some(
+              (payment) => payment.provider !== MANUAL_PAYMENT_PROVIDER && ["OPEN", "PENDING", "AUTHORIZED"].includes(payment.status),
+            )}
+          />
         </aside>
       </div>
     </main>

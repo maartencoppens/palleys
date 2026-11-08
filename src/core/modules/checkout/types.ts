@@ -41,6 +41,9 @@ export const checkoutSchema = z
     acceptTerms: z.literal(true),
     marketingOptIn: z.boolean().default(false),
     locale: z.enum(LOCALES).default(DEFAULT_LOCALE),
+    // The total the customer saw. Never used as a price: only compared, so a price that changed meanwhile is shown
+    // to them before they pay it.
+    expectedTotalCents: z.number().int().min(0).optional(),
   })
   .refine((value) => !value.postalCode || POSTAL_CODE_PATTERNS[value.country].test(value.postalCode), {
     path: ["postalCode"],
@@ -55,11 +58,13 @@ export type CheckoutConfig = {
   paymentsAvailable: boolean;
 };
 
-export type DeliveryOptionView = Omit<DeliveryOption, "checkoutIdentifier" | "provider">;
+export type DeliveryOptionView = Omit<DeliveryOption, "provider">;
 
 export type CheckoutResult = { checkoutUrl: string };
 
 export type OrderStatusView = {
   number: string;
   status: "PENDING_PAYMENT" | "PAID" | "IN_PRODUCTION" | "SHIPPED" | "CANCELLED" | "EXPIRED" | "REFUNDED";
+  /** What was paid, line by line. Amounts only: the token in the link is the only key, so no personal data. */
+  amounts: { subtotalCents: number; discountCents: number; shippingCents: number; totalCents: number };
 };

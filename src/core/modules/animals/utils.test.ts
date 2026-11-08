@@ -3,7 +3,7 @@ import { DEFAULT_ANIMALS } from "@/data/animals";
 import { animalLabels, findAnimalByCode, newAnimal } from "./utils";
 
 describe("animals", () => {
-  it("makes a value and SKU code from the Dutch name", () => {
+  it("makes a value and code from the Dutch name", () => {
     expect(newAnimal({ nl: "Papegaai", en: "Parrot" }, DEFAULT_ANIMALS)).toEqual({
       value: "papegaai",
       code: "PAPEGAAI",

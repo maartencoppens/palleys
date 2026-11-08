@@ -23,6 +23,4 @@ export type DeliveryOption = {
   label: string;
   eta: string;
   priceCents: number;
-  /** Sendcloud Dynamic Checkout identifier, needed later to create the shipment. Null for the static provider. */
-  checkoutIdentifier: string | null;
 };

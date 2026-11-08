@@ -18,6 +18,7 @@ import {
   type CollectibleTranslations,
   type TranslatedLocale,
 } from "@/core/modules/collectibles/types";
+import type { AnimalOption } from "@/core/modules/animals/types";
 import { LOCALE_LABELS } from "@/core/locale/config";
 import { getApiErrorMessage } from "@/core/networking/api";
 import { fromEuroInput, toEuroInput } from "@/core/utils/format";
@@ -28,12 +29,24 @@ import { MAX_PRODUCT_PRICE_CENTS } from "@/data/pricing";
 import { ALLOWED_IMAGE_TYPES, MAX_PRINT_FILE_BYTES, MAX_UPLOAD_BYTES } from "@/data/uploads";
 import { compactFieldClassName, fieldLabelClassName, SaveBar, SettingsCard } from "./SettingsParts";
 
-export function CollectibleForm({ collectible, nextSortOrder = 0 }: { collectible?: AdminCollectible; nextSortOrder?: number }) {
+const selectClassName =
+  "h-11 w-full rounded-[15px] bg-off-white-dark px-4 font-label text-base font-semibold text-medium-green outline-none focus-visible:ring-3 focus-visible:ring-accent-highlights";
+
+export function CollectibleForm({
+  collectible,
+  animals,
+  nextSortOrder = 0,
+}: {
+  collectible?: AdminCollectible;
+  animals: readonly AnimalOption[];
+  nextSortOrder?: number;
+}) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(collectible?.name ?? "");
   const [description, setDescription] = useState(collectible?.description ?? "");
   const [tag, setTag] = useState(collectible?.tag ?? "");
+  const [animalCode, setAnimalCode] = useState(collectible?.animalCode ?? "");
   const [translations, setTranslations] = useState<CollectibleTranslations>(collectible?.translations ?? {});
   const [price, setPrice] = useState(collectible ? toEuroInput(collectible.priceCents) : "");
   const [sortOrder, setSortOrder] = useState(String(collectible?.sortOrder ?? nextSortOrder));
@@ -104,6 +117,7 @@ export function CollectibleForm({ collectible, nextSortOrder = 0 }: { collectibl
       return setError(`Vul een geldige prijs in (bv. 25,95, maximum € ${MAX_PRODUCT_PRICE_CENTS / 100})`);
     }
     if (published && !image.key) return setError("Voeg een foto toe, of zet het product nog niet op de website");
+    if (published && !animalCode) return setError("Kies het dier, of zet het product nog niet op de website");
 
     const cleaned = Object.fromEntries(
       TRANSLATED_LOCALES.map((locale) => [locale, trimTranslation(translations[locale])]),
@@ -121,6 +135,7 @@ export function CollectibleForm({ collectible, nextSortOrder = 0 }: { collectibl
       imageKey: image.key,
       modelKey: model.key,
       modelFileName: model.key ? model.fileName : null,
+      animalCode: animalCode || null,
       published,
       soldOut,
       sortOrder: Math.max(0, Number.parseInt(sortOrder, 10) || 0),
@@ -154,7 +169,28 @@ export function CollectibleForm({ collectible, nextSortOrder = 0 }: { collectibl
               placeholder="Golden Retriever"
               className={`mt-2 ${compactFieldClassName}`}
             />
-            {collectible && <p className="mt-1 font-mono text-xs text-text-muted">{collectible.sku}</p>}
+            {collectible?.collectibleId && <p className="mt-1 font-mono text-xs text-text-muted">{collectible.collectibleId}</p>}
+          </div>
+          <div>
+            <label htmlFor="collectible-animal" className={fieldLabelClassName}>
+              Dier
+            </label>
+            <select
+              id="collectible-animal"
+              value={animalCode}
+              onChange={(event) => setAnimalCode(event.target.value)}
+              className={`mt-2 ${selectClassName}`}
+            >
+              <option value="">Kies een dier</option>
+              {animals.map((animal) => (
+                <option key={animal.code} value={animal.code}>
+                  {animal.labels.nl}
+                </option>
+              ))}
+              {/* An animal that was removed from the list stays visible on the collectible that has it. */}
+              {animalCode && !animals.some((animal) => animal.code === animalCode) && <option value={animalCode}>{animalCode}</option>}
+            </select>
+            <p className="mt-1 text-xs text-text-muted">In de collectible-ID, bv. COL-007-HOND. Niet zichtbaar voor klanten.</p>
           </div>
           <div>
             <label htmlFor="collectible-price" className={fieldLabelClassName}>

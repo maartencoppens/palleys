@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { OrderStatus, PaymentStatus, PreviewStatus } from "@/db/generated/enums";
+import type { BatchStatus, OrderStatus, PaymentStatus, PreviewStatus } from "@/db/generated/enums";
 import { animalSchema, attachmentSchema, editionSchema } from "@/core/modules/cart/types";
 import { phoneSchema, safeText } from "@/core/modules/checkout/types";
 import { FIELD_LIMITS, MAX_NOTES_LENGTH } from "@/data/checkout";
@@ -102,6 +102,46 @@ export const manualPaymentSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("bancontact") }),
 ]);
 
+/** Deleting an order: the admin types its number and says why. Paid with real money: they confirm that too. */
+export const deleteOrderSchema = z.object({
+  confirmNumber: z.string().trim().min(1).max(40),
+  reason: z.string().trim().min(5, "Geef een reden (minstens 5 tekens)").max(500),
+  confirmPaid: z.boolean().default(false),
+});
+export type DeleteOrderInput = z.infer<typeof deleteOrderSchema>;
+
+const optionalText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .nullish()
+    .transform((value) => value || null);
+
+/** What an admin can correct on an order: who, how to reach them, where it goes, the tracking code and line notes. */
+export const orderDetailsSchema = z.object({
+  firstName: safeText(FIELD_LIMITS.name),
+  lastName: safeText(FIELD_LIMITS.name),
+  email: z
+    .email()
+    .max(FIELD_LIMITS.email)
+    .nullish()
+    .or(z.literal(""))
+    .transform((value) => value?.trim().toLowerCase() || null),
+  phone: phoneSchema.transform((value) => value ?? null),
+  address: z
+    .object({
+      street: safeText(FIELD_LIMITS.street),
+      houseNumber: safeText(FIELD_LIMITS.houseNumber),
+      postalCode: z.string().trim().regex(POSTAL_CODE_PATTERNS.BE, "Ongeldige postcode"),
+      city: safeText(FIELD_LIMITS.city),
+    })
+    .nullable(),
+  trackingCode: optionalText(100),
+  itemNotes: z.record(z.uuid(), optionalText(MAX_NOTES_LENGTH)).default({}),
+});
+export type OrderDetailsInput = z.infer<typeof orderDetailsSchema>;
+
 export const orderStatusActionSchema = z.object({
   status: z.enum(["IN_PRODUCTION", "SHIPPED", "CANCELLED", "REFUNDED"]),
   trackingCode: z
@@ -151,11 +191,14 @@ export type AdminOrderListItem = {
   attention: boolean;
   createdAt: string;
   paidAt: string | null;
+  deliveryType: string | null;
 };
 
 export type AdminOrderDetail = {
   id: string;
   number: string;
+  invoiceNumber: string | null;
+  batch: { id: string; ref: string; status: BatchStatus } | null;
   status: OrderStatus;
   createdBy: string | null;
   email: string | null;
@@ -186,7 +229,9 @@ export type AdminOrderDetail = {
     checkedInAt: string | null;
     checkedInBy: string | null;
     title: string;
-    sku: string;
+    productCode: string;
+    /** PAL-PLY1042-01-P-RING-KAT once the order is paid. */
+    palleyName: string | null;
     size: string;
     quantity: number;
     unitCents: number;

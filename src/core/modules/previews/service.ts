@@ -30,7 +30,9 @@ import {
   mimeTypeForKey,
   modelKeys,
   poseImageKey,
-  printFileBaseName,
+  paidOrderNumber,
+  PRINT_NAME_SELECT,
+  printBaseName,
   toErrorMessage,
   unpaidExpiry,
   isPhotoKeyOf,
@@ -54,6 +56,7 @@ import type {
 import { MAX_PHOTOS_PER_PREVIEW } from "@/data/uploads";
 
 import { z } from "zod";
+import { parsePreviewRef } from "@/core/utils/naming";
 import { MAX_POSE_ATTEMPTS } from "@/data/pipeline";
 import { REVIEW_LIST_LIMIT, SEARCH_LIMIT } from "@/data/admin";
 
@@ -561,6 +564,10 @@ async function getMeshyProgress(taskId: string): Promise<MeshyProgress | null> {
   }
 }
 
+async function getPrintName(id: string) {
+  return printBaseName(await prisma.preview.findUniqueOrThrow({ where: { id }, select: PRINT_NAME_SELECT }));
+}
+
 function signedUrlOrNull(key: string | null) {
   return key ? createDownloadUrl(key) : Promise.resolve(null);
 }
@@ -575,8 +582,6 @@ export async function getPreviewForAdmin(
       status: true,
       email: true,
       error: true,
-      shopifyOrderId: true,
-      orderNumber: true,
       quantity: true,
       createdAt: true,
       poseImageKey: true,
@@ -635,11 +640,10 @@ export async function getPreviewForAdmin(
     status: preview.status,
     email: preview.email,
     error: preview.error,
-    shopifyOrderId: preview.shopifyOrderId,
     order: preview.orderItems[0]
       ? { ...preview.orderItems[0].order, notes: preview.orderItems[0].notes }
       : null,
-    orderNumber: preview.orderNumber,
+    printName: await getPrintName(preview.id),
     quantity: preview.quantity,
     createdAt: preview.createdAt.toISOString(),
     photos,
@@ -695,15 +699,13 @@ export async function listPreviewsForReview(): Promise<ReviewListItem[]> {
     orderBy: { createdAt: "asc" },
     take: REVIEW_LIST_LIMIT,
     select: {
-      id: true,
       status: true,
       email: true,
       error: true,
       createdAt: true,
-      orderNumber: true,
-      forCollectible: true,
       quantity: true,
       photos: { orderBy: { createdAt: "asc" }, select: { key: true } },
+      ...PRINT_NAME_SELECT,
     },
   });
 
@@ -716,7 +718,8 @@ export async function listPreviewsForReview(): Promise<ReviewListItem[]> {
       email: preview.email,
       error: preview.error,
       createdAt: preview.createdAt.toISOString(),
-      orderNumber: preview.orderNumber,
+      orderNumber: paidOrderNumber(preview),
+      printName: printBaseName(preview),
       forCollectible: preview.forCollectible,
       quantity: preview.quantity,
       photoUrls: await Promise.all(
@@ -743,17 +746,18 @@ export async function listApprovedModels() {
     where: { ...DOWNLOADABLE, status: PreviewStatus.APPROVED },
     orderBy: { createdAt: "asc" },
     select: {
-      id: true,
       status: true,
       quantity: true,
       createdAt: true,
       downloadedAt: true,
       downloadedBy: true,
+      ...PRINT_NAME_SELECT,
     },
   });
 
   return previews.map((p) => ({
     id: p.id,
+    printName: printBaseName(p),
     status: p.status,
     quantity: p.quantity,
     createdAt: p.createdAt.toISOString(),
@@ -774,14 +778,10 @@ export async function downloadModels(
     where: { id: { in: previewIds }, ...DOWNLOADABLE },
     orderBy: { createdAt: "asc" },
     select: {
-      id: true,
       objKey: true,
       mtlKey: true,
       textureKey: true,
-      orderNumber: true,
-      animalType: true,
-      paidAt: true,
-      createdAt: true,
+      ...PRINT_NAME_SELECT,
     },
   });
 
@@ -799,7 +799,7 @@ export async function downloadModels(
       ]);
       return {
         previewId: p.id,
-        baseName: printFileBaseName(p),
+        baseName: printBaseName(p),
         urls: { obj, mtl, texture },
       };
     }),
@@ -833,9 +833,10 @@ export async function getAdminDashboard(query = ""): Promise<AdminDashboard> {
   };
 }
 
-// Zoekt op preview-id (exact), e-mail, ordernummer of Shopify-order-id (deel van).
+// Zoekt op preview-id (exact), PRV-ref, e-mail of ordernummer (deel van).
 async function searchPreviews(q: string): Promise<AdminPreviewListItem[]> {
   const isId = z.uuid().safeParse(q).success;
+  const refPrefix = parsePreviewRef(q.toUpperCase());
 
   const previews = await prisma.preview.findMany({
     where: isId
@@ -843,8 +844,8 @@ async function searchPreviews(q: string): Promise<AdminPreviewListItem[]> {
       : {
           OR: [
             { email: { contains: q, mode: "insensitive" } },
-            { shopifyOrderId: { contains: q } },
-            { orderNumber: { contains: q, mode: "insensitive" } },
+            { orderItems: { some: { order: { number: { contains: q, mode: "insensitive" } } } } },
+            ...(refPrefix ? [{ id: { startsWith: refPrefix } }] : []),
           ],
         },
     orderBy: { createdAt: "desc" },

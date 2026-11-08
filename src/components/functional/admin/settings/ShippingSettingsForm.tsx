@@ -44,7 +44,7 @@ export function ShippingSettingsForm({ settings }: { settings: ShippingSettings 
     <form onSubmit={submit} className="flex flex-col gap-6">
       <SettingsCard
         title="Verzendopties"
-        intro="Prijs die de klant betaalt. Vaste opties tot Sendcloud gekoppeld is; daarna blijven ze de noodoplossing."
+        intro="Prijs die de klant betaalt."
       >
         <ul className="divide-y divide-off-white-dark">
           {STATIC_DELIVERY_OPTIONS.map((option) => (

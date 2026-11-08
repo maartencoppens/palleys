@@ -110,7 +110,7 @@ beforeEach(async () => {
   if (collectibleId) return;
   const slug = `korting-${randomUUID().slice(0, 8)}`;
   const collectible = await prisma.collectible.create({
-    data: { slug, sku: `PAL-COL-${slug.toUpperCase()}`, name: "Kortingstest", priceCents: PRICE, published: true, imageKey: `collectibles/${randomUUID()}.webp` },
+    data: { slug, animalCode: "HOND", name: "Kortingstest", priceCents: PRICE, published: true, imageKey: `collectibles/${randomUUID()}.webp` },
   });
   collectibleId = collectible.id;
 });

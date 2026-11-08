@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireAdminPage } from "@/core/modules/auth/service";
+import { getShopSettings } from "@/core/modules/settings/service";
 import { listCollectiblesForAdmin } from "@/core/modules/collectibles/service";
 import { CollectibleForm } from "@/components/functional/admin/settings/CollectibleForm";
 import { SettingsHeader } from "@/components/functional/admin/settings/SettingsParts";
@@ -8,7 +9,7 @@ export const instant = false;
 
 export default async function NewCollectiblePage() {
   await requireAdminPage();
-  const collectibles = await listCollectiblesForAdmin();
+  const [collectibles, { catalog }] = await Promise.all([listCollectiblesForAdmin(), getShopSettings()]);
   const nextSortOrder = collectibles.reduce((max, row) => Math.max(max, row.sortOrder + 1), 0);
   return (
     <>
@@ -19,7 +20,7 @@ export default async function NewCollectiblePage() {
         Terug naar collectibles
       </Link>
       <SettingsHeader title="Collectible toevoegen" />
-      <CollectibleForm nextSortOrder={nextSortOrder} />
+      <CollectibleForm animals={catalog.animals} nextSortOrder={nextSortOrder} />
     </>
   );
 }

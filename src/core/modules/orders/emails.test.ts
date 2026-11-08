@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildOrderConfirmation, type ConfirmationOrder } from "./emails";
 
 const order: ConfirmationOrder = {
-  number: "PAL-2026-00001",
+  number: "PLY1001",
   firstName: "Emma",
   lastName: "Peeters",
   street: "Straat",
@@ -37,7 +37,7 @@ const build = (patch: Partial<ConfirmationOrder>) => buildOrderConfirmation({ ..
 describe("order confirmation", () => {
   it("is in Dutch for a Dutch order, and says no VAT is charged", () => {
     const mail = build({});
-    expect(mail.subject).toBe("Bedankt voor je bestelling PAL-2026-00001");
+    expect(mail.subject).toBe("Bedankt voor je bestelling PLY1001");
     expect(mail.text).toContain("Palley Hond · Met sleutelhanger · Klemmetje × 1: € 27,99");
     expect(mail.text).toContain("Thuislevering met bpost");
     expect(mail.text).toContain("geen btw");
@@ -50,7 +50,7 @@ describe("order confirmation", () => {
 
   it("is in English for an English order, also the prices, the product and the terms link", () => {
     const mail = build({ locale: "en" });
-    expect(mail.subject).toBe("Thank you for your order PAL-2026-00001");
+    expect(mail.subject).toBe("Thank you for your order PLY1001");
     expect(mail.text).toContain("Palley Dog · With keychain · Clip × 1: € 27.99");
     expect(mail.text).toContain("Home delivery with bpost");
     expect(mail.text).toContain("no VAT is charged");

@@ -477,6 +477,7 @@ export const en: Messages = {
       address_required: "Enter your full delivery address.",
       discount_invalid: "Your discount code is no longer valid. We removed it: check your total and order again.",
       discount_min_subtotal: "Your order no longer reaches the minimum amount of your discount code. We removed it: check your total and order again.",
+      total_changed: "A price changed in the meantime. Check your new total and place your order again.",
       payment_failed: "We couldn’t start the payment. Please try again.",
       rate_limited: "Too many attempts. Wait a few minutes and try again.",
       invalid_input: "Check the highlighted fields.",
@@ -518,6 +519,7 @@ export const en: Messages = {
     checkAgain: "Check again",
     waitTitle: "Your payment is being processed…",
     waitText: "One moment, this usually only takes a few seconds.",
+    summaryTitle: "Summary",
   },
 
   email: {
@@ -541,6 +543,18 @@ export const en: Messages = {
     termsApply: "Our terms and conditions apply to your order",
     enterprise: "Enterprise number",
     itemTitle: "Palley {animal}",
+  },
+
+  // DRAFT: to be reviewed. Sent from the backoffice (Productie) for orders picked up on campus.
+  pickupEmail: {
+    location: "Artevelde University of Applied Sciences, campus Kantienberg in Ghent",
+    readySubject: "Your order {number} is ready for pickup",
+    readyTitle: "Your Palley is ready, {name}!",
+    readyText: "Your order {number} is ready at {location}. We’re not on campus every day: we’ll email you when you can come by. Mention your order number when you pick it up.",
+    updateSubject: "Picking up your order {number}",
+    updateTitle: "Hi {name},",
+    updateIntro: "An update about picking up your order {number} at {location}:",
+    footer: "Questions, or doesn’t it suit you? Just reply to this email.",
   },
 
   legal: {

@@ -3,7 +3,7 @@ import { LOCALES, type Locale } from "@/core/locale/config";
 import { ANIMAL_LIMITS } from "@/data/animals";
 
 /*
- * An animal of the personalised Palley. `value` and `code` are fixed once it exists (carts, orders, SKUs and print
+ * An animal of the personalised Palley. `value` and `code` are fixed once it exists (carts, orders, product codes and print
  * files refer to them), the labels can change. No server-only imports.
  */
 export const animalOptionSchema = z.object({

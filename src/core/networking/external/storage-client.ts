@@ -71,6 +71,13 @@ export async function putObject(
   );
 }
 
+/** The object's bytes as they arrive, for passing a big file on without holding it in memory. */
+export async function getObjectStream(key: string): Promise<AsyncIterable<Uint8Array>> {
+  const res = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+  if (!res.Body) throw new Error(`Empty object: ${key}`);
+  return res.Body as AsyncIterable<Uint8Array>;
+}
+
 export async function getObject(key: string): Promise<Buffer> {
   const res = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
   return Buffer.from(await res.Body!.transformToByteArray());

@@ -13,11 +13,14 @@ import { resolveDeliveryOption } from "@/core/modules/shipping/service";
 import { createToken, hashToken } from "@/core/utils/tokens";
 import { attachments, DEFAULT_ATTACHMENT } from "@/data/options";
 import { findAnimal } from "@/core/modules/animals/utils";
+import { collectibleProductCode } from "@/core/modules/collectibles/utils";
+import { productCode } from "@/core/utils/naming";
 import { MANUAL_PAYMENT_PROVIDER } from "@/data/payment-methods";
 import { CURRENCY } from "@/data/pricing";
 import { HANDOVER_DELIVERY } from "@/data/shipping";
 import { allItemsCheckedIn, ITEM_READY_PREVIEW_STATUS, OPEN_ORDER_STATUSES } from "./check-in";
 import { nextOrderNumber, OrderNotFoundError } from "./service";
+import { canCheckInInBatch } from "@/core/modules/batches/status";
 import type { ManualOrderInput, ManualOrderResult, OrderStatusActionInput } from "./types";
 
 /*
@@ -31,9 +34,10 @@ import type { ManualOrderInput, ManualOrderResult, OrderStatusActionInput } from
 export class OrderActionError extends Error {}
 
 type LineData = {
+  position: number;
   previewId: string | null;
   collectibleId: string | null;
-  sku: string;
+  productCode: string;
   size: string;
   edition: string | null;
   attachment: string | null;
@@ -50,19 +54,22 @@ async function resolveLines(input: ManualOrderInput) {
   const collectibleIds = input.lines.flatMap((line) => (line.kind === "collectible" ? line.collectibleId : []));
   const collectibles = await prisma.collectible.findMany({ where: { id: { in: collectibleIds }, archivedAt: null } });
 
-  return input.lines.map((line): LineData => {
+  return input.lines.map((line, index): LineData => {
+    const position = index + 1;
     if (line.kind === "personalized") {
       // Also an animal that's switched off for the website: by hand we can still make it. Not one that was removed.
       const animal = findAnimal(catalog.animals, line.animal);
       if (!animal) throw new OrderActionError("Dit dier staat niet meer in de lijst");
       const variant = variantFor(line.edition, animal);
       const labels = variantLabel(line.edition, animal);
-      const attachment = line.edition === "keychain" ? (line.attachment ?? null) : null;
+      // A keychain always goes on the keys somehow: the standard one when none was picked, as in the shop's cart.
+      const attachment = line.edition === "keychain" ? (line.attachment ?? DEFAULT_ATTACHMENT) : null;
       const attachmentLabel = attachments.find((option) => option.value === attachment)?.label ?? null;
       return {
+        position,
         previewId: randomUUID(),
         collectibleId: null,
-        sku: variant.sku,
+        productCode: productCode({ kind: "P", edition: line.edition, attachment, animalCode: animal.code }),
         size: variant.size,
         edition: line.edition,
         attachment,
@@ -76,13 +83,15 @@ async function resolveLines(input: ManualOrderInput) {
     }
     const collectible = collectibles.find((row) => row.id === line.collectibleId);
     if (!collectible) throw new OrderActionError("Deze collectible bestaat niet meer");
+    const attachment = line.attachment ?? DEFAULT_ATTACHMENT;
     return {
+      position,
       previewId: null,
       collectibleId: collectible.id,
-      sku: collectible.sku,
+      productCode: collectibleProductCode(collectible.number, attachment),
       size: DEFAULT_SIZE,
       edition: null,
-      attachment: line.attachment ?? DEFAULT_ATTACHMENT,
+      attachment,
       animal: null,
       title: collectible.name,
       notes: line.notes,
@@ -95,7 +104,7 @@ async function resolveLines(input: ManualOrderInput) {
 
 async function resolveDelivery(input: ManualOrderInput, lines: LineData[]) {
   if (input.delivery.type === "handover") {
-    return { ...HANDOVER_DELIVERY, priceCents: 0, checkoutIdentifier: null };
+    return { ...HANDOVER_DELIVERY, priceCents: 0 };
   }
   const address = { country: "BE" as const, postalCode: input.delivery.postalCode };
   const items = lines.map((line) => ({ size: DEFAULT_SIZE, quantity: line.quantity }));
@@ -147,7 +156,6 @@ export async function createManualOrder(input: ManualOrderInput, adminName: stri
             carrier: delivery.carrier,
             label: delivery.label,
             priceCents: delivery.priceCents,
-            checkoutIdentifier: delivery.checkoutIdentifier,
           },
         },
         statusChanges: {
@@ -187,13 +195,16 @@ export async function setItemCheckIn(orderId: string, itemId: string, checked: b
     where: { id: itemId, orderId },
     select: {
       title: true,
-      order: { select: { status: true } },
+      order: { select: { status: true, batch: { select: { status: true } } } },
       preview: { select: { status: true } },
     },
   });
   if (!item) throw new OrderNotFoundError(itemId);
   if (!OPEN_ORDER_STATUSES.includes(item.order.status)) {
     throw new OrderActionError("Items afvinken kan alleen bij een betaalde order die nog niet verzonden is");
+  }
+  if (checked && !canCheckInInBatch(item.order.batch?.status ?? null)) {
+    throw new OrderActionError("Deze order zit in een batch: afvinken kan pas als de batch terug is van JLC");
   }
   if (checked && item.preview && item.preview.status !== ITEM_READY_PREVIEW_STATUS) {
     throw new OrderActionError("Dit model is nog niet klaar voor print: werk eerst de preview af");
@@ -225,9 +236,15 @@ export async function updateOrderStatus(orderId: string, input: OrderStatusActio
       status: true,
       items: { select: { checkedInAt: true, preview: { select: { status: true } } } },
       payments: { select: { provider: true, status: true } },
+      batchId: true,
     },
   });
   if (!order) throw new OrderNotFoundError(orderId);
+
+  // An order in a batch goes into production with its batch (Batches → "verzonden naar JLC"), not on its own.
+  if (input.status === "IN_PRODUCTION" && order.batchId) {
+    throw new OrderActionError("Deze order zit in een batch: hij gaat in productie zodra de batch naar JLC is");
+  }
 
   if (input.status === "SHIPPED") {
     const items = order.items.map((item) => ({ previewStatus: item.preview?.status ?? null, checkedInAt: item.checkedInAt }));

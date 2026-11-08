@@ -128,7 +128,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
                     {order.email && <span className="block text-text-muted">{order.email}</span>}
                   </td>
                   <td data-label="Status" className="px-5 py-4">
-                    <OrderStatusBadge status={order.status} />
+                    <OrderStatusBadge status={order.status} deliveryType={order.deliveryType} />
                   </td>
                   <td data-label="Betaling" className="whitespace-nowrap px-5 py-4">
                     {order.paymentStatus ? <PaymentStatusBadge status={order.paymentStatus} /> : "—"}

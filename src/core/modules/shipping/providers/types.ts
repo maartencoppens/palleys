@@ -4,9 +4,8 @@ import type { DeliveryAddress, DeliveryOption } from "../types";
 export type Parcel = { weightGrams: number; dimensionsCm: { length: number; width: number; height: number } };
 
 /*
- * A carrier integration. The static provider is the first implementation; Sendcloud (Dynamic Checkout API v3 +
- * Shipments API v3) or MyParcel BE implement the same interface once an account exists. createShipment comes
- * with the label flow in the backoffice (plan phase 6).
+ * Where delivery options come from. The static provider is the only one: fixed options with prices from the
+ * settings. A carrier integration would implement the same interface.
  */
 export interface ShippingProvider {
   readonly name: string;

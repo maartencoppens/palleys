@@ -1,14 +1,31 @@
 import { describe, expect, it } from "vitest";
-import { collectibleImageKey, collectibleImageUrl, isCollectibleImageFile, isCollectibleImageKey, skuForSlug, slugify } from "./utils";
+import {
+  collectibleIdOf,
+  collectibleImageKey,
+  collectibleImageUrl,
+  collectibleProductCode,
+  isCollectibleImageFile,
+  isCollectibleImageKey,
+  slugify,
+} from "./utils";
 
 const FILE = "3f2a9c1e-1234-4abc-9def-0123456789ab.webp";
 
 describe("collectible names", () => {
-  it("makes plain URLs and SKUs", () => {
+  it("makes plain URLs", () => {
     expect(slugify("Golden Retriever!")).toBe("golden-retriever");
     expect(slugify("  Café Kat & Hond ")).toBe("cafe-kat-hond");
     expect(slugify("***")).toBe("");
-    expect(skuForSlug("golden-retriever")).toBe("PAL-COL-GOLDEN-RETRIEVER");
+  });
+
+  it("names a collectible by its number and animal", () => {
+    expect(collectibleIdOf({ number: 7, animalCode: "HOND" })).toBe("COL-007-HOND");
+    expect(collectibleIdOf({ number: 7, animalCode: null })).toBeNull();
+  });
+
+  it("codes an order line by the attachment the customer chose", () => {
+    expect(collectibleProductCode(7, "clip")).toBe("COL-CLP-007");
+    expect(collectibleProductCode(7, "key-ring")).toBe("COL-RING-007");
   });
 });
 

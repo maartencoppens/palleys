@@ -24,7 +24,7 @@ export type ProviderPayment = {
 
 export type CreatePaymentInput = {
   amountCents: number;
-  /** Our order number. Short and SEPA-safe, e.g. PAL-2026-00042. */
+  /** Our order number. Short and SEPA-safe, e.g. PLY1042 (at most 12 characters). */
   reference: string;
   /** Shown to the payer and on their bank statement. */
   description: string;

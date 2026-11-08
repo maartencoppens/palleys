@@ -1,7 +1,7 @@
 // The animals of the personalised Palley as they were before they could be managed: the starting list. The live list
 // is set in /admin/settings/products and read through the catalog settings. No server-only imports.
 //   value  in the cart and on the order ("dog"), never changes
-//   code   in the SKU (PAL-GP-KEY-HOND), the print file name and the AI prompt, never changes
+//   code   in the product code (P-RING-HOND), the print file name and the AI prompt, never changes
 //   labels what the shop shows, per language
 export const DEFAULT_ANIMALS = [
   { value: "dog", code: "HOND", labels: { nl: "Hond", en: "Dog" } },

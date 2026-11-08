@@ -131,6 +131,8 @@ export default function CheckoutForm({ deliveryTime }: { deliveryTime: string })
   const knownPostalCode = POSTAL_CODE_PATTERNS[fields.country].test(postalCode) ? postalCode : undefined;
   const appliedCode = discount?.code ?? null;
   const codeOfLastOptions = useRef<string | null>(null);
+  // Bumped when the server says a price changed, to fetch the options (and their prices) again.
+  const [optionsVersion, setOptionsVersion] = useState(0);
 
   // Delivery options follow the country, the postal code and the discount code, a moment after typing stops.
   useEffect(() => {
@@ -155,7 +157,7 @@ export default function CheckoutForm({ deliveryTime }: { deliveryTime: string })
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [fields.country, knownPostalCode, appliedCode]);
+  }, [fields.country, knownPostalCode, appliedCode, optionsVersion]);
 
   const selected = options.find((option) => option.id === deliveryOptionId) ?? null;
   const shipsToAddress = needsShippingAddress(selected?.deliveryType);
@@ -241,6 +243,7 @@ export default function CheckoutForm({ deliveryTime }: { deliveryTime: string })
         acceptTerms,
         marketingOptIn,
         locale,
+        expectedTotalCents: totalCents,
       });
       window.location.assign(checkoutUrl);
     } catch (error) {
@@ -250,6 +253,12 @@ export default function CheckoutForm({ deliveryTime }: { deliveryTime: string })
         const serverFields = (error.response?.data?.fields ?? []).filter((f): f is FieldName => f in fieldErrors);
         if (serverFields.length > 0) setErrors(new Set(serverFields));
         if (code === "delivery_option_invalid") setDeliveryOptionId(null);
+        if (code === "total_changed") {
+          // Show the prices as they are now; the customer checks the new total and orders again.
+          setOptionsVersion((version) => version + 1);
+          loadCart().catch(() => setCartFailed(true));
+          if (appliedCode) postApplyDiscount(appliedCode).then(setDiscount).catch(() => setDiscount(null));
+        }
         if (code === "discount_invalid" || code === "discount_min_subtotal") setDiscount(null);
         setSubmitError((code && submitErrors[code]) ?? common.genericError);
       } else {

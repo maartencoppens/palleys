@@ -21,7 +21,7 @@ type AnimalListEditorProps = {
 
 /*
  * The animals of the personalised Palley: names per language, on or off for the website, added or removed. The code
- * (in the SKU, the print file name and the AI prompts) is made from the Dutch name once and never changes.
+ * (in the product code, the print file name and the AI prompts) is made from the Dutch name once and never changes.
  */
 export function AnimalListEditor({ animals, disabled, onChange }: AnimalListEditorProps) {
   const [draft, setDraft] = useState(emptyLabels);
@@ -73,7 +73,7 @@ export function AnimalListEditor({ animals, disabled, onChange }: AnimalListEdit
                 />
               </div>
             ))}
-            <span className="h-11 content-center font-mono text-xs text-text-muted" title="In de SKU en de printbestanden">
+            <span className="h-11 content-center font-mono text-xs text-text-muted" title="In de productcode en de printbestanden">
               {animal.code}
             </span>
             <label className="flex h-11 cursor-pointer items-center gap-2 text-sm font-semibold">

@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProviderPayment } from "./providers/types";
+import { parseInvoiceNumber, parseOrderRef } from "@/core/utils/naming";
+import { invoiceCounterKey, orderYear } from "@/core/modules/orders/utils";
 
 /*
  * End-to-end over our own code with Bancontact, R2 and Resend mocked: cart → checkout → payment status → order PAID →
@@ -66,6 +68,7 @@ const { startCheckout, CheckoutError } = await import("@/core/modules/checkout/s
 const { checkoutSchema } = await import("@/core/modules/checkout/types");
 const { handlePaymentWebhook, processPayment, syncOrderPayment } = await import("./service");
 const { getOrderStatusForCustomer } = await import("@/core/modules/orders/service");
+const { hashToken } = await import("@/core/utils/tokens");
 
 const createdPreviews: string[] = [];
 const createdOrders: string[] = [];
@@ -111,6 +114,12 @@ async function checkout(previewId: string, quantity = 1) {
   return { token, checkoutUrl, payment, order: payment.order };
 }
 
+/** Where this year's invoice counter stands (0 before the first invoice). */
+async function invoiceCounterValue() {
+  const row = await prisma.counter.findUnique({ where: { key: invoiceCounterKey(orderYear()) } });
+  return row?.last ?? 0;
+}
+
 function setProviderStatus(id: string, patch: Partial<ProviderPayment>) {
   bancontact.payments.set(id, { ...bancontact.payments.get(id)!, ...patch });
 }
@@ -136,7 +145,7 @@ describe("checkout", () => {
     const { order, payment, checkoutUrl } = await checkout(previewId, 2);
 
     expect(checkoutUrl).toMatch(/^https:\/\/pay\.bancontact\.net\//);
-    expect(order.number).toMatch(/^PAL-\d{4}-\d{5}$/);
+    expect(parseOrderRef(order.number)).not.toBeNull();
     expect(order.status).toBe("PENDING_PAYMENT");
     expect(order.email).toBe("test.klant@example.com");
     expect(order.subtotalCents).toBe(2 * 2799);
@@ -186,6 +195,45 @@ describe("checkout", () => {
     });
   });
 
+  it("charges what the customer saw, and stops when a price changed in the meantime", async () => {
+    await prisma.shopSettings.create({ data: { id: 1, shippingOverrides: { "be-bpost-home": { priceCents: 495, enabled: true } } } });
+    const seen = 2799 + 495;
+    const first = await newPreview();
+    const { token } = await addPreviewToCart(null, { previewId: first, animal: "cat", edition: "figure" });
+    // A price the browser makes up is not part of the input: only the option's id counts.
+    const input = checkoutSchema.parse({ ...customer, expectedTotalCents: seen, shippingCents: 0, totalCents: 1 });
+    expect(input).not.toHaveProperty("shippingCents");
+    const { checkoutUrl } = await startCheckout(token, input);
+    const payment = await prisma.payment.findFirstOrThrow({ where: { checkoutUrl }, include: { order: true } });
+    createdOrders.push(payment.orderId);
+    expect(payment.order).toMatchObject({ subtotalCents: 2799, shippingCents: 495, totalCents: seen });
+    expect(payment.amountCents).toBe(seen);
+
+    // The admin raises the delivery price while the next customer has the form open.
+    await prisma.shopSettings.update({ where: { id: 1 }, data: { shippingOverrides: { "be-bpost-home": { priceCents: 595, enabled: true } } } });
+    const second = await newPreview();
+    const { token: secondToken } = await addPreviewToCart(null, { previewId: second, animal: "cat", edition: "figure" });
+    const orderCount = await prisma.order.count();
+    await expect(startCheckout(secondToken, checkoutSchema.parse({ ...customer, expectedTotalCents: seen }))).rejects.toMatchObject({
+      code: "total_changed",
+      details: { totalCents: 2799 + 595 },
+    });
+    expect(await prisma.order.count()).toBe(orderCount);
+  });
+
+  it("drops the delivery cost and the address when switching to pickup", async () => {
+    const previewId = await newPreview();
+    const { token } = await addPreviewToCart(null, { previewId, animal: "cat", edition: "figure" });
+    const { checkoutUrl } = await startCheckout(
+      token,
+      checkoutSchema.parse({ ...customer, deliveryOptionId: "be-pickup-kantienberg", expectedTotalCents: 2799 }),
+    );
+    const payment = await prisma.payment.findFirstOrThrow({ where: { checkoutUrl }, include: { order: true } });
+    createdOrders.push(payment.orderId);
+    expect(payment.order).toMatchObject({ shippingCents: 0, totalCents: 2799, street: null, postalCode: null });
+    expect(payment.amountCents).toBe(2799);
+  });
+
   it("refuses an empty cart and a paused checkout", async () => {
     await expect(startCheckout(null, checkoutSchema.parse(customer))).rejects.toBeInstanceOf(CheckoutError);
     await prisma.shopSettings.create({ data: { id: 1, checkoutEnabled: false } });
@@ -219,23 +267,49 @@ describe("payment processing", () => {
     const preview = await prisma.preview.findUniqueOrThrow({ where: { id: previewId } });
     expect(preview).toMatchObject({
       status: "PAID", // → shows up in /admin/review
-      orderNumber: order.number,
       email: "test.klant@example.com",
       animalType: "HOND",
       quantity: 1,
       expiresAt: null,
     });
 
-    // Second identical webhook: nothing changes.
+    expect(parseInvoiceNumber(paidOrder.invoiceNumber ?? "")).not.toBeNull();
+
+    // Second identical webhook: nothing changes, and no second invoice number is used.
+    const invoiceCounter = await invoiceCounterValue();
     await handlePaymentWebhook(payment.providerPaymentId);
+    await syncOrderPayment(order.id, "return-page", { minIntervalMs: 0 });
     const again = await prisma.order.findUniqueOrThrow({ where: { id: order.id }, include: { statusChanges: true } });
     expect(again.statusChanges.filter((c) => c.toStatus === "PAID")).toHaveLength(1);
+    expect(again.invoiceNumber).toBe(paidOrder.invoiceNumber);
+    expect(await invoiceCounterValue()).toBe(invoiceCounter);
 
     const cart = await getCart(token);
     expect(cart?.lines ?? []).toHaveLength(0);
 
     // Mail not configured: not marked as sent, so it can be resent later.
     expect(again.confirmationSentAt).toBeNull();
+
+    // The return page shows what was paid, line by line.
+    await prisma.order.update({ where: { id: order.id }, data: { statusTokenHash: hashToken("return-token") } });
+    expect(await getOrderStatusForCustomer(order.id, "return-token")).toMatchObject({
+      status: "PAID",
+      amounts: { subtotalCents: 2799, discountCents: 0, shippingCents: 495, totalCents: 2799 + 495 },
+    });
+  });
+
+  it("numbers invoices without gaps when two orders are paid at the same moment", async () => {
+    const [a, b, unpaid] = [await checkout(await newPreview()), await checkout(await newPreview()), await checkout(await newPreview())];
+    const before = await invoiceCounterValue();
+    for (const { payment } of [a, b]) setProviderStatus(payment.providerPaymentId, { status: "PAID" });
+    await Promise.all([handlePaymentWebhook(a.payment.providerPaymentId), handlePaymentWebhook(b.payment.providerPaymentId)]);
+
+    const numbers = await prisma.order.findMany({ where: { id: { in: [a.order.id, b.order.id] } }, select: { invoiceNumber: true } });
+    const seqs = numbers.map(({ invoiceNumber }) => parseInvoiceNumber(invoiceNumber ?? "")!.seq).sort((x, y) => x - y);
+    expect(seqs).toEqual([before + 1, before + 2]);
+    // An order that isn't paid has none, and used none.
+    expect((await prisma.order.findUniqueOrThrow({ where: { id: unpaid.order.id } })).invoiceNumber).toBeNull();
+    expect(await invoiceCounterValue()).toBe(before + 2);
   });
 
   it("never marks an order paid when the amount or reference doesn't match", async () => {

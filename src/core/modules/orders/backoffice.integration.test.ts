@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProviderPayment } from "@/core/modules/payments/providers/types";
+import { parseInvoiceNumber, parseOrderRef } from "@/core/utils/naming";
 
 /*
  * The backoffice over our own code, against the local database, with Bancontact, R2 and Resend mocked: collectibles from
@@ -92,7 +93,6 @@ const { confirmProcessedUpload, getCollectiblePrintQueue } = await import("@/cor
 const { approvePreview, setPromptOverride, uploadPose } = await import("@/core/modules/previews/service");
 const { updateSettingsSection, getShopSettings } = await import("@/core/modules/settings/service");
 const { DEFAULT_ANIMALS } = await import("@/data/animals");
-const { handleSendcloudWebhook } = await import("@/core/modules/shipping/sendcloud/service");
 const { manualOrderSchema } = await import("./types");
 const { expireStaleOrders, handlePaymentWebhook, createManualOrderPaymentLink, recordManualPayment, ManualPaymentNotAllowedError } = await import(
   "@/core/modules/payments/service"
@@ -111,6 +111,7 @@ async function newCollectible(overrides: Partial<Parameters<typeof collectibleIn
     translations: { en: { name: `Test model ${name.slice(-8)}` } },
     priceCents: 1995,
     imageKey: IMAGE_KEY,
+    animalCode: "HOND",
     published: true,
     soldOut: false,
     sortOrder: 0,
@@ -171,7 +172,7 @@ afterAll(async () => {
 
 describe("collectibles", () => {
   it("needs a photo before it can go on the website", () => {
-    const input = { name: "Zonder foto", priceCents: 1000, imageKey: null, soldOut: false, sortOrder: 0 };
+    const input = { name: "Zonder foto", priceCents: 1000, imageKey: null, animalCode: "HOND", soldOut: false, sortOrder: 0 };
     expect(collectibleInputSchema.safeParse({ ...input, published: true }).success).toBe(false);
     expect(collectibleInputSchema.safeParse({ ...input, published: false }).success).toBe(true);
   });
@@ -182,7 +183,7 @@ describe("collectibles", () => {
     const second = await newCollectible({ name });
     const rows = await prisma.collectible.findMany({ where: { id: { in: [first.id, second.id] } }, orderBy: { createdAt: "asc" } });
     expect(rows[1].slug).toBe(`${rows[0].slug}-2`);
-    expect(rows[1].sku).not.toBe(rows[0].sku);
+    expect(rows[1].number).toBeGreaterThan(rows[0].number);
   });
 
   it("disappears from the shop and from carts when removed, and can come back", async () => {
@@ -268,7 +269,7 @@ describe("collectible images", () => {
     const stored = await storeCollectibleImage(png);
     expect(stored.imageKey).toMatch(/^collectibles\/[0-9a-f-]{36}\.webp$/);
     expect(stored.imageUrl).toMatch(/^\/api\/collectibles\/images\/[0-9a-f-]{36}\.webp$/);
-    expect(collectibleInputSchema.safeParse({ name: "x", priceCents: 1000, imageKey: stored.imageKey, published: true, soldOut: false, sortOrder: 0, translations: { en: { name: "x" } } }).success).toBe(true);
+    expect(collectibleInputSchema.safeParse({ name: "x", priceCents: 1000, imageKey: stored.imageKey, animalCode: "HOND", published: true, soldOut: false, sortOrder: 0, translations: { en: { name: "x" } } }).success).toBe(true);
   });
 
   it("refuses a file that isn't an image", async () => {
@@ -335,7 +336,7 @@ describe("adding an order by hand", () => {
     const { orderId, number, previews } = await addOrder();
     const order = await loadOrder(orderId);
 
-    expect(number).toMatch(/^PAL-\d{4}-\d{5}$/);
+    expect(parseOrderRef(number)).not.toBeNull();
     expect(order).toMatchObject({
       status: "PENDING_PAYMENT",
       createdBy: ADMIN,
@@ -399,7 +400,8 @@ describe("adding an order by hand", () => {
     expect(mail.sent[0].text).toContain("Op je bestelling gelden");
 
     const preview = await prisma.preview.findUniqueOrThrow({ where: { id: previews[0].previewId } });
-    expect(preview).toMatchObject({ status: "PAID", orderNumber: order.number, animalType: "HOND" });
+    expect(preview).toMatchObject({ status: "PAID", animalType: "HOND" });
+    expect(parseInvoiceNumber(order.invoiceNumber ?? "")).not.toBeNull();
   });
 
   it("sends no mail when asked not to, or when there's no address", async () => {
@@ -504,7 +506,8 @@ describe("collectible 3D models", () => {
     const { id } = await newCollectible({ modelKey: key, modelFileName: "Golden Retriever.zip" });
     expect(await getCollectibleForAdmin(id)).toMatchObject({ modelKey: key, modelFileName: "Golden Retriever.zip" });
     const download = await getCollectibleModelDownload(id);
-    expect(download.fileName).toBe("Golden Retriever.zip");
+    const { number } = await prisma.collectible.findUniqueOrThrow({ where: { id } });
+    expect(download.fileName).toBe(`COL-${String(number).padStart(3, "0")}-HOND_print.zip`);
     expect(download.url).toContain(key);
     expect(collectibleInputSchema.safeParse({ ...(await newCollectible()).input, modelKey: "previews/x/processed-1.zip" }).success).toBe(false);
   });
@@ -599,11 +602,11 @@ describe("collectible 3D models", () => {
 describe("animals managed in the backoffice", () => {
   const parrot = { value: "papegaai", code: "PAPEGAAI", labels: { nl: "Papegaai", en: "Parrot" } };
 
-  it("sells an added animal under its own SKU, and refuses one that was removed", async () => {
+  it("sells an added animal under its own product code, and refuses one that was removed", async () => {
     const { catalog } = await getShopSettings();
     await updateSettingsSection("catalog", { ...catalog, animals: [...DEFAULT_ANIMALS, parrot] }, ADMIN);
     const { orderId } = await addOrder({ lines: [{ kind: "personalized", animal: "papegaai", edition: "keychain", quantity: 1 }] });
-    expect((await loadOrder(orderId)).items[0]).toMatchObject({ sku: "PAL-GP-KEY-PAPEGAAI", title: "Palley Papegaai · Met sleutelhanger" });
+    expect((await loadOrder(orderId)).items[0]).toMatchObject({ productCode: "P-CLP-PAPEGAAI", title: "Palley Papegaai · Met sleutelhanger · Klemmetje" });
     await expect(startCollectibleGeneration({ animalType: "DINO", prompt: "x" }, ADMIN)).rejects.toThrow("niet in de lijst");
 
     await updateSettingsSection("catalog", { ...catalog, animals: DEFAULT_ANIMALS.filter((animal) => animal.value !== "snake") }, ADMIN);
@@ -620,68 +623,5 @@ describe("animals managed in the backoffice", () => {
       payment: { type: "paid", method: "cash" },
     });
     expect((await prisma.preview.findUniqueOrThrow({ where: { id: previews[0].previewId } })).animalType).toBe("PAPEGAAI");
-  });
-});
-
-describe("Sendcloud webhook", () => {
-  const parcelUpdate = (number: string, message: string, timestamp: number) => ({
-    action: "parcel_status_changed",
-    timestamp,
-    parcel: {
-      id: 987654,
-      tracking_number: "3SABCD123",
-      tracking_url: "https://tracking.sendcloud.sc/forward?carrier=bpost&code=3SABCD123",
-      status: { id: 1, message },
-      order_number: number,
-      name: "Vriend Testmans",
-      is_return: false,
-    },
-  });
-  const shipped = {
-    type: "ship",
-    optionId: "be-bpost-home",
-    street: "Straat",
-    houseNumber: "1",
-    postalCode: "9000",
-    city: "Gent",
-  };
-
-  it("keeps the tracking on the order, ships it once the carrier has it, and skips older updates", async () => {
-    const { orderId, number } = await addOrder({ delivery: shipped, payment: { type: "paid", method: "cash" } });
-
-    expect(await handleSendcloudWebhook(parcelUpdate(number, "Ready to send", 1_800_000_000))).toEqual({ outcome: "updated" });
-    let order = await loadOrder(orderId);
-    expect(order.status).toBe("PAID");
-    expect(order.shipment).toMatchObject({
-      provider: "sendcloud",
-      providerShipmentId: "987654",
-      trackingCode: "3SABCD123",
-      providerStatus: "Ready to send",
-      shippedAt: null,
-    });
-
-    expect(await handleSendcloudWebhook(parcelUpdate(number, "En route to sorting center", 1_800_000_600))).toEqual({ outcome: "shipped" });
-    order = await loadOrder(orderId);
-    expect(order.status).toBe("SHIPPED");
-    expect(order.shipment?.shippedAt?.getTime()).toBe(1_800_000_600_000);
-    expect(order.statusChanges.find((change) => change.toStatus === "SHIPPED")).toMatchObject({ source: "webhook:sendcloud" });
-
-    // Late, older one: nothing changes. A retry of the same one neither.
-    expect(await handleSendcloudWebhook(parcelUpdate(number, "Ready to send", 1_800_000_300))).toEqual({ outcome: "stale" });
-    expect(await handleSendcloudWebhook(parcelUpdate(number, "En route to sorting center", 1_800_000_600))).toEqual({ outcome: "stale" });
-
-    expect(await handleSendcloudWebhook(parcelUpdate(number, "Delivered", 1_800_090_000))).toEqual({ outcome: "updated" });
-    order = await loadOrder(orderId);
-    expect(order.shipment?.providerStatus).toBe("Delivered");
-    expect(order.statusChanges.some((change) => change.note === "Sendcloud: Delivered")).toBe(true);
-  });
-
-  it("answers parcels it can't place, returns and other events without touching anything", async () => {
-    expect(await handleSendcloudWebhook(parcelUpdate("PAL-1999-99999", "Delivered", 1_800_000_000))).toEqual({ outcome: "unknown_order" });
-    expect(await handleSendcloudWebhook(parcelUpdate("webshop-42", "Delivered", 1_800_000_000))).toEqual({ outcome: "unknown_order" });
-    const returned = parcelUpdate("PAL-1999-99999", "Delivered", 1_800_000_000);
-    expect(await handleSendcloudWebhook({ ...returned, parcel: { ...returned.parcel, is_return: true } })).toEqual({ outcome: "return" });
-    expect(await handleSendcloudWebhook({ action: "integration_updated", timestamp: 1 })).toEqual({ outcome: "other_action", action: "integration_updated" });
-    expect(await handleSendcloudWebhook({ action: "parcel_status_changed" })).toEqual({ outcome: "ignored" });
   });
 });

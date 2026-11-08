@@ -6,8 +6,7 @@ import { staticShippingProvider } from "./providers/static";
 import type { ShippingProvider } from "./providers/types";
 import type { DeliveryAddress, DeliveryOption } from "./types";
 
-// The carrier integration in use. When Sendcloud is connected: try it first, fall back to the static options
-// (logged), so checkout never blocks on a carrier outage.
+// The delivery options in use: fixed ones, priced in the settings. Labels are made by hand (bpost).
 const provider: ShippingProvider = staticShippingProvider;
 
 export async function getDeliveryOptions(
@@ -18,7 +17,7 @@ export async function getDeliveryOptions(
 }
 
 /** Whether someone may use this is up to their discount code: see checkout/service.ts. */
-export const friendsDelivery = (): DeliveryOption => ({ ...FRIENDS_DELIVERY, priceCents: 0, checkoutIdentifier: null });
+export const friendsDelivery = (): DeliveryOption => ({ ...FRIENDS_DELIVERY, priceCents: 0 });
 
 /** Re-checks a chosen option server-side: it must still exist for this address, with our current price. */
 export async function resolveDeliveryOption(

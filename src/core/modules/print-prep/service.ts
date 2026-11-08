@@ -11,7 +11,9 @@ import {
   PreviewNotFoundError,
 } from "@/core/modules/previews/service";
 import { assertTransition } from "@/core/modules/previews/status";
-import { printFileBaseName } from "@/core/modules/previews/utils";
+import { PRINT_NAME_SELECT, printBaseName, type PrintNameSource } from "@/core/modules/previews/utils";
+import { palleyNameOf } from "@/core/modules/orders/utils";
+import { palleyFileName } from "@/core/utils/naming";
 import { PRINT_FILE_CONTENT_TYPE } from "@/data/uploads";
 import { OPEN_ORDER_STATUSES } from "@/core/modules/orders/check-in";
 import { attachPreviewModel } from "@/core/modules/collectibles/service";
@@ -26,25 +28,16 @@ const UPLOADABLE_STATUSES: PreviewStatus[] = [
 ];
 
 const ITEM_SELECT = {
-  id: true,
-  orderNumber: true,
-  animalType: true,
+  ...PRINT_NAME_SELECT,
   quantity: true,
-  paidAt: true,
-  createdAt: true,
   downloadedAt: true,
   downloadedBy: true,
   processedAt: true,
   processedBy: true,
 } as const;
 
-type ItemRow = {
-  id: string;
-  orderNumber: string | null;
-  animalType: string | null;
+type ItemRow = PrintNameSource & {
   quantity: number;
-  paidAt: Date | null;
-  createdAt: Date;
   downloadedAt: Date | null;
   downloadedBy: string | null;
   processedAt: Date | null;
@@ -54,7 +47,7 @@ type ItemRow = {
 function toItem(row: ItemRow): ProcessingItem {
   return {
     id: row.id,
-    baseName: printFileBaseName(row),
+    baseName: printBaseName(row),
     quantity: row.quantity,
     downloadedAt: row.downloadedAt?.toISOString() ?? null,
     downloadedBy: row.downloadedBy,
@@ -157,7 +150,7 @@ export async function getProcessedDownloadUrl(id: string) {
     throw new PreviewConflictError("Nog geen verwerkt bestand");
   }
 
-  const fileName = `${printFileBaseName(preview)}-PRINT.zip`;
+  const fileName = palleyFileName(printBaseName(preview), "print");
   const url = await createDownloadUrl(preview.processedKey, fileName);
   return { url, fileName };
 }
@@ -169,6 +162,9 @@ export async function getCollectiblePrintQueue(): Promise<CollectiblePrintItem[]
     orderBy: { order: { paidAt: "asc" } },
     select: {
       id: true,
+      position: true,
+      productCode: true,
+      reprintNr: true,
       quantity: true,
       attachment: true,
       title: true,
@@ -182,6 +178,7 @@ export async function getCollectiblePrintQueue(): Promise<CollectiblePrintItem[]
           itemId: item.id,
           orderId: item.order.id,
           orderNumber: item.order.number,
+          palleyName: palleyNameOf(item),
           collectibleId: item.collectible.id,
           name: item.title,
           quantity: item.quantity,

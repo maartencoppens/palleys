@@ -1,15 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { formatOrderNumber, maskEmail, orderYear } from "./utils";
+import { invoiceCounterKey, maskEmail, orderYear } from "./utils";
 
-describe("order numbers", () => {
-  it("pads the sequence", () => {
-    expect(formatOrderNumber(2026, 42)).toBe("PAL-2026-00042");
-    expect(formatOrderNumber(2027, 123456)).toBe("PAL-2027-123456");
-  });
-
-  it("rejects invalid sequences", () => {
-    expect(() => formatOrderNumber(2026, 0)).toThrow();
-    expect(() => formatOrderNumber(2026, 1.5)).toThrow();
+describe("invoice years", () => {
+  it("keeps one counter per year", () => {
+    expect(invoiceCounterKey(2026)).toBe("invoice-2026");
   });
 
   it("counts the year in Brussels time", () => {

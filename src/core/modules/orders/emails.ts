@@ -113,6 +113,7 @@ export function buildOrderConfirmation(
     ? (messages.shipping.options[order.shipment.deliveryOptionId]?.label ?? order.shipment.label)
     : null;
   const shippingLine = `${m.shipping}${shipmentLabel ? ` (${shipmentLabel})` : ""}`;
+  const shippingAmount = order.shippingCents === 0 ? messages.shipping.free : euro(order.shippingCents);
   const discountLine = order.discountCents > 0 ? `${m.discount}${order.discountCode ? ` (${order.discountCode})` : ""}` : null;
 
   const rows = order.items
@@ -140,7 +141,7 @@ export function buildOrderConfirmation(
       : ""
   }
     <tr><td style="padding:8px 0">${escapeHtml(shippingLine)}</td>
-        <td style="padding:8px 0;text-align:right">${euro(order.shippingCents)}</td></tr>
+        <td style="padding:8px 0;text-align:right">${escapeHtml(shippingAmount)}</td></tr>
     <tr><td style="padding:8px 0"><strong>${escapeHtml(m.total)}</strong></td>
         <td style="padding:8px 0;text-align:right"><strong>${euro(order.totalCents)}</strong></td></tr>
   </table>
@@ -164,7 +165,7 @@ export function buildOrderConfirmation(
     "",
     ...order.items.map((item) => `- ${itemTitle(item, messages, locale, animals)} × ${item.quantity}: ${euro(item.unitCents * item.quantity)}`),
     ...(discountLine ? [`${discountLine}: - ${euro(order.discountCents)}`] : []),
-    `${shippingLine}: ${euro(order.shippingCents)}`,
+    `${shippingLine}: ${shippingAmount}`,
     `${m.total}: ${euro(order.totalCents)}`,
     m.vatExempt,
     "",
@@ -181,5 +182,37 @@ export function buildOrderConfirmation(
       .join(" · "),
   ].join("\n");
 
+  return { subject, html, text };
+}
+
+export type PickupMailOrder = { number: string; firstName: string; locale: string };
+
+/**
+ * Mails for an order picked up on campus: "ready" once, when everything is checked in, and "update" as often as the
+ * team needs (when they'll be there), with a message the admin writes per language. Pure, like the confirmation.
+ */
+export function buildPickupMail(
+  kind: "ready" | "update",
+  order: PickupMailOrder,
+  { company = COMPANY, message }: { company?: Pick<typeof COMPANY, "legalName" | "address" | "email">; message?: string } = {},
+) {
+  const locale = toLocale(order.locale);
+  const m = MESSAGES[locale].pickupEmail;
+  const values = { number: order.number, name: order.firstName, location: m.location };
+  const subject = fill(kind === "ready" ? m.readySubject : m.updateSubject, values);
+  const title = fill(kind === "ready" ? m.readyTitle : m.updateTitle, values);
+  const body = kind === "ready" ? [fill(m.readyText, values)] : [fill(m.updateIntro, values), (message ?? "").trim()];
+  if (kind === "update" && !body[1]) throw new Error("A pickup update needs a message");
+
+  const paragraphs = body.map((paragraph) => `<p>${escapeHtml(paragraph).replaceAll("\n", "<br>")}</p>`).join("\n  ");
+  const html = `<!doctype html>
+<html lang="${locale}"><body style="font-family:Arial,sans-serif;color:#1f2d24;max-width:560px;margin:0 auto;padding:24px">
+  <h1 style="font-size:22px">${escapeHtml(title)}</h1>
+  ${paragraphs}
+  <p>${escapeHtml(m.footer)}</p>
+  <hr style="border:none;border-top:1px solid #ddd">
+  <p style="font-size:12px;color:#666">${escapeHtml(company.legalName)} · ${escapeHtml(company.address)}<br>${escapeHtml(company.email)}</p>
+</body></html>`;
+  const text = [title, "", ...body.flatMap((paragraph) => [paragraph, ""]), m.footer, "", [company.legalName, company.address, company.email].join(" · ")].join("\n");
   return { subject, html, text };
 }

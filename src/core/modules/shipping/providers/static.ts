@@ -22,7 +22,6 @@ export const staticShippingProvider: ShippingProvider = {
         label: option.label,
         eta: option.eta,
         priceCents,
-        checkoutIdentifier: null,
       }));
   },
 };

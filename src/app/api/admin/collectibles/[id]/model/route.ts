@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z, ZodError } from "zod";
 import { requireAdmin, UnauthorizedError } from "@/core/modules/auth/service";
 import {
+  CollectibleAnimalMissingError,
   CollectibleModelMissingError,
   CollectibleNotFoundError,
   getCollectibleModelDownload,
@@ -22,6 +23,9 @@ export async function POST(_request: Request, ctx: RouteContext<"/api/admin/coll
     }
     if (error instanceof CollectibleModelMissingError) {
       return NextResponse.json({ error: "Deze collectible heeft nog geen 3D-model" }, { status: 409 });
+    }
+    if (error instanceof CollectibleAnimalMissingError) {
+      return NextResponse.json({ error: "Kies en bewaar eerst het dier: de download is naar de collectible genoemd" }, { status: 409 });
     }
     console.error(error);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });

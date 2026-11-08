@@ -64,10 +64,10 @@ export type AdminPreviewDetail = {
   status: PreviewStatus;
   email: string | null;
   error: string | null;
-  shopifyOrderId: string | null;
-  // Order uit de eigen checkout (null voor testpreviews en oude Shopify-orders).
+  // De betaalde order (null voor testpreviews en nieuwe collectibles).
   order: { id: string; number: string; notes: string | null } | null;
-  orderNumber: string | null;
+  /** De basisnaam van de printbestanden: PAL-PLY1042-01-P-RING-KAT, COL-007-HOND of PRV-A3F9C2E1. */
+  printName: string;
   quantity: number; // aantal exemplaren in de order
   createdAt: string; // ISO-string: Date gaat niet zuiver van server naar client
   photos: AdminPhoto[];
@@ -104,6 +104,7 @@ export type AdminPreviewListItem = {
 export type ReviewListItem = AdminPreviewListItem & {
   photoUrls: string[];
   orderNumber: string | null;
+  printName: string;
   forCollectible: boolean; // een nieuwe collectible, los van een order
   quantity: number;
 };

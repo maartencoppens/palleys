@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { requireAdminPage } from "@/core/modules/auth/service";
+import { getShopSettings } from "@/core/modules/settings/service";
 import { getCollectibleForAdmin } from "@/core/modules/collectibles/service";
 import { CollectibleForm } from "@/components/functional/admin/settings/CollectibleForm";
 import { SettingsHeader } from "@/components/functional/admin/settings/SettingsParts";
@@ -14,7 +15,7 @@ export default async function EditCollectiblePage({ params }: PageProps<"/admin/
   await requireAdminPage();
   const parsed = paramsSchema.safeParse(await params);
   if (!parsed.success) notFound();
-  const collectible = await getCollectibleForAdmin(parsed.data.id);
+  const [collectible, { catalog }] = await Promise.all([getCollectibleForAdmin(parsed.data.id), getShopSettings()]);
   if (!collectible) notFound();
   return (
     <>
@@ -36,7 +37,7 @@ export default async function EditCollectiblePage({ params }: PageProps<"/admin/
           </Link>
         </p>
       )}
-      <CollectibleForm collectible={collectible} />
+      <CollectibleForm collectible={collectible} animals={catalog.animals} />
     </>
   );
 }

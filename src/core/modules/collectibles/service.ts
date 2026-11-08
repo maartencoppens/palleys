@@ -22,11 +22,11 @@ import {
   collectibleImageUrl,
   collectibleModelKey,
   isCollectibleImageFile,
-  modelDownloadName,
-  skuForSlug,
+  collectibleIdOf,
   slugify,
 } from "./utils";
 import { localizedTexts, parseTranslations } from "./translations";
+import { palleyFileName } from "@/core/utils/naming";
 import {
   missingTranslations,
   type AdminCollectible,
@@ -91,7 +91,9 @@ export async function listCollectiblesForAdmin(): Promise<AdminCollectible[]> {
   });
   return rows.map((row) => ({
     ...toView(row, DEFAULT_LOCALE),
-    sku: row.sku,
+    number: row.number,
+    animalCode: row.animalCode,
+    collectibleId: collectibleIdOf(row),
     modelKey: row.modelKey,
     modelFileName: row.modelFileName,
     sourcePreviewId: row.sourcePreviewId,
@@ -130,6 +132,8 @@ async function uniqueSlug(name: string) {
 }
 
 export class CollectibleModelMissingError extends Error {}
+/** The download is named after the collectible's id, which needs its animal. */
+export class CollectibleAnimalMissingError extends Error {}
 
 /** A model the browser says it uploaded must really be in R2 before the database points at it. */
 async function assertModelUploaded(key: string | null, currentKey: string | null = null) {
@@ -140,7 +144,7 @@ export async function createCollectible(input: CollectibleInput, adminName: stri
   await assertModelUploaded(input.modelKey);
   const slug = await uniqueSlug(input.name);
   const row = await prisma.collectible.create({
-    data: { ...input, slug, sku: skuForSlug(slug), updatedBy: adminName },
+    data: { ...input, slug, updatedBy: adminName },
     select: { id: true },
   });
   return { id: row.id };
@@ -235,7 +239,7 @@ export async function startCollectibleGeneration(input: GenerateCollectibleInput
       data: {
         name,
         slug,
-        sku: skuForSlug(slug),
+        animalCode: input.animalType,
         priceCents: DEFAULT_COLLECTIBLE_PRICE_CENTS,
         published: false,
         sourcePreviewId: previewId,
@@ -289,7 +293,7 @@ export async function attachPreviewModel(previewId: string, adminName: string) {
     data: {
       name,
       slug,
-      sku: skuForSlug(slug),
+      animalCode: preview.animalType,
       priceCents: DEFAULT_COLLECTIBLE_PRICE_CENTS,
       published: false,
       sourcePreviewId: previewId,
@@ -309,10 +313,12 @@ export async function createModelUpload() {
 
 /** A fresh signed link per click: one made when the page loaded would have expired. */
 export async function getCollectibleModelDownload(id: string) {
-  const row = await prisma.collectible.findUnique({ where: { id }, select: { modelKey: true, modelFileName: true, sku: true } });
+  const row = await prisma.collectible.findUnique({ where: { id }, select: { modelKey: true, number: true, animalCode: true } });
   if (!row) throw new CollectibleNotFoundError(id);
   if (!row.modelKey) throw new CollectibleModelMissingError(id);
-  const fileName = modelDownloadName(row.modelFileName, row.sku);
+  const name = collectibleIdOf(row);
+  if (!name) throw new CollectibleAnimalMissingError(id);
+  const fileName = palleyFileName(name, "print");
   return { url: await createDownloadUrl(row.modelKey, fileName), fileName };
 }
 

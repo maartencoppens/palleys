@@ -14,6 +14,7 @@ const STATUS: Record<CheckoutErrorCode, number> = {
   address_required: 400,
   discount_invalid: 409,
   discount_min_subtotal: 409,
+  total_changed: 409,
   payment_failed: 502,
 };
 

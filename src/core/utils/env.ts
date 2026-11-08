@@ -18,11 +18,6 @@ const schema = z.object({
   MESHY_WEBHOOK_SECRET: z.string().min(32),
   // Publieke basis-URL van de app, voor webhooks. Bewust los van BETTER_AUTH_URL.
   APP_URL: z.url().transform((url) => url.replace(/\/+$/, "")),
-  SHOPIFY_STORE_DOMAIN: z.string().min(1),
-  SHOPIFY_API_VERSION: z.string().min(1),
-  SHOPIFY_STOREFRONT_PRIVATE_TOKEN: z.string().min(1),
-  SHOPIFY_CLIENT_ID: z.string().min(1),
-  SHOPIFY_CLIENT_SECRET: z.string().min(1),
   // Bancontact Pro (via KBC). One API key per payment profile, from portal.bancontactpro.com.
   // Unset = checkout shows "betalen niet beschikbaar". BANCONTACT_ENV: preprod for testing, production for real money.
   BANCONTACT_API_KEY: optional(z.string().min(16)),
@@ -34,9 +29,6 @@ const schema = z.object({
   RESEND_API_KEY: optional(z.string().min(1)),
   EMAIL_FROM: optional(z.string().min(3)), // e.g. "Palleys <bestellingen@palleys.be>", domain verified in Resend
   EMAIL_REPLY_TO: optional(z.email()),
-  // Sendcloud: the API integration's Secret Key (or Webhook Signature Key), which signs every webhook. Unset = the
-  // webhook route refuses every call.
-  SENDCLOUD_WEBHOOK_SECRET: optional(z.string().min(16)),
   // Bearer secret for /api/cron/* (expiring unpaid orders). Unset = the cron route refuses every call.
   CRON_SECRET: optional(z.string().min(32)),
 });

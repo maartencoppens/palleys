@@ -38,6 +38,7 @@ export type CheckoutErrorCode =
   | "address_required"
   | "discount_invalid"
   | "discount_min_subtotal"
+  | "total_changed"
   | "payment_failed";
 
 export class CheckoutError extends Error {
@@ -133,6 +134,10 @@ export async function startCheckout(cartToken: string | null, input: CheckoutInp
     // Free delivery in person is what the code gives: without one that may, this option doesn't exist.
     if (forFriends && !discount?.personalDelivery) throw new CheckoutError("delivery_option_invalid");
     const totals = computeTotals(lines, delivery.priceCents, discount?.discountCents ?? 0);
+    // A price (product or delivery) changed since the form showed it: let the customer see the new total first.
+    if (input.expectedTotalCents !== undefined && input.expectedTotalCents !== totals.totalCents) {
+      throw new CheckoutError("total_changed", { totalCents: totals.totalCents });
+    }
     const number = await nextOrderNumber(tx);
     return tx.order.create({
       data: {
@@ -157,10 +162,11 @@ export async function startCheckout(cartToken: string | null, input: CheckoutInp
         marketingOptIn: input.marketingOptIn,
         statusTokenHash: hashToken(statusToken),
         items: {
-          create: lines.map((line) => ({
+          create: lines.map((line, index) => ({
+            position: index + 1, // the cart's order: the {nn} in each Palley's name
             previewId: line.previewId,
             collectibleId: line.collectibleId,
-            sku: line.sku,
+            productCode: line.productCode,
             size: line.size,
             edition: line.edition,
             attachment: line.attachment,
@@ -181,7 +187,6 @@ export async function startCheckout(cartToken: string | null, input: CheckoutInp
             carrier: delivery.carrier,
             label: delivery.label,
             priceCents: delivery.priceCents,
-            checkoutIdentifier: delivery.checkoutIdentifier,
           },
         },
         statusChanges: { create: { fromStatus: null, toStatus: "PENDING_PAYMENT", source: "checkout" } },
