@@ -18,9 +18,7 @@ export default async function CtaCard() {
         <h2 className="font-display text-[clamp(2.25rem,1.2rem+3vw,3.5rem)] leading-[1.04] font-medium tracking-[-0.02em] text-medium-green">
           {m.title}
         </h2>
-        <p className="text-lg leading-[1.6] text-text-primary">
-          {m.text}
-        </p>
+        <p className="text-lg leading-[1.6] text-text-primary">{m.text}</p>
         <Link
           href="/create"
           className="group flex items-center gap-3 rounded-full bg-orange py-[18px] pr-6 pl-7 font-label text-lg leading-[normal] font-semibold text-off-white transition hover:bg-orange-hover active:scale-[0.98]"
@@ -41,7 +39,7 @@ export default async function CtaCard() {
       <div className="relative h-60 shrink-0 sm:h-72 lg:h-auto lg:w-[43.75%]">
         <Image
           className="object-cover object-[50%_65%] lg:object-center"
-          src="/images/cta/bulldog.jpg"
+          src="/images/cta/golden-retriever.jpg"
           alt={m.photoAlt}
           fill
           sizes="(min-width: 1024px) 560px, 100vw"
