@@ -35,7 +35,7 @@ export default async function Hero() {
            * Vertically centred in the space under the navbar. The extra top padding reproduces the
            * Figma placement when the area below the banner is 780px tall; on other heights the block stays centred.
            */}
-          <div className="flex flex-1 flex-col items-start justify-center gap-8 pt-14 pb-12 md:gap-2xl lg:pt-[55px] xl:pb-0 lg:pl-[clamp(0px,3.02vw,58px)]">
+          <div className="flex flex-1 flex-col items-start justify-center gap-8 pt-14 pb-20 md:gap-2xl lg:pt-[55px] xl:pb-0 lg:pl-[clamp(0px,3.02vw,58px)]">
             <h1
               id="hero-title"
               className="font-display text-[clamp(2.375rem,1.2rem+4.6vw,4.875rem)] leading-[0.98] font-medium tracking-[-0.045em]"

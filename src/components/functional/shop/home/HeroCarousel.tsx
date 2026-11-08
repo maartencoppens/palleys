@@ -85,7 +85,7 @@ export default function HeroCarousel({ m }: HeroCarouselProps) {
       onFocus={() => setFocused(true)}
       onBlur={onBlur}
       style={{ "--flow-turn": `${position * STEP_ANGLE}deg` } as CSSProperties}
-      className="pointer-events-none relative flex flex-col items-center gap-l self-center pt-2 *:pointer-events-auto pb-36 [--flow-dir:1] [--flow-radius:calc(var(--flow-size)*1.08)] [--flow-size:min(58vw,250px)] [--flow-slot:270deg] md:pb-44 xl:absolute xl:inset-y-0 xl:right-[4%] xl:left-[54%] xl:justify-center xl:pt-24 xl:pb-0 xl:[--flow-dir:-1] xl:[--flow-radius:calc(var(--flow-size)*1.05)] xl:[--flow-size:clamp(260px,25vw,460px)] xl:[--flow-slot:180deg]"
+      className="pointer-events-none relative flex flex-col items-center gap-l self-center pt-2 *:pointer-events-auto pb-24 [--flow-dir:1] [--flow-radius:calc(var(--flow-size)*1.08)] [--flow-size:min(54vw,240px)] [--flow-slot:270deg] md:pb-44 xl:absolute xl:inset-y-0 xl:right-[4%] xl:left-[54%] xl:justify-center xl:pt-24 xl:pb-0 xl:[--flow-dir:-1] xl:[--flow-radius:calc(var(--flow-size)*1.05)] xl:[--flow-size:clamp(260px,25vw,460px)] xl:[--flow-slot:180deg]"
     >
       <div className="relative size-(--flow-size)">
         {/* The pivot: one radius away from the active slot, on the opposite side. Clicks go through the wheel to the controls. */}
@@ -120,7 +120,7 @@ export default function HeroCarousel({ m }: HeroCarouselProps) {
                       src={images[index]}
                       width={640}
                       height={640}
-                      sizes="(min-width: 1280px) 460px, 250px"
+                      sizes="(min-width: 1280px) 460px, 240px"
                       loading="eager"
                       alt={step.alt}
                       className="size-full rounded-full bg-off-white object-cover shadow-[0_24px_48px_-16px_rgb(0_0_0/0.45)] ring-[6px] ring-off-white"
