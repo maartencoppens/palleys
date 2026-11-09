@@ -9,6 +9,8 @@ type QuantityStepperProps = {
   /** Names the product for screen readers, e.g. "Palley · Hond". */
   label: string;
   size?: "default" | "small";
+  /** Highest choice; the cart's line limit unless less is available (e.g. what can still be returned). */
+  max?: number;
 };
 
 const sizes = {
@@ -26,6 +28,7 @@ export default function QuantityStepper({
   disabled = false,
   label,
   size = "default",
+  max = MAX_LINE_QUANTITY,
 }: QuantityStepperProps) {
   const styles = sizes[size];
   const { quantity: m } = useMessages().cart;
@@ -55,7 +58,7 @@ export default function QuantityStepper({
       <button
         type="button"
         onClick={() => onChange(quantity + 1)}
-        disabled={disabled || quantity >= MAX_LINE_QUANTITY}
+        disabled={disabled || quantity >= max}
         className={buttonClassName}
         aria-label={m.more}
       >

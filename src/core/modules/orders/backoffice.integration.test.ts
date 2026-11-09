@@ -93,6 +93,7 @@ const { confirmProcessedUpload, getCollectiblePrintQueue } = await import("@/cor
 const { approvePreview, setPromptOverride, uploadPose } = await import("@/core/modules/previews/service");
 const { updateSettingsSection, getShopSettings } = await import("@/core/modules/settings/service");
 const { DEFAULT_ANIMALS } = await import("@/data/animals");
+const { COMPANY } = await import("@/data/company");
 const { manualOrderSchema } = await import("./types");
 const { expireStaleOrders, handlePaymentWebhook, createManualOrderPaymentLink, recordManualPayment, ManualPaymentNotAllowedError } = await import(
   "@/core/modules/payments/service"
@@ -244,7 +245,7 @@ describe("collectibles", () => {
         postalCode: "9000",
         city: "Gent",
         country: "BE",
-        deliveryOptionId: "be-bpost-home",
+        deliveryOptionId: "be-postnl-home",
         acceptTerms: true,
       }),
     );
@@ -258,8 +259,22 @@ describe("collectibles", () => {
     expect(order.attentionReason).toBeNull();
     expect(order.subtotalCents).toBe(2 * input.priceCents);
     expect(order.items[0]).toMatchObject({ collectibleId: id, previewId: null, withdrawable: true, quantity: 2 });
-    expect(mail.sent[0].text).toContain("14 dagen");
-    expect(mail.sent[0].text).not.toContain("herroepingsrecht niet");
+    const confirmation = mail.sent.find((message) => message.to === order.email)!;
+    expect(confirmation.text).toContain("14 dagen");
+    expect(confirmation.text).not.toContain("herroepingsrecht niet");
+
+    // The team hears about it once, at the company e-mail, also when the webhook comes again.
+    const team = () => mail.sent.filter((message) => message.to === COMPANY.email);
+    expect(team()).toHaveLength(1);
+    expect(team()[0].text).toContain(order.number);
+    expect(team()[0].text).toContain("Alleen collectie");
+    await handlePaymentWebhook(payment.providerPaymentId);
+    expect(team()).toHaveLength(1);
+  });
+
+  it("doesn't mail the team about an order an admin added", async () => {
+    await addOrder({ customer: { ...friend, email: "vriend@example.be" }, payment: { type: "paid", method: "cash" }, sendConfirmation: true });
+    expect(mail.sent.map((message) => message.to)).toEqual(["vriend@example.be"]);
   });
 });
 
@@ -357,7 +372,7 @@ describe("adding an order by hand", () => {
       lines: [{ kind: "personalized", animal: "cat", edition: "figure", quantity: 2, unitCents: 1000 }],
       delivery: {
         type: "ship",
-        optionId: "be-bpost-home",
+        optionId: "be-postnl-home",
         priceCents: 0,
         street: "Vriendenstraat",
         houseNumber: "2",

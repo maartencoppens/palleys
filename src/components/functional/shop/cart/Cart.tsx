@@ -297,7 +297,8 @@ export default function Cart({ deliveryTime, returnNote }: { deliveryTime: strin
         </div>
         <WarningNote>{common.heatWarning}</WarningNote>
         {hasPersonalized && <p className="text-sm leading-[1.5] text-text-muted">{returnNote}</p>}
-        {hasCollectible && <p className="text-sm leading-[1.5] text-text-muted">{m.summary.collectibleReturn}</p>}
+        {/* The return note covers the collection too; only a cart of collectibles needs its own line. */}
+        {hasCollectible && !hasPersonalized && <p className="text-sm leading-[1.5] text-text-muted">{m.summary.collectibleReturn}</p>}
       </aside>
 
       {/* Phones: total and checkout stay in reach while scrolling, and settle below the summary. */}

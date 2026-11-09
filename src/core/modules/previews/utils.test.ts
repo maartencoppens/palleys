@@ -28,14 +28,14 @@ const source = (overrides: Partial<PrintNameSource> = {}): PrintNameSource => ({
 
 describe("print names", () => {
   it("names a paid Palley after its order line", () => {
-    const item = { position: 1, productCode: "P-RING-KAT", reprintNr: 0, order: { number: "PLY1042" } };
+    const item = { position: 1, productCode: "P-RING-KAT", reprintNr: 0, order: { number: "PLY1042", reprintOf: null } };
     expect(printBaseName(source({ orderItems: [item] }))).toBe("PAL-PLY1042-01-P-RING-KAT");
     expect(printBaseName(source({ orderItems: [{ ...item, position: 2, reprintNr: 1 }] }))).toBe("PAL-PLY1042-02-P-RING-KAT-R1");
   });
 
   it("falls back to the preview without a paid order, or one from before the standard", () => {
     expect(printBaseName(source())).toBe("PRV-A3F9C2E1");
-    const legacy = { position: 1, productCode: "PAL-GP-KEY-KAT", reprintNr: 0, order: { number: "PAL-2026-00042" } };
+    const legacy = { position: 1, productCode: "PAL-GP-KEY-KAT", reprintNr: 0, order: { number: "PAL-2026-00042", reprintOf: null } };
     expect(printBaseName(source({ orderItems: [legacy] }))).toBe("PRV-A3F9C2E1");
   });
 

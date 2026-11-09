@@ -11,7 +11,7 @@ import {
   catalogSettingsSchema,
   companySettingsSchema,
   promptSettingsSchema,
-  shippingSettingsSchema,
+  storedShippingOverridesSchema,
   localizedSiteContentSchema,
   siteContentSchema,
   type LocalizedSiteContent,
@@ -64,7 +64,7 @@ export async function getShopSettings(): Promise<ShopSettings> {
   return {
     checkoutEnabled: row.checkoutEnabled,
     checkoutClosedMessage: row.checkoutClosedMessage,
-    shippingOverrides: parsed(shippingSettingsSchema.shape.shippingOverrides, row.shippingOverrides, {}),
+    shippingOverrides: parsed(storedShippingOverridesSchema, row.shippingOverrides, {}),
     catalog: parsed(catalogSettingsSchema, row.catalog, DEFAULTS.catalog),
     content: parsedContent(row.siteContent),
     company: parsed(companySettingsSchema, row.company, DEFAULTS.company),

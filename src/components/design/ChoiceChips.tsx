@@ -1,7 +1,10 @@
+import type { ReactNode } from "react";
+
 type ChoiceChipsProps<T extends string> = {
   legend: string;
   name: string;
-  options: readonly { value: T; label: string }[];
+  /** An icon is drawn in currentColor, so it follows the chip's text colour when selected. */
+  options: readonly { value: T; label: string; icon?: ReactNode }[];
   value: T | null;
   onChange: (value: T) => void;
   /** Extra line under the chips, e.g. the product size. */
@@ -35,7 +38,8 @@ export default function ChoiceChips<T extends string>({
               onChange={() => onChange(option.value)}
               className="peer sr-only"
             />
-            <span className="block rounded-full border-[1.5px] border-medium-green bg-white px-6 py-3 font-label text-lg leading-[normal] font-medium text-medium-green transition-colors peer-checked:bg-medium-green peer-checked:text-off-white peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent-highlights hover:bg-off-white peer-checked:hover:bg-medium-green">
+            <span className="flex items-center gap-2 rounded-full border-[1.5px] border-medium-green bg-white px-6 py-3 font-label text-lg leading-[normal] font-medium text-medium-green transition-colors peer-checked:bg-medium-green peer-checked:text-off-white peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent-highlights hover:bg-off-white peer-checked:hover:bg-medium-green">
+              {option.icon}
               {option.label}
             </span>
           </label>

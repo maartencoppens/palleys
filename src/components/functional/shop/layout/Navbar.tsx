@@ -30,12 +30,19 @@ interface ScrollUpdateContext {
  *
  * While the fixed bar is visible, `--nav-offset` on <html> holds its height, so other sticky elements
  * (e.g. the create page stepper) can sit just below it instead of being covered.
+ *
+ * With `pinOnScroll={false}` it just stays in its spot and scrolls away with the page. The create page
+ * uses that: its own sticky stepper is the bar there, and the two moving together looked glitchy.
+ *
+ * Below lg the page links move into the mobile menu, and below md the language switcher does too, so the
+ * bar keeps room for the logo, cart and menu button.
  */
-export default function Navbar() {
+export default function Navbar({ pinOnScroll = true }: { pinOnScroll?: boolean }) {
   const { nav, common } = useMessages();
   const links: NavLink[] = [
     { label: nav.home, href: "/" },
     { label: common.createPalley, href: "/create" },
+    { label: nav.collection, href: "/shop" },
     { label: nav.about, href: "/about" },
   ];
   const [menuOpen, setMenuOpen] = useState(false);
@@ -61,7 +68,7 @@ export default function Navbar() {
   useGSAP(() => {
     const slot = slotRef.current;
     const bar = barRef.current;
-    if (!slot || !bar) return;
+    if (!pinOnScroll || !slot || !bar) return;
 
     const root = document.documentElement;
     const duration = prefersReducedMotion() ? 0 : 0.35;
@@ -100,7 +107,9 @@ export default function Navbar() {
     const unpin = () => {
       isPinned = false;
       isShown = false;
-      gsap.killTweensOf(bar);
+      // Also stop a running --nav-offset tween, or it ends after the reset and leaves sticky elements
+      // (the create page stepper) hanging below a bar that is no longer there.
+      gsap.killTweensOf([bar, root]);
       gsap.set(bar, { clearProps: "transform" });
       gsap.set(root, { "--nav-offset": "0px" });
       slot.style.height = "";
@@ -147,7 +156,7 @@ export default function Navbar() {
         }
       >
         <div
-          className={`relative flex items-center justify-between ${pinned ? "page-container py-2" : ""}`}
+          className={`relative flex items-center justify-between ${pinned ? "page-container py-2.5" : "pt-2 md:pt-0"}`}
         >
           <Link
             href="/"
@@ -156,7 +165,7 @@ export default function Navbar() {
             data-nav-item
           >
             <Image
-              className={`h-auto transition-[width] duration-300 ${pinned ? "w-14 md:w-16" : "w-[clamp(72px,7.43vw,107px)]"}`}
+              className={`h-auto ${pinned ? "w-14 md:w-16" : "w-[clamp(72px,7.43vw,107px)]"}`}
               src="/images/footer/palleys-logo.svg"
               width={107}
               height={107}
@@ -166,10 +175,10 @@ export default function Navbar() {
           </Link>
 
           <nav
-            className="flex items-center gap-s md:gap-8 md:pl-5 lg:gap-12"
+            className="flex items-center gap-4 md:gap-8 md:pl-5 xl:gap-12"
             aria-label={nav.mainMenu}
           >
-            <ul className="hidden items-center gap-10 md:flex lg:gap-[70px]">
+            <ul className="hidden items-center gap-9 lg:flex xl:gap-[56px]">
               {links.map((link) => (
                 <li key={link.href} data-nav-item>
                   <Link
@@ -184,12 +193,14 @@ export default function Navbar() {
 
             {/* Separates the page links from the cart, so the cart reads as its own action. */}
             <span
-              className="hidden h-7 w-px bg-text-secondary/30 md:block"
+              className="hidden h-7 w-px bg-text-secondary/30 lg:block"
               aria-hidden
               data-nav-item
             />
 
-            <LanguageSwitcher />
+            <div className="max-md:hidden" data-nav-item>
+              <LanguageSwitcher />
+            </div>
 
             <CartMenu
               pinned={pinned}
@@ -200,7 +211,7 @@ export default function Navbar() {
             <button
               ref={toggleRef}
               type="button"
-              className="grid size-11 place-content-center gap-[5px] rounded-lg md:hidden"
+              className="-mr-2 grid size-11 place-content-center gap-[5px] rounded-lg lg:hidden"
               aria-expanded={menuOpen}
               aria-controls="mobile-menu"
               aria-haspopup="dialog"

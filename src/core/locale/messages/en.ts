@@ -26,6 +26,10 @@ export const en: Messages = {
     order: "Order | Palleys",
     privacy: "Privacy policy | Palleys",
     terms: "Terms and conditions | Palleys",
+    returns: "Returns | Palleys",
+    returnPolicy: "Return and refund policy | Palleys",
+    shippingPolicy: "Shipping policy | Palleys",
+    contactDetails: "Contact details | Palleys",
     notFound: "Page not found | Palleys",
   },
 
@@ -46,6 +50,7 @@ export const en: Messages = {
 
   nav: {
     home: "Home",
+    collection: "Our collection",
     about: "About us",
     cart: "Cart",
     homeLabel: "Palleys homepage",
@@ -78,21 +83,20 @@ export const en: Messages = {
     social: "Palleys on {network}",
     privacy: "Privacy",
     terms: "Terms and conditions",
-    cookiePolicy: "Cookie policy",
-    cookieSettings: "Cookie settings",
+    returns: "Returns",
+    shipping: "Shipping",
+    contactDetails: "Contact details",
   },
 
   hero: {
-    titleAccent: "A pal",
-    titleRest: "for your keys.",
+    titleAccent: "Palleys,",
+    titleRest: "a pal for your keys.",
     text: "Meet your Palley: your pet as a 3D-printed keychain, made from your favourite photo and finished by hand. Your best friend, small enough to go anywhere with you.",
     collection: "View the collection",
     flow: {
       label: "From photo to Palley",
       step: "Step {current} of {total}",
       goTo: "Show step {number}: {title}",
-      pause: "Pause carousel",
-      play: "Play carousel",
       steps: [
         { title: "Your photo", alt: "Photo of a black-and-white cat in the grass" },
         { title: "AI pose", alt: "AI-made lying pose of the same cat" },
@@ -180,6 +184,9 @@ export const en: Messages = {
     sending: "Sending…",
     missing: "Please fill in your name, email address and message.",
     invalidEmail: "That email address doesn’t look right.",
+    tooLong: "Your name or message is too long. Please shorten it.",
+    rateLimited: "You just sent a few messages. Please try again in a few minutes.",
+    failed: "Your message couldn’t be sent. Please try again later, or email us directly.",
     sent: "Thank you! We’ll get back to you as soon as we can.",
   },
 
@@ -231,7 +238,7 @@ export const en: Messages = {
     productLoading: "Loading the product",
     exclShipping: "excl. shipping",
     delivery: "Within {deliveryTime}, your order lands in your mailbox.",
-    returnNote: "A Palley from our collection can be returned within 14 days of receipt.",
+    returnNote: "You can withdraw from a Palley from our collection without giving a reason until 14 days after you received or picked it up.",
     add: "Add to cart",
     adding: "Adding…",
     errors: {
@@ -266,7 +273,9 @@ export const en: Messages = {
       animalError: "Choose your type of pet.",
       edition: "Keychain or figurine?",
       attachment: "How do you want to attach it to your keys?",
-      size: "About 3.7 cm on the longest side.",
+      size: "About {size} on the longest side.",
+      sizeTitle: "How big is a Palley?",
+      sizeCompare: "A little bigger than a €2 coin.",
       keychainHint: "The keychain comes with a chain and a clip or key ring, your choice.",
     },
     upload: {
@@ -310,7 +319,12 @@ export const en: Messages = {
       notes: "Anything we should know?",
       optional: "(optional)",
       notesPlaceholder: "Particular spots, something special about their appearance…",
-      consent: "I am allowed to use these photos and I understand they are processed by AI services to make my Palley. I agree to the {terms} and the {privacy}.",
+      consentIntro: "I confirm that:",
+      consentPoints: [
+        "these photos are my own, or I’m allowed to use them;",
+        "Palleys may use AI services to turn them into a 3D model of my pet;",
+        "I agree to the {terms} and the {privacy}.",
+      ],
       terms: "terms and conditions",
       privacy: "privacy policy",
       consentError: "Tick this box to place your order.",
@@ -331,6 +345,7 @@ export const en: Messages = {
       pet: "Pet",
       palley: "Palley",
       attachment: "Attachment",
+      size: "Size",
       photos: "Photos",
       photosCount: "{count} photos",
       total: "Total",
@@ -389,7 +404,7 @@ export const en: Messages = {
       wait: "One moment…",
       secure: "Pay securely online",
       charity: "With your Palley you also help other animals: 50% of our profit goes to Dierenasiel Gent.",
-      collectibleReturn: "A Palley from our collection can be returned within 14 days of receipt.",
+      collectibleReturn: "You can withdraw from a Palley from our collection without giving a reason until 14 days after you received or picked it up.",
     },
     mini: {
       button: "Cart",
@@ -426,6 +441,7 @@ export const en: Messages = {
     belgium: "Belgium",
     belgiumOnly: "(for now we only deliver in Belgium)",
     delivery: "Delivery",
+    friendsNote: "Do you know us personally? Send us a DM on {instagram} and you’ll get a discount code to pick up your Palley from us instead of having it delivered.",
     summary: "Your order",
     products: "Products",
     discount: "Discount code",
@@ -445,11 +461,12 @@ export const en: Messages = {
     customText: "Your Palley is made from your photos, so the right of withdrawal does not apply. The 2-year legal guarantee of course still applies.",
     customAi: "We use AI to turn your photos into a 3D model and check every step.",
     collectibleTitle: "Collection.",
-    collectibleText: "A Palley from our collection can be returned within 14 days of receipt.",
+    collectibleText: "You can withdraw from a Palley from our collection without giving a reason until 14 days after you received or picked it up.",
     accept: "I agree to the {terms}.",
     acceptCustom: "I agree to the {terms} and understand that I cannot withdraw from a made-to-measure Palley.",
     terms: "terms and conditions",
     marketing: "Keep me posted about new Palleys (optional, you can unsubscribe at any time).",
+    photoMarketing: "Palleys may use the photo of my pet and my Palley on the website and social media (optional, you can withdraw this at any time by emailing us).",
     submit: "Order with obligation to pay",
     submitting: "Going to payment…",
     payNote: "You pay securely with {methods}: scan the QR code or pay in your banking app. Please also read our {privacy}.",
@@ -496,7 +513,7 @@ export const en: Messages = {
     none: "For now we don’t deliver to this address.",
     free: "Free",
     options: {
-      "be-bpost-home": { label: "Home delivery with bpost", eta: "1–2 working days after shipping" },
+      "be-postnl-home": { label: "Home delivery with PostNL", eta: "1–2 working days after shipping" },
       "be-pickup-kantienberg": { label: "Pick up at campus Kantienberg", eta: "We’ll let you know when your order is ready." },
       "friends-family": { label: "Handed over in person", eta: "We’ll agree together when we give it to you." },
     },
@@ -522,6 +539,146 @@ export const en: Messages = {
     summaryTitle: "Summary",
   },
 
+  // LEGAL-REVIEW: everything on /retour, from the return policy of 9 November 2026: the periods, the exception for a
+  // Palley op maat, what the guarantee covers, and the online withdrawal function (Directive (EU) 2023/2673).
+  returns: {
+    eyebrow: "Returns",
+    title: "Cancel, withdraw or report a problem",
+    intro: "Enter your order number and e-mail address. We’ll e-mail you a link to your order, where you see what’s possible for each Palley.",
+    lookup: {
+      title: "Find your order",
+      orderNumber: "Order number",
+      orderNumberHint: "It’s in your confirmation e-mail, for example PLY1042.",
+      email: "E-mail address",
+      emailHint: "The address you ordered with.",
+      submit: "Send me a link",
+      sent: "If this is correct, we’ll send you a link within a few minutes.",
+      sentHint: "The link works once and for 30 minutes. Nothing arrived? Check your spam or e-mail us at {email}.",
+      again: "Look up again",
+      errors: {
+        orderNumber: "Enter your order number as in your confirmation e-mail, for example PLY1042.",
+        email: "That e-mail address doesn’t look right.",
+        rateLimited: "Too many attempts. Please try again in a few minutes.",
+      },
+    },
+    policy: {
+      title: "In short",
+      items: [
+        "Custom Palley: you can cancel free of charge as long as your order hasn’t gone into production. After that the right of withdrawal doesn’t apply, because we make it especially for you (art. VI.53, 3° Belgian Code of Economic Law).",
+        "Palley from our collection: you can withdraw without giving a reason until 14 days after you received or picked it up. You can also do so before it arrives.",
+        "Damaged, faulty or not what you ordered: report it within 2 months of noticing. We reprint it for free or refund you.",
+      ],
+      mail: "Prefer e-mail? Write to {email} with your order number.",
+      full: "Everything is in our {policy}.",
+    },
+    session: {
+      opening: "Opening your order…",
+      expiredTitle: "This link no longer works",
+      expiredText: "A link works once and for 30 minutes. Request a new one below.",
+    },
+    overview: {
+      title: "Order {number}",
+      hello: "Hi {name}, this is what’s in your order. For each Palley you see what you can do.",
+      received: "Received on {date}",
+      receivedEstimated: "Received around {date}",
+      quantity: "Quantity: {quantity}",
+      kinds: { personalized: "Custom Palley", collectible: "Palley from our collection" },
+      statuses: {
+        paid: "Paid, not yet in production",
+        in_production: "In production",
+        sent: "Shipped",
+        picked_up: "Picked up or handed over",
+        refunded: "Refunded",
+        cancelled: "Cancelled",
+        request_open: "Request in progress",
+      },
+      canCancel: "Cancel free of charge",
+      canWithdraw: "Withdraw",
+      canWithdrawUntil: "Withdraw until {date}",
+      canWarranty: "Report a problem",
+      notices: {
+        custom_no_withdrawal: "This custom Palley is already in production. We make it especially for you, so the right of withdrawal doesn’t apply (art. VI.53, 3° Belgian Code of Economic Law). If something is wrong with it, you can report a problem once you have it.",
+        withdrawal_expired: "The 14-day withdrawal period has ended.",
+        warranty_expired: "The 2-year legal guarantee has ended.",
+        refunded: "This order has been refunded.",
+        request_open: "There’s already a request in progress for this Palley.",
+      },
+      actionsTitle: "What would you like to do?",
+      actions: {
+        CANCELLATION: "Cancel free of charge as long as your custom Palley isn’t in production. You get the full amount back.",
+        WITHDRAWAL: "Palleys from our collection: 14 days to change your mind, no reason needed.",
+        WARRANTY: "Damaged, faulty or not what you ordered? We reprint it for free or refund you.",
+      },
+      nothing: "There’s nothing left to request online for this order. Questions? E-mail us at {email}.",
+      requestsTitle: "Your requests",
+      requestStatuses: { SUBMITTED: "Received", APPROVED: "Approved", REJECTED: "Declined", COMPLETED: "Completed" },
+      rejectedBecause: "Reason: {reason}",
+      submittedOn: "Sent on {date}",
+    },
+    types: { CANCELLATION: "Cancellation", WITHDRAWAL: "Withdrawal", WARRANTY: "Warranty claim" },
+    typesLower: { CANCELLATION: "cancellation", WITHDRAWAL: "withdrawal", WARRANTY: "warranty claim" },
+    start: { CANCELLATION: "Cancel", WITHDRAWAL: "Withdraw", WARRANTY: "Report a problem" },
+    form: {
+      back: "Back to your order",
+      itemsLegend: "Which Palleys?",
+      itemsHint: "Tick the Palleys and choose how many.",
+      quantityLabel: "Quantity for {title}",
+      reasonLabel: "Reason (optional)",
+      reasonHint: "You don’t have to give a reason.",
+      descriptionLabel: "What’s wrong?",
+      descriptionHint: "Briefly describe the problem and when you noticed it.",
+      photosLabel: "Photos",
+      photosHint: "{min} to {max} photos, JPG, PNG or WebP, at most {size} each. Show the problem as clearly as you can.",
+      addPhotos: "Choose photos",
+      removePhoto: "Remove photo {index}",
+      resolutionLegend: "What would you like?",
+      resolutions: { REPRINT: "Free reprint", REFUND: "Refund" },
+      notCoveredTitle: "What isn’t covered by the guarantee?",
+      notCovered: [
+        "Normal wear from use, for example on your keyring.",
+        "Damage from a fall or misuse after receipt.",
+        "Characteristics we described on the site beforehand, such as deforming above 50 °C (for example in a hot car or in full sun).",
+        "Characteristics of 3D printing: visible print layers, slight colour differences.",
+        "Delivery problems caused by a wrong address you entered yourself.",
+      ],
+      likenessNote: "A custom Palley is a 3D interpretation of your pet, made with the help of AI. We give no extra satisfaction guarantee on the likeness.",
+      continue: "Continue to the summary",
+      errors: {
+        items: "Choose at least one Palley.",
+        description: "Describe the problem in at least {min} characters.",
+        photos: "Add {min} to {max} photos.",
+        photoType: "We can’t use this file. Choose a JPG, PNG or WebP.",
+        photoSize: "A photo is larger than {size}.",
+        resolution: "Choose what you’d like.",
+        upload: "Your photos couldn’t be uploaded. Please try again.",
+        session: "Your session has expired. Request a new link.",
+        notAllowed: "This is no longer possible for (one of) these Palleys. Please look at your order again.",
+      },
+    },
+    summary: {
+      title: "Check your {type}",
+      items: "Palleys",
+      reason: "Reason",
+      noReason: "No reason given",
+      description: "Problem",
+      photos: "{count} photos",
+      resolution: "You choose",
+      edit: "Edit",
+      confirm: { CANCELLATION: "Confirm cancellation", WITHDRAWAL: "Confirm withdrawal", WARRANTY: "Send report" },
+      cancellation: "We won’t make this custom Palley and refund the full amount within 14 days, to the account you paid from with Bancontact.",
+      withdrawalBefore: "Your Palleys haven’t been shipped or picked up yet. We refund you straight away, within 14 days, and you don’t need to send anything back.",
+      withdrawalAfter: "Send the Palleys back unused and in good condition, at the latest 14 days from today, to {address}. You pay for the return shipping; keep the proof of postage. We refund you within 14 days, including the standard delivery costs of your order, but may wait until we have the Palleys or your proof of postage.",
+      warranty: "We’ll look at your report and let you know what we’ll do as soon as possible. Usually you don’t need to send anything back, and you never pay delivery or return costs.",
+      returnAddressMissing: "the address we’ll e-mail you",
+    },
+    done: {
+      title: "{type} received",
+      text: "We received your {type} on {date}. You’ll also get this confirmation by e-mail.",
+      returnBy: "Send your Palleys back by {date} at the latest.",
+      back: "Back to your order",
+    },
+  },
+
   email: {
     subject: "Thank you for your order {number}",
     title: "Thank you, {name}!",
@@ -536,7 +693,7 @@ export const en: Messages = {
     deliveryCollectible: "Within {deliveryTime}, your order lands in your mailbox.",
     deliveryPersonalized: "Every Palley is made especially for you and printed in full colour. Within {deliveryTime} it lands in your mailbox.",
     noWithdrawal: "Your Palley is made to measure from your photos, so the right of withdrawal does not apply (Art. VI.53, 3° of the Belgian Code of Economic Law).",
-    withdrawal: "A Palley from our collection is not made to measure: you may withdraw and return it without giving a reason within 14 days of receipt. Just email us your order number.",
+    withdrawal: "A Palley from our collection is not made to measure: you may withdraw and return it without giving a reason within 14 days of receipt, at palleys.be/retour or by e-mailing us your order number.",
     guarantee: "The 2-year legal guarantee still applies: if something is wrong with your Palley, let us know.",
     vatExempt: "Palleys is a student business in Unizo’s Step Up programme and is exempt from VAT: no VAT is charged.",
     termsAccepted: "You agreed to our terms and conditions (version {version})",
@@ -557,63 +714,434 @@ export const en: Messages = {
     footer: "Questions, or doesn’t it suit you? Just reply to this email.",
   },
 
+  // LEGAL-REVIEW: the link mail, the acknowledgement of receipt (durable medium) and the decision mails of /retour.
+  returnEmail: {
+    linkSubject: "Your link for order {number}",
+    linkTitle: "Hi {name},",
+    linkText: "Use this link to view order {number}. There you can cancel, withdraw or report a problem.",
+    linkButton: "Open your order",
+    linkExpiry: "The link works once and for 30 minutes. Didn’t request this yourself? Then you can ignore this e-mail.",
+    receiptSubject: "Acknowledgement of receipt: {type} for order {number}",
+    receiptTitle: "We’ve received your {type}",
+    receiptText: "Hi {name}, on {date} we received your {type} for order {number}. This is what you sent us:",
+    approvedSubject: "Your {type} for order {number} has been approved",
+    approvedTitle: "Good news, {name}",
+    approved: {
+      cancellation: "We won’t make your custom Palley and will refund the full amount within 14 days, to the account you paid from with Bancontact.",
+      withdrawalBefore: "We’ll refund the full amount within 14 days, to the account you paid from with Bancontact.",
+      withdrawalAfter: "Send the Palleys back to {address}, if you haven’t yet. We’ll refund you once we have them or you show us the proof of postage, and at the latest 14 days after your withdrawal.",
+      reprint: "We’ll reprint your Palley for free and let you know when it’s on its way.",
+      refund: "We’ll refund the full amount as soon as possible, and at the latest within 14 days, to the account you paid from with Bancontact.",
+    },
+    rejectedSubject: "About your {type} for order {number}",
+    rejectedTitle: "Hi {name},",
+    rejectedText: "Unfortunately we can’t approve your {type} for order {number}. The reason:",
+    rejectedFooter: "Don’t agree? Reply to this e-mail. If we can’t sort it out together, you can turn to the Belgian Consumer Mediation Service (consumentenombudsdienst.be). These rules don’t limit your statutory rights.",
+    footer: "Questions? Just reply to this e-mail.",
+  },
+
+  // LEGAL-REVIEW: "Je krijgt een mail zodra je bestelling in productie gaat" (return policy). Sent once per order, when
+  // the team approves the first pose of a Palley op maat; from then on it can't be cancelled free of charge.
+  productionEmail: {
+    subject: "Your order {number} is in production",
+    title: "Your Palley is going into production, {name}!",
+    text: "We’ve approved the pose of your pet. The custom Palley from order {number} is now going into production: we turn it into a 3D model, have it printed and finish it by hand in Ghent.",
+    noCancel: "Because we’re now making it especially for you, your custom Palley can no longer be cancelled free of charge. If anything turns out to be wrong with it, our guarantee has you covered.",
+    footer: "Questions? Just reply to this e-mail.",
+  },
+
   legal: {
     eyebrow: "Legal",
     concept: "Draft: this text is still being reviewed by a lawyer.",
+    // LEGAL-REVIEW: translation of the privacy policy of 9 November 2026; see the Dutch text for what changed.
     privacy: {
       title: "Privacy policy",
-      intro: "Which data we keep, why, and for how long.",
+      intro: "Last updated: 9 November 2026.",
       sections: [
         {
-          title: "What we process",
-          items: [
-            "Your photos of your pet, to make your Palley.",
-            "Name, email address, (optionally) phone number and delivery address, to deliver your order.",
-            "The payment status from Bancontact. We don’t keep your name and account number as the payer: those stay with Bancontact and your bank.",
+          title: "1. Who are we?",
+          blocks: [
+            "Palleys is a student business in Unizo’s Step Up programme. We are responsible for processing your personal data.",
+            "{companyAddress}. Email: {email}.",
           ],
         },
-        { title: "Why", text: "To perform the contract (your order). We only send marketing emails if you tick that separately." },
         {
-          title: "Who we share data with",
-          text: "Bancontact and KBC (payments), our carrier (delivery), Resend (email), Cloudflare (photo storage) and the AI services that help make the 3D model.",
+          title: "2. What data do we process and why?",
+          blocks: [
+            {
+              head: ["Data", "Purpose", "Legal basis"],
+              rows: [
+                ["Name, email address, order details (chosen animal, edition, quantity)", "Carrying out your order, customer service, guarantee", "Performance of the contract"],
+                ["Delivery address (only for delivery, not for pickup)", "Delivering your order", "Performance of the contract"],
+                ["Phone number (optional)", "Contact and delivery notifications", "Performance of the contract"],
+                ["1 to 4 photos of your pet", "Making your custom Palley", "Performance of the contract"],
+                ["Print-ready 3D model of your Palley", "Being able to reprint your Palley under the guarantee", "Performance of the contract"],
+                [
+                  "Payment status",
+                  "Handling your payment. You pay with Bancontact. We don’t see or keep your card or account details: they stay with Bancontact and your bank.",
+                  "Performance of the contract",
+                ],
+                ["Administrative data (order, payment)", "Accounting and legal obligations", "Legal obligation"],
+                ["Messages via the contact form or email", "Answering your question", "Legitimate interest"],
+                ["Technical data (server logs, an encrypted code of your IP address)", "Security, preventing abuse, troubleshooting", "Legitimate interest"],
+                ["Email address for news about new Palleys (optional)", "Newsletter", "Your consent"],
+                ["Your photo and Palley for marketing (optional)", "Communication on the website and social media", "Your consent"],
+                ["Necessary cookies (cart, language)", "Making the webshop work", "Legitimate interest (strictly necessary, no consent needed)"],
+              ],
+            },
+            "We don’t use marketing cookies.",
+          ],
         },
-        { title: "How long", text: "We automatically delete uploads that were never ordered. We keep order data for as long as accounting law requires (7 years)." },
         {
-          title: "Your rights",
-          text: "You can request, correct or delete your data via {email}. You can also file a complaint with the Belgian Data Protection Authority.",
+          title: "3. Photos and AI",
+          blocks: [
+            "For a custom Palley we only process your photos after you have ordered and paid. We do so with paid AI services from third parties: Google (Gemini) turns them into an image in the right pose, and Meshy makes a 3D model of that. Our team checks every step. Only upload photos of your pet, without people or children.",
+          ],
+        },
+        {
+          title: "4. Who do we share your data with?",
+          blocks: [
+            "We only share data with service providers we need, under a data processing agreement:",
+            [
+              "Bancontact Pro / KBC (payments)",
+              "Google (AI processing of your photos), Meshy (3D model)",
+              "Cloudflare (storage of photos and files), our hosting provider (a server in the EU, for the website and the database), Resend (emails)",
+              "PostNL (delivery: name, address, email and phone, only if you choose delivery)",
+            ],
+            "Our print partner only gets the 3D model with an order code, no name or address.",
+            "We don’t sell your data.",
+          ],
+        },
+        {
+          title: "5. Transfers outside the EU",
+          blocks: [
+            "Some service providers are (partly) outside the EU, for example in the United States. In that case we make sure there are appropriate safeguards, such as standard contractual clauses or a recognised adequacy decision (such as the EU-US Data Privacy Framework).",
+          ],
+        },
+        {
+          title: "6. How long do we keep your data?",
+          blocks: [
+            [
+              "Uploads of unpaid orders: 7 days, then deleted automatically.",
+              "Photos of your pet and the AI images of paid orders: 6 weeks after delivery or pickup, then deleted automatically.",
+              "The print-ready 3D model of your Palley: 2 years after delivery, so we can reprint your Palley exactly under the guarantee. Then it is deleted automatically.",
+              "Photos you gave consent for marketing for: until you withdraw that consent.",
+              "Your email address for the newsletter: until you unsubscribe.",
+              "Order and payment data: 7 years, because of accounting obligations.",
+              "Contact details in customer service: up to 2 years after the last contact.",
+            ],
+            "Would you like your photos or your 3D model deleted earlier? Email us. Without the 3D model we can no longer reprint your Palley exactly later on.",
+          ],
+        },
+        {
+          title: "7. Security",
+          blocks: [
+            "Photos and models are stored in a shielded environment. They can only be reached through temporary, secure links and are only accessible to authorised team members. We don’t keep your IP address as readable text. No system is completely secure, but we take reasonable technical and organisational measures.",
+          ],
+        },
+        {
+          title: "8. Your rights",
+          blocks: [
+            "You have the right of access, rectification, erasure, restriction of processing, portability and objection. If you gave consent, you can always withdraw it. That doesn’t affect the processing up to then. Email us at {email}. We respond within one month.",
+          ],
+        },
+        {
+          title: "9. Complaints",
+          blocks: [
+            "If you’re not satisfied, please email us first. You can also file a complaint with the Belgian Data Protection Authority, Drukpersstraat 35, 1000 Brussels, contact@apd-gba.be, www.dataprotectionauthority.be.",
+          ],
+        },
+        {
+          title: "10. Minors",
+          blocks: ["Our webshop is intended for people aged 18 and over. We don’t knowingly collect data from minors."],
+        },
+        {
+          title: "11. Changes",
+          blocks: ["We may change this policy. The latest version is always on our website, with the date at the top."],
         },
       ],
     },
+    // LEGAL-REVIEW: translation of the terms of 9 November 2026; the Dutch text prevails (art. 1.4). The old art. 12 is
+    // left out, as in the Dutch text.
     terms: {
       title: "Terms and conditions",
-      intro: "Version {version}. These terms apply to every order from Palleys.",
+      intro: "Version {version}, last updated on 9 November 2026.",
       company: "{name}, {address}. Email: {email}.",
       companyEnterprise: "{name}, {address}. Enterprise number {enterprise}. Email: {email}.",
       sections: [
-        { title: "1. Who we are", text: "{company}" },
         {
-          title: "2. Ordering and payment",
-          text: "All prices are in euros. Palleys is a student business in Unizo’s Step Up programme and is exempt from VAT: no VAT is charged. You see the shipping costs before you pay. The contract is concluded as soon as your payment is confirmed; you then receive a confirmation email. You pay with Bancontact (Bancontact Pro, via KBC).",
+          title: "Article 1 – Who we are and when these terms apply",
+          blocks: [
+            "1.1 These terms apply to every order in our webshop by a consumer, that is a natural person who is not acting for professional purposes. We only sell and deliver in Belgium.",
+            "1.2 Palleys is a student business in Unizo’s Step Up programme. {company}",
+            "1.3 You must be at least 18 years old to order.",
+            "1.4 These terms were drawn up in Dutch. If a translation differs, the Dutch text prevails.",
+          ],
         },
         {
-          title: "3. Personalised Palley: no right of withdrawal",
-          text: "A personalised Palley is made to measure from the photos you provide. The right of withdrawal therefore does not apply (Art. VI.53, 3° of the Belgian Code of Economic Law).",
+          title: "Article 2 – Our products",
+          blocks: [
+            "2.1 We sell two kinds of products:",
+            [
+              "Custom Palley: a 3D-printed figure of your pet in full-colour resin, made from 1 to 4 photos you upload. This product is personalised.",
+              "Palley from our collection: a 3D-printed figure of an animal from our collection. This product is not personalised.",
+            ],
+            "2.2 You order a custom Palley with a keychain or as a figure only. A Palley with a keychain, and every Palley from our collection, comes with a chain and a clip or a key ring, as you choose. These choices don’t affect the price.",
+            "2.3 You’ll find the dimensions and characteristics with the product. Visible print layers and slight colour differences between your photo, your screen and the print are inherent to 3D printing.",
+            "2.4 For a custom Palley we make a 3D model from your photos with the help of AI. Our team checks the photos and the result before printing. You don’t get to see a preview beforehand. A Palley is an interpretation of your pet, not an exact likeness.",
+          ],
         },
         {
-          title: "4. Collection: 14-day right of withdrawal",
-          text: "Palleys from our collection are ready-made models that are not made to measure. You may withdraw from the purchase without giving a reason within 14 days of receipt: email us your order number and return the product unused within 14 days. The cost of returning it is yours. You get your payment back, including the standard shipping costs, within 14 days.",
+          title: "Article 3 – Prices and discount codes",
+          blocks: [
+            "3.1 All prices are in euros. As a student business in Unizo’s Step Up programme, Palleys is exempt from VAT: you don’t pay VAT. You see the shipping costs before you pay. There are no hidden costs.",
+            "3.2 The price that applies is the price at the time you order.",
+            "3.3 You use a discount code at checkout, under the conditions that come with the code (for example how long it is valid or how often it can be used). A discount code can’t be exchanged for money.",
+          ],
         },
-        { title: "5. Delivery", text: "We only deliver in Belgium, within {deliveryTime} of your order and within 30 days at the latest. You can also pick up your order for free at campus Kantienberg; we’ll let you know when it’s ready." },
         {
-          title: "6. Legal guarantee and complaints",
-          text: "You have a 2-year legal guarantee of conformity. If your Palley is damaged or doesn’t match your order, email us your order number. If we can’t work it out together, you can turn to the Consumer Mediation Service (consumentenombudsdienst.be).",
+          title: "Article 4 – Ordering and conclusion of the contract",
+          blocks: [
+            "4.1 You order in these steps: you choose a product. For a custom Palley you choose your pet and upload 1 to 4 photos. Then you check your cart, fill in your details, choose delivery or pickup, accept these terms and pay.",
+            "4.2 You place your order with the button “Order with obligation to pay”. The contract is concluded as soon as your payment is confirmed. You then receive a confirmation email with an overview of your order and a link to these terms. If you don’t pay, your order lapses.",
+            "4.3 We may refuse an order for a valid reason, for example a delivery problem. If we refuse an order, we refund you in full.",
+          ],
         },
         {
-          title: "7. Your photos",
-          text: "You declare that you hold the rights to the photos you upload and that they only show a pet. We only use them to make your Palley. The 3D model is made with the help of AI and checked by our team.",
+          title: "Article 5 – Photos (custom Palley)",
+          blocks: [
+            "5.1 You own the photos or have the right to use them. Don’t use photos with people, children, protected characters, copyrighted work of others, or unlawful or offensive content.",
+            "5.2 Good photos (sharp, well lit, the whole animal visible) lead to a better result. If your photos don’t allow us to make a good Palley, we ask you for new photos. If those don’t work either, we refund the full amount, including the shipping costs.",
+            "5.3 You give us a limited licence to use your photos to make your Palley. This includes processing by our technical service providers, including AI services. More details are in our privacy policy. You keep all rights to your photos.",
+            "5.4 With separate, voluntary consent we may use your photo and your Palley in our communication (website, social media). You can always withdraw that consent by emailing {email}. Without consent we never use them for marketing.",
+          ],
         },
-        { title: "8. Use and heat", text: "A Palley can deform above 50°C. So don’t leave it in the car, on the dashboard or in direct sunlight." },
+        {
+          title: "Article 6 – Payment",
+          blocks: [
+            "6.1 You pay when you order with Bancontact, via Bancontact Pro (KBC): you scan the QR code or pay in your banking or Bancontact app. Your card or account details never reach us.",
+          ],
+        },
+        {
+          title: "Article 7 – Delivery and pickup",
+          blocks: [
+            "7.1 We only deliver in Belgium, to your home with bpost/PostNL. For family, friends and acquaintances there is a discount code for free delivery, as we hand the Palley over in person. You’ll find details and rates when you order.",
+            "7.2 We deliver a custom Palley on average within 2 to 3 weeks of your order. A Palley from our collection that is in stock reaches you within 1 to 2 weeks. If it isn’t in stock, it also takes 2 to 3 weeks. We deliver within 30 days of your order at the latest, unless we agree otherwise with you.",
+            "7.3 The risk of loss or damage lies with us until you have received the parcel or picked up your order.",
+            "7.4 If delivery doesn’t succeed within 30 days, you can terminate the contract and we refund you.",
+          ],
+        },
+        {
+          title: "Article 8 – Right of withdrawal and cancelling",
+          blocks: [
+            "8.1 You can withdraw from the purchase of a Palley from our collection without giving a reason until 14 days after you received or picked it up. The cost of returning it is yours. Return the product unused and in good condition. See our {returnPolicy} for the procedure, the online withdrawal function and the model form.",
+            "8.2 The right of withdrawal doesn’t apply to a custom Palley. It is made to your specifications and is clearly personalised (art. VI.53, 3° Belgian Code of Economic Law). You are also informed about this when you order.",
+            "8.3 You can cancel a custom Palley free of charge as long as your order hasn’t gone into production. We let you know by email when your order goes into production. If you want to cancel, email us as soon as possible with your order number.",
+          ],
+        },
+        {
+          title: "Article 9 – Legal guarantee",
+          blocks: [
+            "9.1 The 2-year legal guarantee from delivery applies to all our products. If a defect appears within the first year, it is presumed to have existed at delivery. Report a defect within 2 months of noticing it, with your order number and photos.",
+            "9.2 In case of damage, a print error or a product that doesn’t match your order, we reprint your Palley for free or refund the full amount, as you choose. You don’t pay any shipping or return costs.",
+            "9.3 For a custom Palley we give no extra satisfaction guarantee on the likeness to your pet. The guarantee applies to damage or a defect, as described above.",
+            "9.4 Not covered by the guarantee are normal wear, damage from a fall, from heat above 50 °C or from misuse after receipt, and problems caused by a wrong address you entered yourself. Characteristics we clearly described beforehand (art. 2.3) are not a defect.",
+            "9.5 These terms don’t limit your statutory rights.",
+          ],
+        },
+        {
+          title: "Article 10 – Safety and use",
+          blocks: [
+            "10.1 A Palley is not a toy. It is not suitable for children under 3 (small parts and a metal ring or clip, choking hazard). Don’t let pets chew on it.",
+            "10.2 The resin can deform above 50 °C. So don’t leave your Palley in the car, on the dashboard or in direct sunlight. The material can break if dropped.",
+          ],
+        },
+        {
+          title: "Article 11 – Intellectual property",
+          blocks: [
+            "11.1 Our name, our logo, the designs in our collection, texts and images belong to Palleys or our licensors. You may not copy them or use them commercially without our permission.",
+            "11.2 You may use your Palley privately. Selling or reproducing our designs commercially is not allowed.",
+          ],
+        },
+        {
+          title: "Article 12 – Liability",
+          blocks: [
+            "12.1 We are liable in accordance with the applicable law. We don’t exclude our liability for what cannot legally be excluded, such as intent, gross negligence, personal injury or product liability.",
+            "12.2 We are not liable for indirect damage or for damage caused by misuse of the product, to the extent the law allows.",
+          ],
+        },
+        {
+          title: "Article 13 – Force majeure",
+          blocks: [
+            "13.1 Events beyond our reasonable control, such as strikes, disruptions at carriers or suppliers, extreme weather or government measures, may delay our obligations. We’ll let you know, and you can terminate the contract if the delay lasts too long. Your rights continue to apply.",
+          ],
+        },
+        {
+          title: "Article 14 – Complaints and disputes",
+          blocks: ["14.1 Do you have a complaint? Email us at {email}. We respond within 5 working days and give you a full answer within 30 days at the latest."],
+        },
+        { title: "Article 15 – Personal data", blocks: ["15.1 We process your data as described in our {privacyPolicy}."] },
+        {
+          title: "Article 16 – Changes",
+          blocks: ["16.1 We may change these terms. Your order is governed by the terms as they applied when you ordered."],
+        },
+        {
+          title: "Article 17 – Applicable law",
+          blocks: ["17.1 Belgian law applies. You can also go to the court of your place of residence."],
+        },
       ],
+      returnPolicyLink: "return and refund policy",
+      privacyLink: "privacy policy",
+    },
+    // LEGAL-REVIEW: translation of the return and refund policy of 9 November 2026; see the Dutch text.
+    returnPolicy: {
+      title: "Return and refund policy",
+      intro: "Last updated: 9 November 2026.",
+      sections: [
+        {
+          title: "Custom Palley",
+          blocks: [
+            "We make a custom Palley especially for you, from the photos of your pet. That’s why the statutory 14-day right of withdrawal doesn’t apply (art. VI.53, 3° Belgian Code of Economic Law). So you can’t send it back because you changed your mind.",
+            "If your photos aren’t good enough: we check your photos and every 3D model before we have anything printed. If your photos don’t allow us to make a good Palley, we ask you for new photos. If those don’t work either, we refund the full amount, including the shipping costs.",
+            "Cancelling: we have your Palley printed in batches by our print partner. As long as your order hasn’t gone into production, you can cancel free of charge. You’ll get an email as soon as your order goes into production. If you want to cancel, email us as soon as possible at {email} with your order number. We then refund you in full within 14 days.",
+          ],
+        },
+        {
+          title: "Palleys from our collection, not for custom Palleys",
+          blocks: [
+            "Right of withdrawal: you can withdraw from your purchase without giving a reason until 14 days after you received or picked it up. You can also do so before you receive it.",
+            [
+              "How: through our online withdrawal function: {returnUrl}, by emailing us at {email} or with the model form below.",
+              "Not shipped or picked up yet? Then we refund you straight away and you don’t need to send anything back.",
+              "Sending it back: send the product back to {returnAddress} at the latest 14 days after you withdrew. You pay for the return shipping yourself. Keep the proof of postage.",
+              "Condition of the product: send the product back unused and in good condition. If you use it more than needed to inspect it, we may charge for the loss in value.",
+              "Refund: we refund you within 14 days of receiving your withdrawal. This includes the standard shipping costs of your original order. We may wait until we have the product back, or until you show us the proof of postage.",
+              "Mixed order: did you also order a custom Palley? Then you can only withdraw from the Palleys from the collection.",
+            ],
+          ],
+        },
+        {
+          title: "Damaged, faulty or not what you ordered? (all Palleys)",
+          blocks: [
+            "Every Palley comes with a 2-year legal guarantee from delivery. Until you receive your parcel or pick up your order, we are responsible for loss or damage.",
+            "Report the problem within 2 months of noticing it, with your order number and a few photos. Usually you don’t need to send the product back. You choose: we have your Palley reprinted for free or we refund the full amount. You never pay shipping or return costs for this.",
+            "Custom Palley: a custom Palley is a 3D interpretation of your pet, made with the help of AI. We check your photos and every model before we have it printed. We give no extra satisfaction guarantee on the likeness. The guarantee applies to damage, a print error or a Palley that doesn’t match what you ordered, for example the wrong animal or the wrong edition.",
+            "What isn’t covered by the guarantee?",
+            [
+              "Normal wear from use, for example on your keyring.",
+              "Damage from a fall or misuse after receipt.",
+              "Characteristics we described on the site beforehand, such as deforming above 50 °C (for example in a hot car or in full sun).",
+              "Characteristics inherent to 3D printing: visible print layers, slight colour differences,…",
+              "Delivery problems caused by a wrong address you entered yourself.",
+            ],
+            "These rules don’t limit your statutory rights.",
+          ],
+        },
+        {
+          title: "Refunds",
+          blocks: [
+            "We refund to the account you paid from with Bancontact, unless we agree otherwise together. If you cancel or withdraw, we refund within 14 days. For a warranty claim we do so as soon as possible and at the latest within 14 days of our decision.",
+          ],
+        },
+        {
+          title: "Complaints",
+          blocks: [
+            "Email us at {email}. See also article 14 of our {terms}. If we can’t work it out together, you can turn to the Belgian Consumer Mediation Service (consumentenombudsdienst.be).",
+          ],
+        },
+        {
+          title: "Model withdrawal form (only for Palleys from our collection)",
+          blocks: [
+            "(Only fill in and return this form if you want to withdraw from the contract.)",
+            "To: {companyContact}",
+            "I/We (*) hereby give notice that I/we (*) withdraw from my/our (*) contract of sale of the following goods (*):",
+            [
+              "Ordered on (*) / received on (*):",
+              "Order number:",
+              "Name of consumer(s):",
+              "Address of consumer(s):",
+              "Signature of consumer(s) (only if this form is on paper):",
+              "Date:",
+            ],
+            "(*) Delete as appropriate.",
+          ],
+        },
+      ],
+      termsLink: "terms and conditions",
+    },
+    // LEGAL-REVIEW: translation of the shipping policy of 9 November 2026; see the Dutch text for what changed.
+    shippingPolicy: {
+      title: "Shipping policy",
+      intro: "Last updated: 9 November 2026. Thank you for ordering from Palleys. Here you can read how your order reaches you.",
+      sections: [
+        { title: "Where do we deliver?", blocks: ["We only deliver in Belgium."] },
+        {
+          title: "How long does it take?",
+          blocks: [
+            [
+              "Custom Palley: on average 10 to 15 working days after your order.",
+              "Palley from our collection: 7 to 10 working days if it’s in stock. If it isn’t, we make it to order and it also takes 10 to 15 working days.",
+            ],
+            "These are estimates. We deliver within 30 days of your order at the latest, unless we agree otherwise with you. During the holidays it may take longer because the post is busy. Want your Palley for Christmas? Order before 1 December.",
+          ],
+        },
+        {
+          title: "How it works",
+          blocks: [
+            [
+              "1. We check your order. For a custom Palley we turn your photos into a 3D model with the help of AI and check every step.",
+              "2. We have your Palley printed in full colour by our print partner, together with other orders.",
+              "3. We check the print, attach the chain with the clip or key ring if you chose a keychain, and pack your Palley carefully.",
+              "4. We send your order with PostNL, or let you know it’s ready to be picked up.",
+            ],
+          ],
+        },
+        {
+          title: "Shipping",
+          blocks: [
+            "We ship with PostNL, delivered to your home. Your parcel usually arrives 1 to 2 working days after we sent it. PostNL emails you so you can track your parcel.",
+          ],
+        },
+        {
+          title: "Shipping costs",
+          blocks: ["You see the shipping costs at checkout before you pay. So you never pay unexpected costs.", ["{deliveryPrices}"]],
+        },
+        {
+          title: "Check your address",
+          blocks: ["Check your address carefully at checkout. If you want to change something, email us as soon as possible, before we send your parcel."],
+        },
+        {
+          title: "Lost, damaged or delayed parcel",
+          blocks: [
+            "Until you receive your parcel or pick up your order, you are not responsible for loss or damage. If your parcel is damaged or hasn’t arrived, email us at {email} with your order number and, if possible, a few photos. We sort it out with PostNL and fix it: we reprint your Palley for free or refund you, as you choose.",
+          ],
+        },
+        { title: "Changing or cancelling", blocks: ["See our {returnPolicy}."] },
+        { title: "Questions?", blocks: ["Email us at {email}."] },
+      ],
+      inBelgium: "{label} in Belgium: {price}",
+      free: "free",
+    },
+    // LEGAL-REVIEW: translation of the company details; see the Dutch text.
+    contactDetails: {
+      title: "Contact details",
+      intro: "Last updated: 9 November 2026.",
+      tradeName: "Trade name",
+      capacity: "Legal status",
+      capacityText: "student business within Step Up, an initiative of Unizo, the Union of Self-Employed Entrepreneurs",
+      vat: "VAT",
+      vatText: "exempt from VAT within Unizo’s Step Up programme",
+      address: "Address",
+      email: "Customer service email",
+      phone: "Phone",
+      controller: "Controller of personal data",
+      controllerText: "{name}, see above. You’ll find more in our {privacyPolicy}.",
+      complaints: "Complaints",
+      complaintsText: "email us at {email}.",
+      seeAlso: "See also: {terms} · {privacy} · {returnPolicy} · {shippingPolicy}.",
+      termsLink: "terms and conditions",
+      privacyLink: "privacy policy",
+      shippingPolicyLink: "shipping policy",
     },
   },
 };

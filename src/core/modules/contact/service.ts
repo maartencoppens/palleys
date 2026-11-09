@@ -1,49 +1,28 @@
-"use server";
+import "server-only";
+import { randomUUID } from "node:crypto";
+import { EmailError, sendEmail } from "@/core/networking/external/email-client";
+import { getShopSettings } from "@/core/modules/settings/service";
+import { buildContactMail } from "./emails";
+import type { ContactInput } from "./types";
 
-export type ContactState = {
-  status: "idle" | "success" | "error";
-  /** Which text the form shows, in the visitor's language. */
-  code?: "missing" | "invalidEmail" | "sent";
-  /** Values echoed back on error, so the visitor doesn't lose what they typed. */
-  values?: { name: string; email: string; message: string };
-};
-
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-export async function sendContactMessage(
-  _prev: ContactState,
-  formData: FormData,
-): Promise<ContactState> {
-  const values = {
-    name: String(formData.get("name") ?? "").trim(),
-    email: String(formData.get("email") ?? "").trim(),
-    message: String(formData.get("message") ?? "").trim(),
-  };
-
-  if (!values.name || !values.email || !values.message) {
-    return {
-      status: "error",
-      code: "missing",
-      values,
-    };
+/**
+ * Mails a contact form message to the company e-mail from the settings, with the visitor as reply-to. Returns false when
+ * it didn't go out (no mail configured, or Resend refused it): the form then says so instead of thanking them.
+ */
+export async function deliverContactMessage(input: ContactInput, now: Date = new Date()) {
+  const { company } = await getShopSettings();
+  try {
+    const sent = await sendEmail({
+      to: company.email,
+      ...buildContactMail(input, now),
+      replyTo: input.email,
+      // Every message is new: a visitor may write twice on purpose.
+      idempotencyKey: `contact-${randomUUID()}`,
+    });
+    if (!sent) console.warn("[contact] message not sent: e-mail is not configured");
+    return sent;
+  } catch (error) {
+    console.error("[contact] message not sent:", error instanceof EmailError ? error.message : error);
+    return false;
   }
-  if (!EMAIL_PATTERN.test(values.email)) {
-    return {
-      status: "error",
-      code: "invalidEmail",
-      values,
-    };
-  }
-
-  // TODO: deliver the message (e.g. an email provider or the shop's CRM). Until that's connected,
-  // nothing is sent; the visitor still sees the confirmation below.
-  console.info("[contact] new message", {
-    name: values.name,
-    email: values.email,
-  });
-
-  return {
-    status: "success",
-    code: "sent",
-  };
 }

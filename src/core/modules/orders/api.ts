@@ -62,3 +62,8 @@ export async function deleteOrderForGood(orderId: string, input: { confirmNumber
   const { data } = await api.delete<{ number: string }>(`/admin/orders/${orderId}`, { data: input });
   return data;
 }
+
+export async function deletePhotoConsent(orderId: string) {
+  const { data } = await api.delete<{ orderId: string }>(`/admin/orders/${orderId}/photo-consent`);
+  return data;
+}

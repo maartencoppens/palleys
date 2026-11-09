@@ -3,7 +3,7 @@ import { IMAGE_EXTENSIONS } from "@/data/uploads";
 import { PREVIEW_KEY_PREFIX } from "@/data/storage";
 import { palleyFileName, previewRef } from "@/core/utils/naming";
 import { collectibleIdOf } from "@/core/modules/collectibles/utils";
-import { palleyNameOf } from "@/core/modules/orders/utils";
+import { palleyNameOf, type PalleyNameSource } from "@/core/modules/orders/utils";
 import { PAID_ORDER_STATUSES } from "@/core/modules/orders/status";
 
 const MIME_BY_EXT: Record<string, string> = {
@@ -72,7 +72,9 @@ export const PRINT_NAME_SELECT = {
   collectible: { select: { number: true, animalCode: true } },
   orderItems: {
     where: { order: { status: { in: PAID_ORDER_STATUSES } } },
-    select: { position: true, productCode: true, reprintNr: true, order: { select: { number: true } } },
+    // The first print, not a reprint of it.
+    orderBy: { reprintNr: "asc" },
+    select: { position: true, productCode: true, reprintNr: true, order: { select: { number: true, reprintOf: { select: { number: true } } } } },
     take: 1,
   },
 } as const;
@@ -81,7 +83,7 @@ export type PrintNameSource = {
   id: string;
   forCollectible: boolean;
   collectible: { number: number; animalCode: string | null } | null;
-  orderItems: { position: number; productCode: string; reprintNr: number; order: { number: string } }[];
+  orderItems: PalleyNameSource[];
 };
 
 /**

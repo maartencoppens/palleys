@@ -6,6 +6,7 @@ import { MAX_PRODUCT_PRICE_CENTS } from "@/data/pricing";
 import { MAX_SHIPPING_PRICE_CENTS, STATIC_DELIVERY_OPTIONS } from "@/data/shipping";
 import { SITE_CONTENT_LIMITS } from "@/data/site-content";
 import { DEFAULT_ANIMALS } from "@/data/animals";
+import { COMPANY } from "@/data/company";
 import { MAX_PROMPT_LENGTH } from "@/data/prompts";
 import { animalListSchema } from "@/core/modules/animals/types";
 
@@ -31,6 +32,15 @@ export const orderingSettingsSchema = z.object({
 export const shippingSettingsSchema = z.object({
   shippingOverrides: z.partialRecord(z.enum(optionIds), shippingOverrideSchema),
 });
+
+/**
+ * Saved overrides as they're read back: an option that no longer exists in data/shipping.ts (be-bpost-home became
+ * be-postnl-home) is skipped, not a reason to throw away the others, which would switch a disabled option back on.
+ */
+export const storedShippingOverridesSchema = z
+  .record(z.string(), z.unknown())
+  .transform((stored) => Object.fromEntries(Object.entries(stored).filter(([id]) => optionIds.includes(id))))
+  .pipe(shippingSettingsSchema.shape.shippingOverrides);
 
 const priceSchema = z.number().int().min(100).max(MAX_PRODUCT_PRICE_CENTS);
 
@@ -84,6 +94,8 @@ export const companySettingsSchema = z.object({
   enterpriseNumber: z.string().trim().max(40), // empty: we have none
   email: z.email().max(FIELD_LIMITS.email),
   phone: z.string().trim().max(FIELD_LIMITS.phone),
+  // Saved before this field existed: the starting address from data/company.ts.
+  returnAddress: z.string().trim().max(200).default(COMPANY.returnAddress),
   socials: z.object({ instagram: socialUrl, tiktok: socialUrl, facebook: socialUrl }),
 });
 

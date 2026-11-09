@@ -2,10 +2,9 @@
 
 import Image from "next/image";
 import { useActionState } from "react";
-import {
-  ContactState,
-  sendContactMessage,
-} from "@/core/modules/contact/service";
+import { sendContactMessage } from "@/core/modules/contact/actions";
+import type { ContactState } from "@/core/modules/contact/types";
+import { CONTACT_LIMITS } from "@/data/contact";
 import { Label, Input, Textarea } from "@/components/design/form";
 import { useMessages } from "@/core/locale/client";
 
@@ -31,6 +30,7 @@ export default function ContactForm() {
             <Input
               id="contact-name"
               name="name"
+              maxLength={CONTACT_LIMITS.name}
               type="text"
               autoComplete="name"
               placeholder={m.namePlaceholder}
@@ -60,6 +60,7 @@ export default function ContactForm() {
           <Textarea
             id="contact-message"
             name="message"
+            maxLength={CONTACT_LIMITS.message}
             placeholder={m.messagePlaceholder}
             defaultValue={state.values?.message}
             required

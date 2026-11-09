@@ -22,6 +22,21 @@ export function formatDateCompact(date: Date) {
   return compactDateFormatter.format(date).replaceAll("-", "");
 }
 
+const DAY_FORMAT: Intl.DateTimeFormatOptions = { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" };
+const MOMENT_FORMAT: Intl.DateTimeFormatOptions = { dateStyle: "long", timeStyle: "short", timeZone: "Europe/Brussels" };
+
+/** A calendar day ("2026-11-23") in a language: "23 november 2026" / "23 November 2026". */
+export const formatDay = (day: string, locale: Locale = DEFAULT_LOCALE) =>
+  new Intl.DateTimeFormat(INTL_LOCALES[locale], DAY_FORMAT).format(new Date(`${day}T00:00:00Z`));
+
+/** A moment in Belgian time, in a language: "9 november 2026 om 15:42". */
+export const formatMoment = (iso: string, locale: Locale = DEFAULT_LOCALE) =>
+  new Intl.DateTimeFormat(INTL_LOCALES[locale], MOMENT_FORMAT).format(new Date(iso));
+
+/** A length in metres as centimetres in a language: 0.037 → "3,7 cm" / "3.7 cm". */
+export const formatCentimeters = (meters: number, locale: Locale = DEFAULT_LOCALE) =>
+  `${(meters * 100).toLocaleString(INTL_LOCALES[locale], { maximumFractionDigits: 1 })} cm`;
+
 /** Formats a euro amount in a language: 25.95 → "€ 25,95" or "€ 25.95". */
 export const formatPrice = (price: number, locale: Locale = DEFAULT_LOCALE) =>
   `€ ${price.toLocaleString(INTL_LOCALES[locale], { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

@@ -11,7 +11,10 @@ waar juridische tekst of een juridische keuze zit.
 - [ ] Algemene voorwaarden nagekeken door jurist/Unizo; concept-banner weg uit `LegalPage`.
 - [ ] `TERMS_VERSION` in `src/data/checkout.ts` bijgewerkt; oude versies blijven raadpleegbaar.
 - [ ] Privacybeleid nagekeken, klopt met `docs/gdpr/register.md` en `docs/gdpr/subprocessors.md` (nog op te maken).
-- [ ] Pagina's `/verzending-en-levering`, `/garantie-en-klachten`, `/contact`, `/cookies` (indien nodig).
+- [x] Pagina's `/verzendbeleid`, `/retourbeleid` (ook garantie en klachten) en `/contactgegevens`.
+- [x] Geen cookiebeleid of cookiebanner: we gebruiken alleen strikt noodzakelijke cookies (winkelmandje, taal, sessie
+  van de backoffice, /retour), en het privacybeleid zegt dat. Komt er ooit analytics of een marketingcookie bij, dan
+  zijn een banner met toestemming en een cookiebeleid wel nodig.
 - [ ] Footer met bedrijfsgegevens; geen EU-ODR-link, wel de Consumentenombudsdienst.
 
 ## Checkout (WER Boek VI)

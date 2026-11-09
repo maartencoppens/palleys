@@ -7,6 +7,7 @@ import Button from "@/components/design/Button";
 import { useCartSnapshot } from "@/core/hooks/useCartSnapshot";
 import { Link, useMessages } from "@/core/locale/client";
 import { gsap, prefersReducedMotion, useGSAP } from "@/core/utils/gsap";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 type MobileMenuProps = {
   open: boolean;
@@ -133,7 +134,7 @@ export default function MobileMenu({
   if (!mounted) return null;
 
   return createPortal(
-    <div ref={rootRef} className="fixed inset-0 z-50 md:hidden">
+    <div ref={rootRef} className="fixed inset-0 z-50 lg:hidden">
       <div
         data-menu-backdrop
         className="absolute inset-0 bg-text-primary/50 backdrop-blur-[2px]"
@@ -159,6 +160,8 @@ export default function MobileMenu({
           >
             <Image src="/images/logo.svg" width={64} height={64} alt="" />
           </Link>
+          {/* The navbar only has room for the language switcher from md. */}
+          <LanguageSwitcher className="ml-auto mr-3 md:hidden" />
           <button
             ref={closeRef}
             type="button"

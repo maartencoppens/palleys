@@ -9,7 +9,7 @@ import { LOCALE_LABELS, LOCALES, localizedPath, stripLocale } from "@/core/local
  * loads the same page in the other language, with its query kept (the order page needs it). The cart lives in a cookie
  * and stays. stripLocale makes server and browser agree, because the proxy shows the server /nl/create for /create.
  */
-export default function LanguageSwitcher() {
+export default function LanguageSwitcher({ className = "" }: { className?: string }) {
   const pathname = usePathname();
   const current = useLocale();
   const { nav } = useMessages();
@@ -17,8 +17,7 @@ export default function LanguageSwitcher() {
   return (
     <ul
       aria-label={nav.language}
-      className="flex items-center rounded-pill border-[1.5px] border-off-white/40 p-0.5 font-label text-xs leading-none font-bold text-off-white md:text-sm"
-      data-nav-item
+      className={`flex items-center rounded-pill border-[1.5px] border-off-white/40 p-0.5 font-label text-xs leading-none font-bold text-off-white md:text-sm ${className}`}
     >
       {LOCALES.map((locale) => {
         const active = locale === current;

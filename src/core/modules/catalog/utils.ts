@@ -3,7 +3,9 @@ import type { ProductType } from "@/data/products";
 import type { AnimalOption } from "@/core/modules/animals/types";
 import { UNIT_PRICE_CENTS, VAT_RATE_BASIS_POINTS } from "@/data/pricing";
 import { PACKAGING, PALLEYS_PER_BOX, PARCEL_BY_SIZE } from "@/data/shipping";
-import { KEYCHAIN_SIZES, type KeychainSize } from "@/data/sizes";
+import { KEYCHAIN_SIZES, SHOWN_KEYCHAIN_SIZE, type KeychainSize } from "@/data/sizes";
+import { formatCentimeters } from "@/core/utils/format";
+import type { Locale } from "@/core/locale/config";
 
 /*
  * Pure catalog and price functions. Amounts are integer cents; nothing here trusts the client.
@@ -87,3 +89,6 @@ export function parcelFor(items: { size: KeychainSize; quantity: number }[]) {
   );
   return { weightGrams, boxes, dimensionsCm: PACKAGING.dimensionsCm };
 }
+
+/** The size a customer gets, as /create and the collection pages show it: "3,7 cm" (art. 2.3 of the terms). */
+export const shownSizeLabel = (locale: Locale) => formatCentimeters(KEYCHAIN_SIZES[SHOWN_KEYCHAIN_SIZE].longestSideMeters, locale);

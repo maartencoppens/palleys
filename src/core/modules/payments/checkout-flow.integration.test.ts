@@ -95,17 +95,17 @@ const customer = {
   postalCode: "9000",
   city: "Gent",
   country: "BE",
-  deliveryOptionId: "be-bpost-home",
+  deliveryOptionId: "be-postnl-home",
   acceptTerms: true,
 };
 
-async function checkout(previewId: string, quantity = 1) {
+async function checkout(previewId: string, quantity = 1, extra: object = {}) {
   const { token } = await addPreviewToCart(null, { previewId, animal: "dog", edition: "keychain" });
   if (quantity > 1) {
     const line = await prisma.cartLine.findFirstOrThrow({ where: { previewId } });
     await prisma.cartLine.update({ where: { id: line.id }, data: { quantity } });
   }
-  const { checkoutUrl } = await startCheckout(token, checkoutSchema.parse(customer));
+  const { checkoutUrl } = await startCheckout(token, checkoutSchema.parse({ ...customer, ...extra }));
   const payment = await prisma.payment.findFirstOrThrow({
     where: { checkoutUrl },
     include: { order: true },
@@ -149,12 +149,36 @@ describe("checkout", () => {
     expect(order.status).toBe("PENDING_PAYMENT");
     expect(order.email).toBe("test.klant@example.com");
     expect(order.subtotalCents).toBe(2 * 2799);
-    expect(order.shippingCents).toBe(495);
-    expect(order.totalCents).toBe(2 * 2799 + 495);
+    expect(order.shippingCents).toBe(610);
+    expect(order.totalCents).toBe(2 * 2799 + 610);
     expect(order.vatCents).toBe(0);
     expect(order.termsVersion).toBeTruthy();
     expect(payment.amountCents).toBe(order.totalCents);
     expect(payment.status).toBe("OPEN");
+  });
+
+  it("keeps the separate consent for marketing with the photos, with when it was given", async () => {
+    const { order } = await checkout(await newPreview(), 1, { photoMarketingConsent: true });
+    expect(order.photoMarketingConsent).toBe(true);
+    expect(order.photoMarketingConsentAt).not.toBeNull();
+    const { order: without } = await checkout(await newPreview());
+    expect(without).toMatchObject({ photoMarketingConsent: false, photoMarketingConsentAt: null });
+  });
+
+  it("puts the email address on the mailing list only when the box is ticked", async () => {
+    const email = `nieuws.${randomUUID()}@example.com`;
+    await checkout(await newPreview(), 1, { email: email.toUpperCase() });
+    expect(await prisma.newsletterSubscriber.findUnique({ where: { email } })).toBeNull();
+
+    await checkout(await newPreview(), 1, { email: email.toUpperCase(), marketingOptIn: true });
+    const subscriber = await prisma.newsletterSubscriber.findUniqueOrThrow({ where: { email } });
+    expect(subscriber).toMatchObject({ source: "checkout", unsubscribedAt: null });
+
+    // Ticking it again after unsubscribing signs them up again.
+    await prisma.newsletterSubscriber.update({ where: { email }, data: { unsubscribedAt: new Date() } });
+    await checkout(await newPreview(), 1, { email, marketingOptIn: true });
+    expect(await prisma.newsletterSubscriber.findUniqueOrThrow({ where: { email } })).toMatchObject({ unsubscribedAt: null });
+    await prisma.newsletterSubscriber.delete({ where: { email } });
   });
 
   it("keeps the chosen attachment on the order, and none on a figurine", async () => {
@@ -179,14 +203,14 @@ describe("checkout", () => {
 
   it("uses the shipping price an admin set, and refuses disabled options", async () => {
     await prisma.shopSettings.create({
-      data: { id: 1, shippingOverrides: { "be-bpost-home": { priceCents: 0, enabled: true } } },
+      data: { id: 1, shippingOverrides: { "be-postnl-home": { priceCents: 0, enabled: true } } },
     });
     const { order } = await checkout(await newPreview());
     expect(order.shippingCents).toBe(0);
 
     await prisma.shopSettings.update({
       where: { id: 1 },
-      data: { shippingOverrides: { "be-bpost-home": { priceCents: 495, enabled: false } } },
+      data: { shippingOverrides: { "be-postnl-home": { priceCents: 495, enabled: false } } },
     });
     const previewId = await newPreview();
     const { token } = await addPreviewToCart(null, { previewId, animal: "cat", edition: "figure" });
@@ -196,7 +220,7 @@ describe("checkout", () => {
   });
 
   it("charges what the customer saw, and stops when a price changed in the meantime", async () => {
-    await prisma.shopSettings.create({ data: { id: 1, shippingOverrides: { "be-bpost-home": { priceCents: 495, enabled: true } } } });
+    await prisma.shopSettings.create({ data: { id: 1, shippingOverrides: { "be-postnl-home": { priceCents: 495, enabled: true } } } });
     const seen = 2799 + 495;
     const first = await newPreview();
     const { token } = await addPreviewToCart(null, { previewId: first, animal: "cat", edition: "figure" });
@@ -210,7 +234,7 @@ describe("checkout", () => {
     expect(payment.amountCents).toBe(seen);
 
     // The admin raises the delivery price while the next customer has the form open.
-    await prisma.shopSettings.update({ where: { id: 1 }, data: { shippingOverrides: { "be-bpost-home": { priceCents: 595, enabled: true } } } });
+    await prisma.shopSettings.update({ where: { id: 1 }, data: { shippingOverrides: { "be-postnl-home": { priceCents: 595, enabled: true } } } });
     const second = await newPreview();
     const { token: secondToken } = await addPreviewToCart(null, { previewId: second, animal: "cat", edition: "figure" });
     const orderCount = await prisma.order.count();
@@ -294,7 +318,7 @@ describe("payment processing", () => {
     await prisma.order.update({ where: { id: order.id }, data: { statusTokenHash: hashToken("return-token") } });
     expect(await getOrderStatusForCustomer(order.id, "return-token")).toMatchObject({
       status: "PAID",
-      amounts: { subtotalCents: 2799, discountCents: 0, shippingCents: 495, totalCents: 2799 + 495 },
+      amounts: { subtotalCents: 2799, discountCents: 0, shippingCents: 610, totalCents: 2799 + 610 },
     });
   });
 

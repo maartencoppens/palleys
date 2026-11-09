@@ -40,6 +40,9 @@ import {
   posePrompt,
 } from "./utils";
 import { getShopSettings } from "@/core/modules/settings/service";
+import { activeQuantity } from "@/core/modules/orders/check-in";
+import { startProductionForPreview } from "@/core/modules/orders/production";
+import { OPEN_RETURN_STATUSES } from "@/core/modules/returns/status";
 import type {
   AdminDashboard,
   AdminPreviewDetail,
@@ -375,16 +378,35 @@ export async function generatePose(id: string): Promise<PreviewActionResult> {
   }
 }
 
+// Pose goedkeuren in the backoffice: the pose becomes a 3D model, and for the customer the order is now in production.
 export async function startModelGeneration(
   id: string,
+  adminName: string,
 ): Promise<PreviewActionResult> {
   const preview = await prisma.preview.findUnique({
     where: { id },
-    select: { status: true, poseImageKey: true },
+    select: {
+      status: true,
+      poseImageKey: true,
+      orderItems: {
+        select: {
+          quantity: true,
+          cancelledQuantity: true,
+          returnItems: { where: { returnRequest: { type: "CANCELLATION", status: { in: OPEN_RETURN_STATUSES } } }, select: { id: true } },
+        },
+      },
+    },
   });
   if (!preview) throw new PreviewNotFoundError(id);
 
   assertTransition(preview.status, PreviewStatus.GENERATING_MODEL);
+  // The customer asked to cancel this Palley (or it's cancelled): making it would cost credits and break the promise.
+  if (preview.orderItems.some((item) => item.returnItems.length > 0)) {
+    throw new PreviewConflictError("Er loopt een annulering voor deze Palley: handel die eerst af bij Retour");
+  }
+  if (preview.orderItems.length > 0 && preview.orderItems.every((item) => activeQuantity(item) <= 0)) {
+    throw new PreviewConflictError("Deze Palley is geannuleerd");
+  }
 
   const poseKey = preview.poseImageKey;
   if (!poseKey) {
@@ -413,7 +435,6 @@ export async function startModelGeneration(
       where: { id },
       data: { meshyTaskId: taskId },
     });
-    return { previewId: id, status: PreviewStatus.GENERATING_MODEL };
   } catch (err) {
     await prisma.preview.updateMany({
       where: { id, status: PreviewStatus.GENERATING_MODEL },
@@ -421,6 +442,9 @@ export async function startModelGeneration(
     });
     throw err;
   }
+  // Outside the try: the model is on its way whatever happens with the mail.
+  await startProductionForPreview(id, adminName);
+  return { previewId: id, status: PreviewStatus.GENERATING_MODEL };
 }
 
 const SYNC_SELECT = {

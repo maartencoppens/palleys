@@ -106,7 +106,7 @@ async function paidOrder({ delivery = "HOME" as Delivery, printReady = true, loc
         shipment: {
           create: {
             provider: "static",
-            deliveryOptionId: delivery === "HOME" ? "be-bpost-home" : delivery === "PICKUP" ? "be-pickup-kantienberg" : "handover",
+            deliveryOptionId: delivery === "HOME" ? "be-postnl-home" : delivery === "PICKUP" ? "be-pickup-kantienberg" : "handover",
             deliveryType: delivery,
             carrier: delivery === "HOME" ? "bpost" : "Palleys",
             label: delivery,

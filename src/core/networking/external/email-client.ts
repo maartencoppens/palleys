@@ -35,6 +35,8 @@ export async function sendEmail(input: {
   text: string;
   /** Same key = same mail: Resend drops a second send within 24 hours. */
   idempotencyKey: string;
+  /** Where "reply" goes, instead of EMAIL_REPLY_TO: e.g. the visitor who wrote to us through the contact form. */
+  replyTo?: string;
 }): Promise<boolean> {
   if (!env.RESEND_API_KEY || !env.EMAIL_FROM) return false;
   try {
@@ -46,7 +48,7 @@ export async function sendEmail(input: {
         subject: input.subject,
         html: input.html,
         text: input.text,
-        ...(env.EMAIL_REPLY_TO && { reply_to: env.EMAIL_REPLY_TO }),
+        ...((input.replyTo ?? env.EMAIL_REPLY_TO) && { reply_to: input.replyTo ?? env.EMAIL_REPLY_TO }),
       },
       {
         timeout: TIMEOUT_MS,

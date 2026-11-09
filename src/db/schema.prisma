@@ -26,37 +26,41 @@ enum PreviewStatus {
 }
 
 model Preview {
-  id                String                @id @default(uuid())
-  status            PreviewStatus         @default(UPLOADED)
-  poseImageKey      String?
-  glbKey            String? // voor de 3D-viewer in de backoffice
-  objKey            String? // printbestanden voor full color resin:
-  mtlKey            String? //   OBJ + MTL + PNG-textuur, altijd samen
-  textureKey        String?
-  meshyTaskId       String?               @unique
-  email             String?
-  poseAttempts      Int                   @default(0)
-  error             String?
-  paidAt            DateTime? // orderdatum, gezet bij betaling (Bancontact-callback of statuscheck)
-  animalType        String? // code uit src/data/animals.ts, gekozen door de admin
-  quantity          Int                   @default(1) // aantal exemplaren van deze Palley in de order, gezet bij betaling
-  createdAt         DateTime              @default(now())
-  expiresAt         DateTime? // alleen voor niet-betaalde uploads, leeg na betaling
-  photosDeleteAt    DateTime? // voor betaalde orders, na verzending
-  downloadedAt      DateTime?
-  downloadedBy      String?
-  processedKey      String? // zip uit Blender, klaar voor print
-  processedAt       DateTime?
-  processedBy       String?
+  id              String                @id @default(uuid())
+  status          PreviewStatus         @default(UPLOADED)
+  poseImageKey    String?
+  glbKey          String? // voor de 3D-viewer in de backoffice
+  objKey          String? // printbestanden voor full color resin:
+  mtlKey          String? //   OBJ + MTL + PNG-textuur, altijd samen
+  textureKey      String?
+  meshyTaskId     String?               @unique
+  email           String?
+  poseAttempts    Int                   @default(0)
+  error           String?
+  paidAt          DateTime? // orderdatum, gezet bij betaling (Bancontact-callback of statuscheck)
+  animalType      String? // code uit src/data/animals.ts, gekozen door de admin
+  quantity        Int                   @default(1) // aantal exemplaren van deze Palley in de order, gezet bij betaling
+  createdAt       DateTime              @default(now())
+  expiresAt       DateTime? // alleen voor niet-betaalde uploads, leeg na betaling
+  photosDeleteAt  DateTime? // niet meer gebruikt: zie photosDeletedAt en core/modules/retention
+  // Bewaartermijnen uit het privacybeleid (core/modules/retention): wanneer de cron de foto's, de pose en de tussenmodellen
+  // verwijderde, en wanneer het printklare model.
+  photosDeletedAt DateTime?
+  modelDeletedAt  DateTime?
+  downloadedAt    DateTime?
+  downloadedBy    String?
+  processedKey    String? // zip uit Blender, klaar voor print
+  processedAt     DateTime?
+  processedBy     String?
   // Gemaakt om een collectible van te maken (backoffice-order), niet voor een klant.
-  forCollectible    Boolean               @default(false)
+  forCollectible  Boolean               @default(false)
   // De prompt voor deze ene generatie, door de admin aangepast. Leeg = de prompt uit de instellingen.
-  promptOverride    String?
-  collectible       Collectible?
-  photos            PreviewPhoto[]
-  statusChanges     PreviewStatusChange[]
-  orderItems        OrderItem[]
-  cartLines         CartLine[]
+  promptOverride  String?
+  collectible     Collectible?
+  photos          PreviewPhoto[]
+  statusChanges   PreviewStatusChange[]
+  orderItems      OrderItem[]
+  cartLines       CartLine[]
 
   @@index([status, expiresAt])
 }
@@ -280,76 +284,95 @@ model DiscountCode {
 }
 
 model Order {
-  id                 String              @id @default(uuid())
-  number             String              @unique // PLY1042 (core/utils/naming.ts), één doorlopende teller; oude orders PAL-2026-00042
-  invoiceNumber      String?             @unique // F2026-0001, toegekend in dezelfde transactie waarin de order betaald wordt
-  status             OrderStatus         @default(PENDING_PAYMENT)
-  createdBy          String? // null = via de website, anders de admin die de order toevoegde
-  cartId             String? // het mandje van deze order: na betaling verdwijnen de gekochte collectibles eruit
-  discountCodeId     String?
-  discount           DiscountCode?       @relation(fields: [discountCodeId], references: [id], onDelete: Restrict)
-  discountCode       String? // de code zoals gebruikt, ook als hij later hernoemd wordt
-  discountCents      Int                 @default(0) // afgetrokken van het subtotaal, zit al verrekend in totalCents
-  email              String? // alleen leeg bij een handmatige order
-  firstName          String
-  lastName           String
-  phone              String?
-  street             String? // adres alleen leeg bij een handmatige order die overhandigd wordt
-  houseNumber        String?
-  postalCode         String?
-  city               String?
-  country            String // ISO-2
-  currency           String              @default("EUR")
-  subtotalCents      Int
-  shippingCents      Int
-  vatCents           Int // btw inbegrepen in totalCents
-  totalCents         Int
-  termsVersion       String? // versie van de voorwaarden die aanvaard werd, leeg bij een handmatige order
-  termsAcceptedAt    DateTime?
-  locale             String              @default("nl")
-  marketingOptIn     Boolean             @default(false)
-  statusTokenHash    String // sha256 van het token in de return-URL; het token zelf bewaren we niet
-  attentionReason    String? // iets klopte niet (bedrag, preview al betaald, ...): opvolgen in de backoffice
-  confirmationSentAt DateTime?
-  paidAt             DateTime?
+  id                      String              @id @default(uuid())
+  number                  String              @unique // PLY1042 (core/utils/naming.ts), één doorlopende teller; oude orders PAL-2026-00042
+  invoiceNumber           String?             @unique // F2026-0001, toegekend in dezelfde transactie waarin de order betaald wordt
+  status                  OrderStatus         @default(PENDING_PAYMENT)
+  createdBy               String? // null = via de website, anders de admin die de order toevoegde
+  cartId                  String? // het mandje van deze order: na betaling verdwijnen de gekochte collectibles eruit
+  discountCodeId          String?
+  discount                DiscountCode?       @relation(fields: [discountCodeId], references: [id], onDelete: Restrict)
+  discountCode            String? // de code zoals gebruikt, ook als hij later hernoemd wordt
+  discountCents           Int                 @default(0) // afgetrokken van het subtotaal, zit al verrekend in totalCents
+  email                   String? // alleen leeg bij een handmatige order
+  firstName               String
+  lastName                String
+  phone                   String?
+  street                  String? // adres alleen leeg bij een handmatige order die overhandigd wordt
+  houseNumber             String?
+  postalCode              String?
+  city                    String?
+  country                 String // ISO-2
+  currency                String              @default("EUR")
+  subtotalCents           Int
+  shippingCents           Int
+  vatCents                Int // btw inbegrepen in totalCents
+  totalCents              Int
+  termsVersion            String? // versie van de voorwaarden die aanvaard werd, leeg bij een handmatige order
+  termsAcceptedAt         DateTime?
+  locale                  String              @default("nl")
+  marketingOptIn          Boolean             @default(false)
+  // Apart en vrijwillig, alleen bij een Palley op maat: we mogen de foto en de Palley gebruiken voor marketing (art. 5.4).
+  // Zolang dit aan staat, verwijdert de cron de foto's niet. Intrekken = een admin zet het uit.
+  photoMarketingConsent   Boolean             @default(false)
+  photoMarketingConsentAt DateTime?
+  statusTokenHash         String // sha256 van het token in de return-URL; het token zelf bewaren we niet
+  attentionReason         String? // iets klopte niet (bedrag, preview al betaald, ...): opvolgen in de backoffice
+  confirmationSentAt      DateTime?
+  // De eerste pose van een Palley op maat is goedgekeurd: de order is in productie (en de klant kreeg een mail).
+  // Vanaf dan kan een Palley op maat niet meer kosteloos geannuleerd worden.
+  productionStartedAt     DateTime?
+  paidAt                  DateTime?
   // De printbatch voor JLC. Een order zit in hoogstens één batch, altijd volledig.
-  batchId            String?
-  batch              Batch?              @relation(fields: [batchId], references: [id], onDelete: Restrict)
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  items              OrderItem[]
-  payments           Payment[]
-  shipment           Shipment?
-  statusChanges      OrderStatusChange[]
+  batchId                 String?
+  batch                   Batch?              @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  // Een herprint na een garantieclaim is een eigen order van € 0. De Palley-namen blijven die van de oorspronkelijke order.
+  reprintOfId             String?
+  reprintOf               Order?              @relation("Reprints", fields: [reprintOfId], references: [id], onDelete: SetNull)
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+  items                   OrderItem[]
+  payments                Payment[]
+  shipment                Shipment?
+  statusChanges           OrderStatusChange[]
+  reprints                Order[]             @relation("Reprints")
+  returnRequests          ReturnRequest[]
+  reprintFor              ReturnRequest?      @relation("ReprintOrder")
+  returnAccess            ReturnAccess[]
 
   @@index([status, createdAt])
   @@index([email])
   @@index([discountCodeId])
   @@index([batchId])
+  @@index([reprintOfId])
 }
 
 model OrderItem {
-  id            String       @id @default(uuid())
-  orderId       String
-  order         Order        @relation(fields: [orderId], references: [id], onDelete: Restrict)
-  previewId     String? // gepersonaliseerd: gaat door de AI-pipeline
-  preview       Preview?     @relation(fields: [previewId], references: [id], onDelete: Restrict)
-  collectibleId String? // kant-en-klaar: slaat de pipeline over
-  collectible   Collectible? @relation(fields: [collectibleId], references: [id], onDelete: Restrict)
-  position      Int // volgorde in de order, vanaf 1: het {nn} in de naam van de Palley
-  productCode   String // P-RING-KAT of COL-CLP-007, zoals bij het bestellen (core/utils/naming.ts)
-  size          String
-  edition       String?
-  attachment    String? // clip | key-ring, alleen bij een sleutelhanger
-  animal        String?
-  title         String // zoals de klant het zag, bv. "Palley Hond · Met sleutelhanger"
-  notes         String?
-  quantity      Int          @default(1)
-  unitCents     Int
-  withdrawable  Boolean      @default(false) // gepersonaliseerd = uitzondering op het herroepingsrecht (art. VI.53, 3° WER)
-  checkedInAt   DateTime? // een admin heeft dit item gecontroleerd en klaargelegd
-  checkedInBy   String?
-  reprintNr     Int          @default(0) // > 0 = opnieuw geprint: de naam krijgt -R<n>
+  id                String              @id @default(uuid())
+  orderId           String
+  order             Order               @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  previewId         String? // gepersonaliseerd: gaat door de AI-pipeline
+  preview           Preview?            @relation(fields: [previewId], references: [id], onDelete: Restrict)
+  collectibleId     String? // kant-en-klaar: slaat de pipeline over
+  collectible       Collectible?        @relation(fields: [collectibleId], references: [id], onDelete: Restrict)
+  position          Int // volgorde in de order, vanaf 1: het {nn} in de naam van de Palley
+  productCode       String // P-RING-KAT of COL-CLP-007, zoals bij het bestellen (core/utils/naming.ts)
+  size              String
+  edition           String?
+  attachment        String? // clip | key-ring, alleen bij een sleutelhanger
+  animal            String?
+  title             String // zoals de klant het zag, bv. "Palley Hond · Met sleutelhanger"
+  notes             String?
+  quantity          Int                 @default(1)
+  unitCents         Int
+  withdrawable      Boolean             @default(false) // gepersonaliseerd = uitzondering op het herroepingsrecht (art. VI.53, 3° WER)
+  checkedInAt       DateTime? // een admin heeft dit item gecontroleerd en klaargelegd
+  checkedInBy       String?
+  reprintNr         Int                 @default(0) // > 0 = opnieuw geprint: de naam krijgt -R<n>
+  // Geannuleerd of herroepen vóór verzending (goedgekeurde aanvraag): die exemplaren worden niet gemaakt.
+  // Op quantity = alles geannuleerd: het item telt niet meer mee voor check-in en batches.
+  cancelledQuantity Int                 @default(0)
+  returnItems       ReturnRequestItem[]
 
   @@unique([orderId, position])
   @@index([previewId])
@@ -378,21 +401,24 @@ model Payment {
 }
 
 model Shipment {
-  id                   String    @id @default(uuid())
-  orderId              String    @unique
-  order                Order     @relation(fields: [orderId], references: [id], onDelete: Restrict)
-  provider             String // static
-  deliveryOptionId     String
-  deliveryType         String // HOME | SERVICE_POINT
-  carrier              String // bpost, postnl, ...
-  label                String // zoals de klant de optie zag
-  priceCents           Int
-  trackingCode         String? // handmatig ingevuld bij verzenden (bpost)
-  trackingUrl          String?
-  shippedAt            DateTime? // verzonden, opgehaald of overhandigd
-  readyForPickupAt     DateTime? // afhalen: klaargelegd en de klant gemaild (één keer)
-  readyForPickupBy     String?
-  lastPickupUpdateAt   DateTime? // laatste update-mail over wanneer afhalen kan
+  id                 String    @id @default(uuid())
+  orderId            String    @unique
+  order              Order     @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  provider           String // static
+  deliveryOptionId   String
+  deliveryType       String // HOME | SERVICE_POINT
+  carrier            String // bpost, postnl, ...
+  label              String // zoals de klant de optie zag
+  priceCents         Int
+  trackingCode       String? // handmatig ingevuld bij verzenden (bpost)
+  trackingUrl        String?
+  shippedAt          DateTime? // verzonden, opgehaald of overhandigd
+  // Ontvangen door de klant: start van de herroepingstermijn. Leeg = geschat (core/modules/returns/utils.ts), tenzij het
+  // team de echte datum invult.
+  deliveredAt        DateTime?
+  readyForPickupAt   DateTime? // afhalen: klaargelegd en de klant gemaild (één keer)
+  readyForPickupBy   String?
+  lastPickupUpdateAt DateTime? // laatste update-mail over wanneer afhalen kan
 }
 
 enum BatchStatus {
@@ -449,7 +475,7 @@ model OrderStatusChange {
   order      Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
   fromStatus OrderStatus?
   toStatus   OrderStatus
-  source     String // webhook | return-page | cron | admin:<naam> | checkout
+  source     String // webhook | return-page | cron | admin:<naam> | checkout | customer (via /retour)
   note       String?
   createdAt  DateTime     @default(now())
 
@@ -469,6 +495,17 @@ model ShopSettings {
   prompts               Json? // de Nano Banana-prompt: algemeen en per diersoort
   updatedBy             String?
   updatedAt             DateTime @updatedAt
+}
+
+// Mailinglijst: wie in de checkout aanvinkte op de hoogte te blijven van nieuwe Palleys. Los van de order, want de
+// retentie ruimt orders op en dit blijft tot iemand zich uitschrijft. We versturen nog niets.
+model NewsletterSubscriber {
+  id             String    @id @default(uuid())
+  email          String    @unique // altijd kleine letters
+  locale         String    @default("nl")
+  source         String // checkout
+  subscribedAt   DateTime  @default(now()) // laatste keer dat er toestemming gegeven werd
+  unsubscribedAt DateTime? // gezet = uitgeschreven, niet mailen
 }
 
 // Rate limiting per IP (gehasht) en route, vast venster.
@@ -494,4 +531,81 @@ model DeletedOrder {
   deletedAt      DateTime @default(now())
 
   @@index([number])
+}
+
+// ---------- Retour: annuleren, herroepen, garantie (/retour) ----------
+
+enum ReturnType {
+  CANCELLATION // Palley op maat, nog niet in productie
+  WITHDRAWAL // herroeping van een Palley uit de collectie
+  WARRANTY // beschadigd, defect of niet wat besteld werd
+}
+
+enum ReturnResolution {
+  REPRINT
+  REFUND
+}
+
+enum ReturnStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
+// Een aanvraag van de klant via /retour. Overgangen in core/modules/returns/status.ts; elke stap komt ook in de
+// statuslog van de order. Terugbetalen gebeurt met de hand in het Bancontact Pro-portaal.
+model ReturnRequest {
+  id             String              @id @default(uuid())
+  orderId        String
+  order          Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  type           ReturnType
+  resolution     ReturnResolution? // wat de klant kiest bij een garantieclaim
+  reason         String? // de reden (optioneel) of de beschrijving van het probleem
+  photoKeys      String[] // R2-keys onder returns/<orderId>/, privé
+  // Herroeping: had de klant de Palleys al (dan stuurt hij ze terug) of nog niet (meteen terugbetalen).
+  itemsReceived  Boolean             @default(false)
+  status         ReturnStatus        @default(SUBMITTED)
+  decisionNote   String? // bij afwijzen: de reden, die naar de klant gaat
+  locale         String              @default("nl")
+  submittedAt    DateTime            @default(now())
+  decidedAt      DateTime?
+  decidedBy      String?
+  completedAt    DateTime?
+  completedBy    String?
+  // De herprint-order die bij het goedkeuren gemaakt werd.
+  reprintOrderId String?             @unique
+  reprintOrder   Order?              @relation("ReprintOrder", fields: [reprintOrderId], references: [id], onDelete: SetNull)
+  items          ReturnRequestItem[]
+
+  @@index([status, submittedAt])
+  @@index([orderId])
+}
+
+model ReturnRequestItem {
+  id              String        @id @default(uuid())
+  returnRequestId String
+  returnRequest   ReturnRequest @relation(fields: [returnRequestId], references: [id], onDelete: Cascade)
+  orderItemId     String
+  orderItem       OrderItem     @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  quantity        Int
+
+  @@unique([returnRequestId, orderItemId])
+  @@index([orderItemId])
+}
+
+// De eenmalige link uit de mail van /retour, en de sessie die ze opent. Alleen hashes, nooit de tokens.
+model ReturnAccess {
+  id               String    @id @default(uuid())
+  orderId          String
+  order            Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  linkTokenHash    String    @unique
+  linkExpiresAt    DateTime
+  usedAt           DateTime? // de link is geopend: hij werkt geen tweede keer
+  sessionTokenHash String?   @unique
+  sessionExpiresAt DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([orderId])
+  @@index([linkExpiresAt])
 }

@@ -6,12 +6,17 @@ export const COMPANY = {
   address: "Bernheimlaan 26, 9050 Gentbrugge, België",
   enterpriseNumber: "",
   email: "hallo@palleys.be",
-  phone: "+32476286813",
+  phone: "+32 476 28 68 13",
+  // LEGAL-REVIEW: where a withdrawn Palley goes back to (return policy). Emptied in the settings: /retour shows a placeholder.
+  returnAddress: "Bernheimlaan 26, 9050 Gentbrugge",
 };
 
 // Starting values; the real profile URLs are set in /admin/settings/company. An empty URL hides the icon.
 export const SOCIAL_LINKS = {
-  instagram: "https://www.instagram.com/",
+  instagram: "https://www.instagram.com/palleysofficial/",
   tiktok: "https://www.tiktok.com/",
   facebook: "https://www.facebook.com/",
 };
+
+// The page with the legally required company details (WER boek XII), linked from the footer.
+export const CONTACT_DETAILS_URL = "/contactgegevens";

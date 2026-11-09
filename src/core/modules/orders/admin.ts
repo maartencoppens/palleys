@@ -18,7 +18,7 @@ import { productCode } from "@/core/utils/naming";
 import { MANUAL_PAYMENT_PROVIDER } from "@/data/payment-methods";
 import { CURRENCY } from "@/data/pricing";
 import { HANDOVER_DELIVERY } from "@/data/shipping";
-import { allItemsCheckedIn, ITEM_READY_PREVIEW_STATUS, OPEN_ORDER_STATUSES } from "./check-in";
+import { activeQuantity, allItemsCheckedIn, checkInItemOf, ITEM_READY_PREVIEW_STATUS, OPEN_ORDER_STATUSES } from "./check-in";
 import { nextOrderNumber, OrderNotFoundError } from "./service";
 import { canCheckInInBatch } from "@/core/modules/batches/status";
 import type { ManualOrderInput, ManualOrderResult, OrderStatusActionInput } from "./types";
@@ -195,6 +195,8 @@ export async function setItemCheckIn(orderId: string, itemId: string, checked: b
     where: { id: itemId, orderId },
     select: {
       title: true,
+      quantity: true,
+      cancelledQuantity: true,
       order: { select: { status: true, batch: { select: { status: true } } } },
       preview: { select: { status: true } },
     },
@@ -206,6 +208,7 @@ export async function setItemCheckIn(orderId: string, itemId: string, checked: b
   if (checked && !canCheckInInBatch(item.order.batch?.status ?? null)) {
     throw new OrderActionError("Deze order zit in een batch: afvinken kan pas als de batch terug is van JLC");
   }
+  if (checked && activeQuantity(item) <= 0) throw new OrderActionError("Dit item is geannuleerd: er valt niets af te vinken");
   if (checked && item.preview && item.preview.status !== ITEM_READY_PREVIEW_STATUS) {
     throw new OrderActionError("Dit model is nog niet klaar voor print: werk eerst de preview af");
   }
@@ -234,7 +237,7 @@ export async function updateOrderStatus(orderId: string, input: OrderStatusActio
     where: { id: orderId },
     select: {
       status: true,
-      items: { select: { checkedInAt: true, preview: { select: { status: true } } } },
+      items: { select: { checkedInAt: true, quantity: true, cancelledQuantity: true, preview: { select: { status: true } } } },
       payments: { select: { provider: true, status: true } },
       batchId: true,
     },
@@ -247,7 +250,7 @@ export async function updateOrderStatus(orderId: string, input: OrderStatusActio
   }
 
   if (input.status === "SHIPPED") {
-    const items = order.items.map((item) => ({ previewStatus: item.preview?.status ?? null, checkedInAt: item.checkedInAt }));
+    const items = order.items.map(checkInItemOf);
     if (!allItemsCheckedIn(items)) throw new OrderActionError("Vink eerst alle items af");
   }
   if (input.status === "REFUNDED") {
@@ -268,3 +271,20 @@ export async function updateOrderStatus(orderId: string, input: OrderStatusActio
   return { orderId, status: input.status };
 }
 
+
+/**
+ * The customer withdrew their consent for marketing with their photos (art. 5.4), usually by mail. From now on the
+ * retention cron treats the photos like any other order's. What was already published is the team's to take down.
+ */
+export async function withdrawPhotoConsent(orderId: string, adminName: string) {
+  const order = await prisma.order.findUnique({ where: { id: orderId }, select: { status: true, photoMarketingConsent: true } });
+  if (!order) throw new OrderNotFoundError(orderId);
+  if (!order.photoMarketingConsent) return { orderId };
+  await prisma.$transaction([
+    prisma.order.update({ where: { id: orderId }, data: { photoMarketingConsent: false, photoMarketingConsentAt: null } }),
+    prisma.orderStatusChange.create({
+      data: { orderId, fromStatus: order.status, toStatus: order.status, source: `admin:${adminName}`, note: "Toestemming foto's voor marketing ingetrokken" },
+    }),
+  ]);
+  return { orderId };
+}

@@ -6,7 +6,7 @@ import { staticShippingProvider } from "./providers/static";
 import type { ShippingProvider } from "./providers/types";
 import type { DeliveryAddress, DeliveryOption } from "./types";
 
-// The delivery options in use: fixed ones, priced in the settings. Labels are made by hand (bpost).
+// The delivery options in use: fixed ones, priced in the settings. Labels are made by hand (PostNL).
 const provider: ShippingProvider = staticShippingProvider;
 
 export async function getDeliveryOptions(

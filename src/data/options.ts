@@ -18,9 +18,10 @@ export const attachments = [
 export type Attachment = (typeof attachments)[number]["value"];
 export const DEFAULT_ATTACHMENT: Attachment = "clip";
 
-// The starting text of the return note (Teksten in the backoffice).
+// The starting text of the return note (Teksten in the backoffice), shown on /create and in the cart.
+// LEGAL-REVIEW: summary of the return policy of 9 November 2026 (art. VI.53, 3° WER for a Palley op maat).
 export const RETURN_NOTE =
-  "Elke Palley wordt speciaal voor jouw huisdier gemaakt, dus retourneren kan niet. Kwam hij beschadigd aan of is het niet wat je bestelde? Dan lossen we het op.";
+  "Een Palley op maat maken we speciaal voor jou: herroepen kan niet, maar zolang je bestelling niet in productie is, annuleer je kosteloos. Een Palley uit onze collectie kun je zonder reden herroepen tot 14 dagen na ontvangst. Beschadigd of niet wat je bestelde? Dan printen we gratis opnieuw of betalen we terug.";
 
 // Same limits as the upload API (data/uploads.ts), so the browser never accepts what the server refuses.
 // No HEIC: the AI pipeline can't read it. iPhones convert HEIC to JPEG when the picker doesn't accept it.

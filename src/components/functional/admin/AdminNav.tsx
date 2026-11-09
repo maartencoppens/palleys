@@ -16,11 +16,15 @@ const GROUPS = [
       { href: "/admin/processed", label: "Processed" },
       { href: "/admin/batches", label: "Batches" },
       { href: "/admin/production", label: "Productie" },
+      { href: "/admin/returns", label: "Retour" },
     ],
   },
   {
     label: "Website",
-    links: [{ href: "/admin/settings", label: "Instellingen" }],
+    links: [
+      { href: "/admin/settings", label: "Instellingen" },
+      { href: "/admin/mailing", label: "Mailinglijst" },
+    ],
   },
 ];
 

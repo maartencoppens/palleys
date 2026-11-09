@@ -6,6 +6,7 @@ import { assertPreviewCanBeOrdered, CartError, findCartId, getCheckoutLines } fr
 import { checkDiscount, claimDiscount } from "@/core/modules/discounts/service";
 import type { AppliedDiscount } from "@/core/modules/discounts/types";
 import { nextOrderNumber } from "@/core/modules/orders/service";
+import { subscribeToNewsletter } from "@/core/modules/newsletter/service";
 import { maskEmail } from "@/core/modules/orders/utils";
 import { paymentProvider } from "@/core/modules/payments/providers";
 import {
@@ -98,6 +99,12 @@ export async function applyCheckoutDiscount(cartToken: string | null, code: stri
   return { code: check.code, label: check.label, discountCents: check.discountCents };
 }
 
+/** Consent for marketing with the photos only means something when there are photos: an order with a Palley op maat. */
+function photoConsent(given: boolean, lines: { previewId: string | null }[]) {
+  const consent = given && lines.some((line) => line.previewId !== null);
+  return { photoMarketingConsent: consent, photoMarketingConsentAt: consent ? new Date() : null };
+}
+
 export async function startCheckout(cartToken: string | null, input: CheckoutInput): Promise<CheckoutResult> {
   const config = await getCheckoutConfig();
   if (!config.enabled) throw new CheckoutError("checkout_closed");
@@ -139,6 +146,10 @@ export async function startCheckout(cartToken: string | null, input: CheckoutInp
       throw new CheckoutError("total_changed", { totalCents: totals.totalCents });
     }
     const number = await nextOrderNumber(tx);
+    // The box is about news, not this order: the address joins the list whether or not the payment goes through.
+    if (input.marketingOptIn) {
+      await subscribeToNewsletter(tx, { email: input.email, locale: input.locale, source: "checkout" });
+    }
     return tx.order.create({
       data: {
         number,
@@ -160,6 +171,7 @@ export async function startCheckout(cartToken: string | null, input: CheckoutInp
         termsAcceptedAt: new Date(),
         locale: input.locale,
         marketingOptIn: input.marketingOptIn,
+        ...photoConsent(input.photoMarketingConsent, lines),
         statusTokenHash: hashToken(statusToken),
         items: {
           create: lines.map((line, index) => ({

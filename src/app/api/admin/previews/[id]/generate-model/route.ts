@@ -16,9 +16,9 @@ export async function POST(
   ctx: RouteContext<"/api/admin/previews/[id]/generate-model">,
 ) {
   try {
-    await requireAdmin();
+    const session = await requireAdmin();
     const { id } = paramsSchema.parse(await ctx.params);
-    const result = await startModelGeneration(id);
+    const result = await startModelGeneration(id, session.user.name);
     return NextResponse.json(result);
   } catch (error) {
     if (error instanceof UnauthorizedError) {

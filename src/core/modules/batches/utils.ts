@@ -1,5 +1,6 @@
 import { batchManifestEntry, batchZipEntry, palleyFileName, parseProductCode } from "@/core/utils/naming";
 import { palleyNameOf } from "@/core/modules/orders/utils";
+import { activeQuantity } from "@/core/modules/orders/check-in";
 import { isPersonalDelivery } from "@/data/shipping";
 import type { PreviewStatus } from "@/db/generated/enums";
 
@@ -10,6 +11,7 @@ export type BatchItemSource = {
   productCode: string;
   reprintNr: number;
   quantity: number;
+  cancelledQuantity: number;
   preview: { status: PreviewStatus; processedKey: string | null } | null;
   collectible: { modelKey: string | null } | null;
 };
@@ -22,8 +24,14 @@ export function printFileKey(item: BatchItemSource) {
 
 export const isItemPrintReady = (item: BatchItemSource) => printFileKey(item) !== null;
 
-/** Every item ready: only then can the order go into a batch (orders are never split). */
-export const isOrderPrintReady = (items: BatchItemSource[]) => items.length > 0 && items.every(isItemPrintReady);
+/** Copies still to print: cancelled or withdrawn ones before the batch aren't. */
+export const isItemToPrint = (item: BatchItemSource) => activeQuantity(item) > 0;
+
+/** Every item still to print is ready: only then can the order go into a batch (orders are never split). */
+export function isOrderPrintReady(items: BatchItemSource[]) {
+  const toPrint = items.filter(isItemToPrint);
+  return toPrint.length > 0 && toPrint.every(isItemPrintReady);
+}
 
 /** Where an order goes after post-production: a parcel (bpost) or picked up / handed over. Anything else is wrong. */
 export function deliveryGroup(deliveryType: string | null | undefined): "deliver" | "pickup" | "other" {
@@ -56,13 +64,13 @@ export type ManifestRow = { orderNumber: string; palleyName: string; productCode
  */
 export function batchContents(
   batchRef: string,
-  orders: { number: string; items: BatchItemSource[] }[],
+  orders: { number: string; reprintOf: { number: string } | null; items: BatchItemSource[] }[],
 ): { entries: ZipEntry[]; manifest: ManifestRow[]; missing: string[] } {
   const entries: ZipEntry[] = [];
   const manifest: ManifestRow[] = [];
   const missing: string[] = [];
   for (const order of [...orders].sort((a, b) => a.number.localeCompare(b.number, "en", { numeric: true }))) {
-    for (const item of [...order.items].sort((a, b) => a.position - b.position)) {
+    for (const item of [...order.items].filter(isItemToPrint).sort((a, b) => a.position - b.position)) {
       const palleyName = palleyNameOf({ ...item, order });
       const key = printFileKey(item);
       if (!palleyName || !key) {
@@ -71,7 +79,7 @@ export function batchContents(
       }
       const fileName = palleyFileName(palleyName, "print");
       entries.push({ path: batchZipEntry(batchRef, order.number, fileName), key, palleyName });
-      manifest.push({ orderNumber: order.number, palleyName, productCode: item.productCode, edition: editionForJlc(item.productCode), copies: item.quantity, fileName });
+      manifest.push({ orderNumber: order.number, palleyName, productCode: item.productCode, edition: editionForJlc(item.productCode), copies: activeQuantity(item), fileName });
     }
   }
   return { entries, manifest, missing };

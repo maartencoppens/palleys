@@ -56,7 +56,7 @@ type ConfirmationSettings = {
   animals?: AnimalOption[];
 };
 
-const escapeHtml = (value: string) =>
+export const escapeHtml = (value: string) =>
   value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
 function withdrawalNote(items: ConfirmationOrder["items"], m: Messages["email"]) {
@@ -66,7 +66,12 @@ function withdrawalNote(items: ConfirmationOrder["items"], m: Messages["email"])
 }
 
 /** OrderItem.title is Dutch for the backoffice: a Palley is named from its options, a collectible keeps its name and adds its attachment. */
-function itemTitle(item: ConfirmationOrder["items"][number], messages: Messages, locale: Locale, animals: AnimalOption[]) {
+export function itemTitle(
+  item: Pick<ConfirmationOrder["items"][number], "title" | "animal" | "edition" | "attachment" | "collectible">,
+  messages: Messages,
+  locale: Locale,
+  animals: AnimalOption[],
+) {
   const { editions, attachments } = messages.options;
   if (!item.animal || !item.edition) {
     const name = item.collectible
@@ -215,4 +220,61 @@ export function buildPickupMail(
 </body></html>`;
   const text = [title, "", ...body.flatMap((paragraph) => [paragraph, ""]), m.footer, "", [company.legalName, company.address, company.email].join(" · ")].join("\n");
   return { subject, html, text };
+}
+
+export type ProductionMailOrder = { number: string; firstName: string; locale: string };
+
+/** "Your order is in production": once per order, when the first pose of a Palley op maat is approved. Pure, like the others. */
+export function buildProductionMail(order: ProductionMailOrder, { company = COMPANY }: { company?: Pick<typeof COMPANY, "legalName" | "address" | "email"> } = {}) {
+  const locale = toLocale(order.locale);
+  const m = MESSAGES[locale].productionEmail;
+  const values = { number: order.number, name: order.firstName };
+  const subject = fill(m.subject, values);
+  const title = fill(m.title, values);
+  const paragraphs = [fill(m.text, values), m.noCancel, m.footer];
+  const html = `<!doctype html>
+<html lang="${locale}"><body style="font-family:Arial,sans-serif;color:#1f2d24;max-width:560px;margin:0 auto;padding:24px">
+  <h1 style="font-size:22px">${escapeHtml(title)}</h1>
+  ${paragraphs.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("\n  ")}
+  <hr style="border:none;border-top:1px solid #ddd">
+  <p style="font-size:12px;color:#666">${escapeHtml(company.legalName)} · ${escapeHtml(company.address)}<br>${escapeHtml(company.email)}</p>
+</body></html>`;
+  const text = [title, "", ...paragraphs.flatMap((paragraph) => [paragraph, ""]), [company.legalName, company.address, company.email].join(" · ")].join("\n");
+  return { subject, html, text };
+}
+
+export type NewOrderTeamMailOrder = {
+  number: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  totalCents: number;
+  discountCode: string | null;
+  items: { title: string; quantity: number; unitCents: number; withdrawable: boolean }[];
+  shipment: { label: string } | null;
+};
+
+/** For the team, in Dutch: a new paid order from the website, with what's in it and where to find it. */
+export function buildNewOrderTeamMail(order: NewOrderTeamMailOrder, adminUrl: string, problems: string[] = []) {
+  const euro = (cents: number) => formatPrice(cents / 100);
+  const custom = order.items.filter((item) => !item.withdrawable).reduce((sum, item) => sum + item.quantity, 0);
+  const subject = `Nieuwe order ${order.number} (${euro(order.totalCents)})`;
+  const lines = [
+    `${order.firstName} ${order.lastName}${order.email ? ` (${order.email})` : ""} bestelde en betaalde ${order.number}.`,
+    "",
+    ...order.items.map((item) => `- ${item.title} × ${item.quantity}: ${euro(item.unitCents * item.quantity)}`),
+    `Totaal: ${euro(order.totalCents)}${order.discountCode ? ` (kortingscode ${order.discountCode})` : ""}`,
+    `Levering: ${order.shipment?.label ?? "geen"}`,
+    "",
+    custom > 0 ? `${custom === 1 ? "1 Palley op maat staat" : `${custom} Palleys op maat staan`} klaar in Te reviewen.` : "Alleen collectie: klaar voor een batch.",
+    ...(problems.length > 0 ? ["", `Let op: ${problems.join(" | ")}`] : []),
+    "",
+    `Bekijken: ${adminUrl}`,
+  ];
+  const html = `<!doctype html>
+<html lang="nl"><body style="font-family:Arial,sans-serif;color:#1f2d24;max-width:560px;margin:0 auto;padding:24px">
+  <h1 style="font-size:22px">${escapeHtml(subject)}</h1>
+  <p>${lines.map((line) => escapeHtml(line)).join("<br>")}</p>
+</body></html>`;
+  return { subject, html, text: [subject, "", ...lines].join("\n") };
 }

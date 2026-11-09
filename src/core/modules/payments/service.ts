@@ -6,7 +6,7 @@ import { env } from "@/core/utils/env";
 import { createToken, hashToken } from "@/core/utils/tokens";
 import { EmailError, sendEmail } from "@/core/networking/external/email-client";
 import { statusesThatCanTransitionTo } from "@/core/modules/previews/status";
-import { buildOrderConfirmation } from "@/core/modules/orders/emails";
+import { buildNewOrderTeamMail, buildOrderConfirmation } from "@/core/modules/orders/emails";
 import { canTransitionOrder, orderStatusesThatCanTransitionTo, PAID_ORDER_STATUSES } from "@/core/modules/orders/status";
 import { nextInvoiceNumber } from "@/core/modules/orders/service";
 import { syncBatchAfterOrderMove } from "@/core/modules/batches/sync";
@@ -145,7 +145,8 @@ export async function syncOrderPayment(
   return processPayment(await paymentProvider.getPayment(payment.providerPaymentId), source);
 }
 
-async function flagOrder(orderId: string, reason: string) {
+/** Puts an order on "aandacht nodig" in the backoffice. Earlier reasons stay; the same reason twice is added once. */
+export async function flagOrder(orderId: string, reason: string) {
   console.error(`[payments] order ${orderId} needs attention: ${reason}`);
   // Keep earlier reasons: an admin should see everything that went wrong.
   const order = await prisma.order.findUnique({ where: { id: orderId }, select: { attentionReason: true } });
@@ -325,6 +326,38 @@ async function markOrderPaid(orderId: string, orderNumber: string, source: Proce
   if (conflicts === null) return;
   console.info(`[payments] order ${orderNumber} paid (${source})`);
   if (conflicts.length > 0) await flagOrder(orderId, conflicts.join(" | "));
+  await mailTeamAboutNewOrder(orderId, conflicts);
+}
+
+/**
+ * Tells the team (the company e-mail in the settings) that a website order came in. Runs once per order: only the
+ * call that moved it to PAID gets here. Orders an admin added aren't news to the team. A failed mail is only logged:
+ * the order is in the backoffice either way.
+ */
+async function mailTeamAboutNewOrder(orderId: string, problems: string[]) {
+  const order = await prisma.order.findUniqueOrThrow({
+    where: { id: orderId },
+    select: {
+      number: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      totalCents: true,
+      discountCode: true,
+      createdBy: true,
+      items: { orderBy: { position: "asc" }, select: { title: true, quantity: true, unitCents: true, withdrawable: true } },
+      shipment: { select: { label: true } },
+    },
+  });
+  if (order.createdBy) return;
+  try {
+    const { company } = await getShopSettings();
+    const mail = buildNewOrderTeamMail(order, `${env.APP_URL}/admin/orders/${orderId}`, problems);
+    const sent = await sendEmail({ to: company.email, ...mail, idempotencyKey: `order-team-${orderId}` });
+    if (!sent) console.warn(`[payments] team mail for ${order.number} not sent: e-mail is not configured`);
+  } catch (error) {
+    console.error(`[payments] team mail for ${order.number} failed:`, error instanceof Error ? error.message : error);
+  }
 }
 
 /** Sends the confirmation mail at most once per order, even with concurrent webhooks. */

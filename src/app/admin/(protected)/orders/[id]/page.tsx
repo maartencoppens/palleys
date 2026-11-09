@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdminPage } from "@/core/modules/auth/service";
-import { itemStage, nextStepLabel, OPEN_ORDER_STATUSES, summarizeCheckIn } from "@/core/modules/orders/check-in";
+import { checkInItemOf, itemStage, nextStepLabel, OPEN_ORDER_STATUSES, summarizeCheckIn } from "@/core/modules/orders/check-in";
 import { getOrderForAdmin } from "@/core/modules/orders/service";
+import { getReturnRequestsForOrder } from "@/core/modules/returns/service";
+import { receivedOn } from "@/core/modules/returns/utils";
 import { paymentProvider } from "@/core/modules/payments/providers";
 import { formatDateTime, formatPrice } from "@/core/utils/format";
 import { isPersonalDelivery, needsShippingAddress } from "@/data/shipping";
@@ -15,10 +17,13 @@ import { OrderActions } from "@/components/functional/admin/OrderActions";
 import { CollectibleModelButton } from "@/components/functional/admin/orders/CollectibleModelButton";
 import { ItemCheckInButton } from "@/components/functional/admin/orders/ItemCheckInButton";
 import { OrderPaymentPanel } from "@/components/functional/admin/orders/OrderPaymentPanel";
+import { PhotoConsentLine } from "@/components/functional/admin/orders/PhotoConsentLine";
 import { OrderProgressPanel } from "@/components/functional/admin/orders/OrderProgressPanel";
 import { OrderStatusBadge, orderStatusLabel, PaymentStatusBadge } from "@/components/functional/admin/OrderStatusBadge";
 import { PhotoThumbnails } from "@/components/functional/admin/PhotoThumbnails";
 import { PreviewStatusBadge } from "@/components/functional/admin/PreviewStatusBadge";
+import { DeliveredOnForm } from "@/components/functional/admin/returns/DeliveredOnForm";
+import { ReturnRequestCard } from "@/components/functional/admin/returns/ReturnRequestCard";
 
 export const instant = false;
 
@@ -29,10 +34,15 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
   const { id } = await params;
   const order = await getOrderForAdmin(id);
   if (!order) notFound();
+  const returnRequests = await getReturnRequestsForOrder(order.id);
+  const shippedAt = order.shipment?.shippedAt;
+  const estimate = order.shipment && shippedAt
+    ? receivedOn({ deliveryType: order.shipment.deliveryType, shippedAt: new Date(shippedAt), deliveredAt: null })
+    : null;
 
   const confirmable = ["PAID", "IN_PRODUCTION", "SHIPPED"].includes(order.status);
   const open = OPEN_ORDER_STATUSES.includes(order.status);
-  const checkInItems = order.items.map((item) => ({ previewStatus: item.previewStatus, checkedInAt: item.checkedInAt }));
+  const checkInItems = order.items.map(checkInItemOf);
   const summary = summarizeCheckIn(checkInItems);
   const handover = isPersonalDelivery(order.shipment?.deliveryType);
   const paidManually = order.payments.some((payment) => payment.provider === MANUAL_PAYMENT_PROVIDER && payment.status === "PAID");
@@ -54,6 +64,14 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
         </h1>
         <OrderStatusBadge status={order.status} deliveryType={order.shipment?.deliveryType} />
         {order.createdBy && <Badge>Handmatig toegevoegd door {order.createdBy}</Badge>}
+        {order.reprintOf && (
+          <Badge tone="waiting">
+            Herprint van{" "}
+            <Link href={`/admin/orders/${order.reprintOf.id}`} className="underline underline-offset-2">
+              {order.reprintOf.number}
+            </Link>
+          </Badge>
+        )}
       </div>
       <p className="mt-1 text-sm text-text-muted">
         Besteld {formatDateTime(order.createdAt)}
@@ -71,6 +89,20 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
           </>
         )}
       </p>
+
+      {order.reprints.length > 0 && (
+        <p className="mt-1 text-sm">
+          Herprints:{" "}
+          {order.reprints.map((reprint, index) => (
+            <span key={reprint.id}>
+              {index > 0 && ", "}
+              <Link href={`/admin/orders/${reprint.id}`} className="font-semibold text-medium-green underline underline-offset-4">
+                {reprint.number}
+              </Link>
+            </span>
+          ))}
+        </p>
+      )}
 
       {order.attentionReason && (
         <section role="alert" className="mt-6 rounded-3xl bg-pink p-6 text-sm text-[#a3341a]">
@@ -103,6 +135,13 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <p className="font-label text-base font-bold">
                       {item.title} × {item.quantity}
+                      {item.cancelledQuantity > 0 && (
+                        <span className="ml-2 align-middle">
+                          <Badge tone="danger">
+                            {item.cancelledQuantity === item.quantity ? "Geannuleerd" : `${item.cancelledQuantity} geannuleerd`}
+                          </Badge>
+                        </span>
+                      )}
                     </p>
                     <p className="font-mono text-xs text-text-muted">
                       {item.productCode} · maat {item.size}
@@ -145,7 +184,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
                     </div>
                     {open ? (
                       <div className="mt-2">
-                        <ItemCheckInButton orderId={order.id} itemId={item.id} stage={itemStage(item)} />
+                        <ItemCheckInButton orderId={order.id} itemId={item.id} stage={itemStage(checkInItemOf(item))} />
                       </div>
                     ) : null}
                     {item.checkedInAt && (
@@ -186,6 +225,17 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
               )}
             </dl>
           </section>
+
+          {returnRequests.length > 0 && (
+            <section className="-order-1 rounded-3xl bg-white p-5 sm:p-6 lg:order-none">
+              <h2 className="font-display text-xl font-medium text-medium-green">Retour</h2>
+              <div className="mt-4 flex flex-col gap-3">
+                {returnRequests.map((request) => (
+                  <ReturnRequestCard key={request.id} request={request} />
+                ))}
+              </div>
+            </section>
+          )}
 
           <section className="order-1 rounded-3xl bg-white p-5 sm:p-6 lg:order-none">
             <h2 className="font-display text-xl font-medium text-medium-green">Betalingen</h2>
@@ -288,6 +338,13 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
                   {order.shipment.label} ({euro(order.shipment.priceCents)})
                 </p>
                 {order.shipment.trackingCode && <p className="font-mono text-xs">{order.shipment.trackingCode}</p>}
+                {order.status === "SHIPPED" && !handover && (
+                  <DeliveredOnForm
+                    orderId={order.id}
+                    deliveredOn={order.shipment.deliveredAt?.slice(0, 10) ?? null}
+                    estimate={estimate?.day ?? null}
+                  />
+                )}
               </>
             )}
             <h3 className="mt-4 font-label font-semibold text-text-muted">Overige</h3>
@@ -297,6 +354,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
                 : "Voorwaarden niet online aanvaard (handmatig toegevoegd)"}
             </p>
             <p>Nieuwsbrief: {order.marketingOptIn ? "ja" : "nee"}</p>
+            <PhotoConsentLine orderId={order.id} consentAt={order.photoMarketingConsentAt} />
             <p>
               Bevestigingsmail:{" "}
               {order.confirmationSentAt ? formatDateTime(order.confirmationSentAt) : confirmable ? "niet verstuurd" : "—"}

@@ -16,6 +16,7 @@ import { Badge } from "@/components/design/Badge";
 import WarningNote from "@/components/design/WarningNote";
 import { getPublishedCollectible } from "@/core/modules/collectibles/service";
 import { formatPrice } from "@/core/utils/format";
+import { shownSizeLabel } from "@/core/modules/catalog/utils";
 
 // The URL is only known per request, and the navbar's cart reads it (usePathname), so this page can't be prerendered.
 export const instant = false;
@@ -54,6 +55,8 @@ async function LiveCollectible({ params }: { params: PageProps<"/[lang]/shop/[sl
         {collectible.description && (
           <p className="whitespace-pre-line text-base leading-[1.5] text-text-primary md:text-lg">{collectible.description}</p>
         )}
+        {/* Art. 2.3 of the terms: the dimensions are with the product. */}
+        <p className="text-base leading-[1.5] text-text-primary">{fill(messages.create.choose.size, { size: shownSizeLabel(locale) })}</p>
         {collectible.soldOut ? (
           <Badge tone="danger">{messages.collection.soldOut}</Badge>
         ) : (

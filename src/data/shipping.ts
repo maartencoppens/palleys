@@ -1,4 +1,7 @@
 // Shipping config. No server-only imports: the checkout form uses the country list too.
+
+// The shipping policy page; LEGAL-REVIEW: its texts are in core/locale/messages (legal.shippingPolicy).
+export const SHIPPING_POLICY_URL = "/verzendbeleid";
 // Delivery options come from a ShippingProvider (core/modules/shipping): the static provider below. Its prices are
 // starting values that an admin can change in /admin/settings.
 import type { KeychainSize } from "./sizes";
@@ -59,13 +62,14 @@ export const FRIENDS_DELIVERY = {
 // Used while no carrier API is connected, and as fallback when it fails, so checkout never blocks.
 export const STATIC_DELIVERY_OPTIONS: StaticDeliveryOption[] = [
   {
-    id: "be-bpost-home",
+    // PostNL, labels made by hand. The bpost CSV export (Productie) stays for if we ever ship with bpost again.
+    id: "be-postnl-home",
     country: "BE",
-    carrier: "bpost",
+    carrier: "PostNL",
     deliveryType: "HOME",
-    label: "Thuislevering met bpost",
+    label: "Thuislevering met PostNL",
     eta: "1–2 werkdagen na verzending",
-    defaultPriceCents: 495,
+    defaultPriceCents: 610,
   },
   {
     id: "be-pickup-kantienberg",

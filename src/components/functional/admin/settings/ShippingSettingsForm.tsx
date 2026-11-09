@@ -44,7 +44,7 @@ export function ShippingSettingsForm({ settings }: { settings: ShippingSettings 
     <form onSubmit={submit} className="flex flex-col gap-6">
       <SettingsCard
         title="Verzendopties"
-        intro="Prijs die de klant betaalt."
+        intro="Prijs die de klant betaalt: in de checkout en op het verzendbeleid (/verzendbeleid). Uitgevinkt = niet te kiezen."
       >
         <ul className="divide-y divide-off-white-dark">
           {STATIC_DELIVERY_OPTIONS.map((option) => (

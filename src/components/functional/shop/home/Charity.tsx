@@ -30,8 +30,8 @@ export default async function Charity({
       {/* Stand-in until there's a photo of Dierenasiel Gent. The circle cuts off the cream corners of this image. */}
       <Image
         data-animate="pop"
-        className="h-auto w-full max-w-[420px] self-center rounded-full lg:max-w-[560px] lg:min-w-0 lg:flex-[1_1_560px]"
-        src="/images/about/story-pets.png"
+        className="h-auto w-full max-w-[420px] self-center lg:max-w-[560px] lg:min-w-0 lg:flex-[1_1_560px]"
+        src="/images/about/goeddoel.png"
         width={560}
         height={560}
         alt={m.photoAlt}

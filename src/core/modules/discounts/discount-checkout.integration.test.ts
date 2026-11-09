@@ -230,7 +230,7 @@ describe("delivery without shipping", () => {
   });
 
   it("still needs an address for a parcel", async () => {
-    await expect(startCheckout(await newCart(), noAddress("be-bpost-home"))).rejects.toMatchObject({ code: "address_required" });
+    await expect(startCheckout(await newCart(), noAddress("be-postnl-home"))).rejects.toMatchObject({ code: "address_required" });
   });
 
   it("only offers friends and family with a code that allows it", async () => {

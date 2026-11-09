@@ -12,6 +12,7 @@ const COMPANY_FIELDS = [
   { name: "enterpriseNumber", label: "Ondernemingsnummer (leeg als we er geen hebben)" },
   { name: "email", label: "E-mail" },
   { name: "phone", label: "Telefoon" },
+  { name: "returnAddress", label: "Retouradres (waar een herroepen Palley naartoe gaat)" },
 ] as const;
 
 const SOCIAL_FIELDS = [
@@ -38,7 +39,7 @@ export function CompanySettingsForm({ company }: { company: CompanySettings }) {
       >
         <div className="grid gap-4 sm:grid-cols-2">
           {COMPANY_FIELDS.map((field) => (
-            <div key={field.name} className={field.name === "address" ? "sm:col-span-2" : ""}>
+            <div key={field.name} className={field.name === "address" || field.name === "returnAddress" ? "sm:col-span-2" : ""}>
               <label htmlFor={`company-${field.name}`} className={fieldLabelClassName}>
                 {field.label}
               </label>

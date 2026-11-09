@@ -40,13 +40,27 @@ export default function StepCard({ number, title, description, blob, icon, class
           alt=""
         />
 
-        <span
+        {/*
+         * SVG instead of text in a circle: the number scales with the artwork's zoom as one shape, so a
+         * browser's minimum font size or text autosizing on phones can't push it out of the circle.
+         */}
+        <svg
           data-animate="wiggle"
-          className="absolute -top-[18px] left-[13px] grid size-[60px] place-items-center rounded-full bg-medium-green text-[32px] font-bold text-white"
+          className="absolute -top-[18px] left-[13px] size-[60px]"
+          viewBox="0 0 60 60"
           aria-hidden
         >
-          {number}
-        </span>
+          <circle cx="30" cy="30" r="30" className="fill-medium-green" />
+          <text
+            x="30"
+            y="30"
+            textAnchor="middle"
+            dominantBaseline="central"
+            className="fill-white text-[32px] font-bold"
+          >
+            {number}
+          </text>
+        </svg>
       </div>
 
       <div className="flex flex-col gap-1.5 md:items-center md:gap-3.5">

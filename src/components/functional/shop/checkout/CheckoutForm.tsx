@@ -21,7 +21,7 @@ import { FIELD_LIMITS, PRIVACY_URL, TERMS_URL } from "@/data/checkout";
 import { DISCOUNT_CODE_MAX_LENGTH } from "@/data/discounts";
 import { PAYMENT_METHOD_LABELS, PAYMENT_METHODS } from "@/data/payment-methods";
 import { attachments, type Attachment } from "@/data/options";
-import { needsShippingAddress, POSTAL_CODE_PATTERNS, type ShippingCountry } from "@/data/shipping";
+import { FRIENDS_DELIVERY, needsShippingAddress, POSTAL_CODE_PATTERNS, type ShippingCountry } from "@/data/shipping";
 import DeliveryOptionsPicker from "./DeliveryOptionsPicker";
 
 const errorClassName = "font-label text-base font-semibold text-[#a3341a]";
@@ -77,7 +77,7 @@ function clientErrors(fields: Fields, deliveryOptionId: string | null, acceptTer
  * Checkout: details, delivery and a clear "order with obligation to pay" step, then Bancontact's hosted page.
  * Only details and choices are sent; the server computes every amount again and refuses anything stale.
  */
-export default function CheckoutForm({ deliveryTime }: { deliveryTime: string }) {
+export default function CheckoutForm({ deliveryTime, instagramUrl }: { deliveryTime: string; instagramUrl: string }) {
   const messages = useMessages();
   const locale = useLocale();
   const { checkout: m, common } = messages;
@@ -105,6 +105,7 @@ export default function CheckoutForm({ deliveryTime }: { deliveryTime: string })
   const [deliveryOptionId, setDeliveryOptionId] = useState<string | null>(null);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [marketingOptIn, setMarketingOptIn] = useState(false);
+  const [photoMarketingConsent, setPhotoMarketingConsent] = useState(false);
   const [errors, setErrors] = useState<Set<FieldName>>(new Set());
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -242,6 +243,7 @@ export default function CheckoutForm({ deliveryTime }: { deliveryTime: string })
         discountCode: discount?.code,
         acceptTerms,
         marketingOptIn,
+        photoMarketingConsent,
         locale,
         expectedTotalCents: totalCents,
       });
@@ -369,6 +371,20 @@ export default function CheckoutForm({ deliveryTime }: { deliveryTime: string })
             status={optionsStatus}
             error={errors.has("deliveryOptionId") ? fieldErrors.deliveryOptionId : undefined}
           />
+          {/* Friends and family get a code for free delivery in person; once it's applied, that option is right above. */}
+          {!options.some((option) => option.id === FRIENDS_DELIVERY.id) && (
+            <p className="text-sm leading-[1.5] text-text-muted">
+              {fillNodes(m.friendsNote, {
+                instagram: instagramUrl ? (
+                  <a href={instagramUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-medium-green underline underline-offset-2">
+                    Instagram
+                  </a>
+                ) : (
+                  "Instagram"
+                ),
+              })}
+            </p>
+          )}
         </section>
 
         {shipsToAddress && (
@@ -578,6 +594,18 @@ export default function CheckoutForm({ deliveryTime }: { deliveryTime: string })
             />
             <span>{m.marketing}</span>
           </label>
+          {/* LEGAL-REVIEW: separate and unticked (art. 5.4 of the terms): only with a Palley op maat, which has photos. */}
+          {lines.some((line) => !line.withdrawable) && (
+            <label className="flex cursor-pointer items-start gap-3 text-sm leading-[1.5] text-text-primary">
+              <input
+                type="checkbox"
+                checked={photoMarketingConsent}
+                onChange={(event) => setPhotoMarketingConsent(event.target.checked)}
+                className="mt-0.5 size-5 shrink-0 cursor-pointer accent-medium-green"
+              />
+              <span>{m.photoMarketing}</span>
+            </label>
+          )}
         </div>
 
         {/* LEGAL-REVIEW: the button must state the obligation to pay (WER VI.45 §2). */}

@@ -17,7 +17,7 @@ export default async function Story() {
       <Image
         data-animate="pop"
         className="h-auto w-full max-w-[420px] shrink-0 lg:w-[clamp(380px,38.9vw,560px)] lg:max-w-none"
-        src="/images/about/story-pets.png"
+        src="/images/about/groepsfoto.jpeg"
         width={560}
         height={560}
         alt={m.photoAlt}

@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { allItemsCheckedIn, itemStage, nextStepLabel, summarizeCheckIn } from "./check-in";
+import { allItemsCheckedIn, checkInItemOf, itemStage, nextStepLabel, summarizeCheckIn } from "./check-in";
 
-const collectible = { previewStatus: null, checkedInAt: null };
-const modelling = { previewStatus: "MODEL_READY", checkedInAt: null } as const;
-const printReady = { previewStatus: "PRINT_READY", checkedInAt: null } as const;
-const checked = { previewStatus: "PRINT_READY", checkedInAt: new Date() } as const;
+const collectible = { previewStatus: null, checkedInAt: null, cancelled: false };
+const modelling = { previewStatus: "MODEL_READY", checkedInAt: null, cancelled: false } as const;
+const printReady = { previewStatus: "PRINT_READY", checkedInAt: null, cancelled: false } as const;
+const checked = { previewStatus: "PRINT_READY", checkedInAt: new Date(), cancelled: false } as const;
+const cancelled = { previewStatus: "MODEL_READY", checkedInAt: null, cancelled: true } as const;
 
 describe("order check-in", () => {
   it("lets a collectible through straight away, a personalised Palley only when it is print-ready", () => {
@@ -15,9 +16,18 @@ describe("order check-in", () => {
   });
 
   it("only counts an order as complete when every item is ticked off", () => {
-    expect(allItemsCheckedIn([checked, { previewStatus: null, checkedInAt: new Date() }])).toBe(true);
+    expect(allItemsCheckedIn([checked, { previewStatus: null, checkedInAt: new Date(), cancelled: false }])).toBe(true);
     expect(allItemsCheckedIn([checked, printReady])).toBe(false);
     expect(allItemsCheckedIn([])).toBe(false);
+  });
+
+  it("leaves out a line whose copies were all cancelled, but never ships an order with nothing left", () => {
+    expect(itemStage(cancelled)).toBe("cancelled");
+    expect(allItemsCheckedIn([checked, cancelled])).toBe(true);
+    expect(allItemsCheckedIn([cancelled])).toBe(false);
+    expect(summarizeCheckIn([checked, cancelled])).toEqual({ total: 1, checked: 1, ready: 0, inPipeline: 0 });
+    expect(checkInItemOf({ checkedInAt: null, quantity: 2, cancelledQuantity: 1, preview: { status: "PAID" } }).cancelled).toBe(false);
+    expect(checkInItemOf({ checkedInAt: null, quantity: 2, cancelledQuantity: 2, preview: null }).cancelled).toBe(true);
   });
 
   it("names the next step", () => {

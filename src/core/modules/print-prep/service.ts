@@ -169,7 +169,7 @@ export async function getCollectiblePrintQueue(): Promise<CollectiblePrintItem[]
       attachment: true,
       title: true,
       collectible: { select: { id: true, modelKey: true } },
-      order: { select: { id: true, number: true, paidAt: true } },
+      order: { select: { id: true, number: true, paidAt: true, reprintOf: { select: { number: true } } } },
     },
   });
   return items.flatMap((item) =>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildOrderConfirmation, type ConfirmationOrder } from "./emails";
+import { buildNewOrderTeamMail, buildOrderConfirmation, buildProductionMail, type ConfirmationOrder } from "./emails";
 
 const order: ConfirmationOrder = {
   number: "PLY1001",
@@ -29,7 +29,7 @@ const order: ConfirmationOrder = {
       withdrawable: false,
     },
   ],
-  shipment: { label: "Thuislevering met bpost", deliveryType: "HOME", deliveryOptionId: "be-bpost-home" },
+  shipment: { label: "Thuislevering met PostNL", deliveryType: "HOME", deliveryOptionId: "be-postnl-home" },
 };
 
 const build = (patch: Partial<ConfirmationOrder>) => buildOrderConfirmation({ ...order, ...patch }, "https://palleys.be");
@@ -39,7 +39,7 @@ describe("order confirmation", () => {
     const mail = build({});
     expect(mail.subject).toBe("Bedankt voor je bestelling PLY1001");
     expect(mail.text).toContain("Palley Hond · Met sleutelhanger · Klemmetje × 1: € 27,99");
-    expect(mail.text).toContain("Thuislevering met bpost");
+    expect(mail.text).toContain("Thuislevering met PostNL");
     expect(mail.text).toContain("geen btw");
     expect(mail.text).toContain("vervormen boven 50°C");
     expect(mail.html).toContain("vervormen boven 50°C");
@@ -52,7 +52,7 @@ describe("order confirmation", () => {
     const mail = build({ locale: "en" });
     expect(mail.subject).toBe("Thank you for your order PLY1001");
     expect(mail.text).toContain("Palley Dog · With keychain · Clip × 1: € 27.99");
-    expect(mail.text).toContain("Home delivery with bpost");
+    expect(mail.text).toContain("Home delivery with PostNL");
     expect(mail.text).toContain("no VAT is charged");
     expect(mail.text).toContain("deform above 50°C");
     expect(mail.html).toContain('lang="en"');
@@ -88,5 +88,46 @@ describe("order confirmation", () => {
 
   it("falls back to the default language for an order in a language we no longer have", () => {
     expect(build({ locale: "fr" }).subject).toContain("Bedankt");
+  });
+});
+
+describe("production mail", () => {
+  it("says the order is in production and can no longer be cancelled for free", () => {
+    const mail = buildProductionMail({ number: "PLY1001", firstName: "Emma <3", locale: "nl" });
+    expect(mail.subject).toBe("Je bestelling PLY1001 is in productie");
+    expect(mail.text).toContain("niet meer kosteloos annuleren");
+    expect(mail.html).toContain("Emma &lt;3");
+  });
+
+  it("speaks the customer's language", () => {
+    expect(buildProductionMail({ number: "PLY1001", firstName: "Emma", locale: "en" }).subject).toBe("Your order PLY1001 is in production");
+  });
+});
+
+describe("new order mail for the team", () => {
+  const teamOrder = {
+    number: "PLY1001",
+    firstName: "Emma",
+    lastName: "Peeters",
+    email: "emma@example.be",
+    totalCents: 3294,
+    discountCode: null,
+    items: [
+      { title: "Palley Hond", quantity: 2, unitCents: 1399, withdrawable: false },
+      { title: "Golden Retriever", quantity: 1, unitCents: 1500, withdrawable: true },
+    ],
+    shipment: { label: "Thuislevering met PostNL" },
+  };
+
+  it("says what was ordered, what's next and where to find it", () => {
+    const mail = buildNewOrderTeamMail(teamOrder, "https://palleys.be/admin/orders/x");
+    expect(mail.subject).toBe("Nieuwe order PLY1001 (€ 32,94)");
+    expect(mail.text).toContain("Palley Hond × 2: € 27,98");
+    expect(mail.text).toContain("2 Palleys op maat staan klaar in Te reviewen");
+    expect(mail.text).toContain("https://palleys.be/admin/orders/x");
+  });
+
+  it("passes on what went wrong with the payment", () => {
+    expect(buildNewOrderTeamMail(teamOrder, "x", ["mogelijk dubbel betaald"]).text).toContain("Let op: mogelijk dubbel betaald");
   });
 });

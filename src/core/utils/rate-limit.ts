@@ -25,9 +25,13 @@ function hmacKey() {
 }
 
 export async function assertRateLimit(name: RateLimitName, headers: Headers) {
+  await assertRateLimitFor(name, getClientIp(headers) ?? "unknown");
+}
+
+/** The same limit on something other than the IP, e.g. an order number. The subject is hashed like an IP. */
+export async function assertRateLimitFor(name: RateLimitName, subject: string) {
   const { max, windowMs } = RATE_LIMITS[name];
-  const ip = getClientIp(headers) ?? "unknown";
-  const key = `${name}:${createHmac("sha256", hmacKey()).update(ip).digest("hex").slice(0, 32)}`;
+  const key = `${name}:${createHmac("sha256", hmacKey()).update(subject).digest("hex").slice(0, 32)}`;
   const now = new Date();
   const windowStartAfter = new Date(now.getTime() - windowMs);
 

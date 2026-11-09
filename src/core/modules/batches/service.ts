@@ -8,7 +8,7 @@ import { createDownloadUrl, objectExists } from "@/core/networking/external/stor
 import { EmailError, sendEmail } from "@/core/networking/external/email-client";
 import { batchRef, batchZipName } from "@/core/utils/naming";
 import { palleyNameOf } from "@/core/modules/orders/utils";
-import { allItemsCheckedIn, OPEN_ORDER_STATUSES } from "@/core/modules/orders/check-in";
+import { allItemsCheckedIn, checkInItemOf, OPEN_ORDER_STATUSES } from "@/core/modules/orders/check-in";
 import { buildPickupMail } from "@/core/modules/orders/emails";
 import { updateOrderStatus } from "@/core/modules/orders/admin";
 import { moveOrder } from "@/core/modules/payments/service";
@@ -58,6 +58,7 @@ const ITEM_SELECT = {
   productCode: true,
   reprintNr: true,
   quantity: true,
+  cancelledQuantity: true,
   size: true,
   title: true,
   checkedInAt: true,
@@ -82,6 +83,7 @@ const ORDER_SELECT = {
   country: true,
   locale: true,
   attentionReason: true,
+  reprintOf: { select: { number: true } },
   shipment: {
     select: { deliveryType: true, label: true, shippedAt: true, trackingCode: true, trackingUrl: true, readyForPickupAt: true, lastPickupUpdateAt: true },
   },
@@ -130,7 +132,7 @@ async function toOrderView(order: OrderRow): Promise<BatchOrderView> {
     readyForPickupAt: iso(order.shipment?.readyForPickupAt),
     lastPickupUpdateAt: iso(order.shipment?.lastPickupUpdateAt),
     attentionReason: order.attentionReason,
-    allCheckedIn: allItemsCheckedIn(order.items.map((item) => ({ previewStatus: item.preview?.status ?? null, checkedInAt: item.checkedInAt }))),
+    allCheckedIn: allItemsCheckedIn(order.items.map(checkInItemOf)),
     items,
   };
 }
@@ -421,7 +423,7 @@ export async function shipAllDeliveries(batchId: string, adminName: string) {
   const blocked: string[] = [];
   for (const order of batch.orders) {
     if (deliveryGroup(order.shipment?.deliveryType) !== "deliver" || !OPEN_ORDER_STATUSES.includes(order.status)) continue;
-    const checkedIn = allItemsCheckedIn(order.items.map((item) => ({ previewStatus: item.preview?.status ?? null, checkedInAt: item.checkedInAt })));
+    const checkedIn = allItemsCheckedIn(order.items.map(checkInItemOf));
     if (!checkedIn) {
       blocked.push(order.number);
       continue;
@@ -445,7 +447,7 @@ export async function markReadyForPickup(orderId: string, adminName: string) {
   if (!order) throw new BatchActionError("Deze order bestaat niet");
   if (order.shipment?.deliveryType !== "PICKUP") throw new BatchActionError("Alleen een afhaalorder kan klaargelegd worden");
   if (!OPEN_ORDER_STATUSES.includes(order.status)) throw new BatchActionError("Deze order is niet meer open");
-  const items = order.items.map((item) => ({ previewStatus: item.preview?.status ?? null, checkedInAt: item.checkedInAt }));
+  const items = order.items.map(checkInItemOf);
   if (!allItemsCheckedIn(items)) throw new BatchActionError("Vink eerst alle items af");
 
   const claimed = await prisma.shipment.updateMany({

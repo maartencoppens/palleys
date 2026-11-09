@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import DeliveryTime from "@/components/functional/shop/DeliveryTime";
+import CompanyValue from "@/components/functional/shop/legal/CompanyValue";
 import LegalPage from "@/components/functional/shop/legal/LegalPage";
 import LegalText from "@/components/functional/shop/legal/LegalText";
+import { Link } from "@/core/locale/client";
 import { fill } from "@/core/locale/fill";
 import { getMessages, localeAlternates, metadataLocale } from "@/core/locale/server";
 import { getSiteSettings } from "@/core/modules/settings/service";
 import { COMPANY } from "@/data/company";
-import { TERMS_URL, TERMS_VERSION } from "@/data/checkout";
+import { PRIVACY_URL, TERMS_URL, TERMS_VERSION } from "@/data/checkout";
+import { RETURN_POLICY_URL } from "@/data/returns";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/algemene-voorwaarden">): Promise<Metadata> {
   const { locale, messages } = await metadataLocale(params);
@@ -33,6 +35,8 @@ async function LiveCompanyLine() {
   return <CompanyLine company={company} />;
 }
 
+const linkClassName = "font-semibold text-medium-green underline underline-offset-2";
+
 export default async function TermsPage() {
   const { legal: m } = await getMessages();
   return (
@@ -45,7 +49,17 @@ export default async function TermsPage() {
               <LiveCompanyLine />
             </Suspense>
           ),
-          deliveryTime: <DeliveryTime />,
+          email: <CompanyValue field="email" />,
+          returnPolicy: (
+            <Link href={RETURN_POLICY_URL} className={linkClassName}>
+              {m.terms.returnPolicyLink}
+            </Link>
+          ),
+          privacyPolicy: (
+            <Link href={PRIVACY_URL} className={linkClassName}>
+              {m.terms.privacyLink}
+            </Link>
+          ),
         }}
       />
     </LegalPage>

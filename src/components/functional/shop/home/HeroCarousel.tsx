@@ -1,7 +1,17 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState, useSyncExternalStore, type CSSProperties, type FocusEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type CSSProperties,
+  type FocusEvent,
+  type KeyboardEvent,
+  type PointerEvent,
+  type WheelEvent,
+} from "react";
 import type { Messages } from "@/core/locale/messages";
 import { fill } from "@/core/locale/fill";
 import { prefersReducedMotion } from "@/core/utils/gsap";
@@ -20,6 +30,13 @@ const images = [
 
 const STEP_ANGLE = 360 / images.length;
 const STEP_DURATION = 3500;
+/** How far (px) a swipe has to travel before it turns the wheel. */
+const SWIPE_THRESHOLD = 40;
+/** A photo travels about 1.6 times its width along the arc per step, so a drag of that length is one step. */
+const DRAG_PER_STEP = 1.6;
+/** Horizontal trackpad scroll needed for one step, and the pause before the next one counts. */
+const WHEEL_THRESHOLD = 30;
+const WHEEL_COOLDOWN = 700;
 
 const subscribeToReducedMotion = (onChange: () => void) => {
   const query = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -44,19 +61,22 @@ const subscribeToReducedMotion = (onChange: () => void) => {
  *   smaller  the active slot is on top (270deg), under the hero copy; the next photo comes in from the right.
  *
  * On desktop its box overlaps the end of the hero copy, so only the photo, caption and controls take clicks.
- * It plays on its own and pauses while hovered or focused; the pause button stops it for good.
- * With "reduce motion" it starts paused and the photos switch without turning.
+ * It plays on its own and pauses while hovered, focused or dragged. The visitor can turn it themselves
+ * by swiping or dragging the photo (the wheel follows the finger), scrolling sideways on a trackpad,
+ * the arrow keys or the dots. With "reduce motion" it doesn't play on its own and the photos switch without turning.
  */
 export default function HeroCarousel({ m }: HeroCarouselProps) {
   const [position, setPosition] = useState(0);
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
-  // null until the visitor presses play or pause: then it follows their motion setting.
-  const [playChoice, setPlayChoice] = useState<boolean | null>(null);
+  // The swipe in progress: how far it moved and the photo's width at the start. null when nothing is dragged.
+  const [drag, setDrag] = useState<{ dx: number; width: number } | null>(null);
+  const dragStart = useRef(0);
+  const wheel = useRef({ delta: 0, lockedUntil: 0 });
   const reducedMotion = useSyncExternalStore(subscribeToReducedMotion, prefersReducedMotion, () => false);
 
-  const playing = playChoice ?? !reducedMotion;
-  const turning = playing && !hovered && !focused;
+  const dragging = drag !== null;
+  const turning = !reducedMotion && !hovered && !focused && !dragging;
   const active = ((position % images.length) + images.length) % images.length;
 
   useEffect(() => {
@@ -71,9 +91,48 @@ export default function HeroCarousel({ m }: HeroCarouselProps) {
     setPosition((current) => current + (steps > images.length / 2 ? steps - images.length : steps));
   };
 
+  const step = (steps: number) => setPosition((current) => current + steps);
+
   const onBlur = (event: FocusEvent<HTMLElement>) => {
     if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false);
   };
+
+  const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key === "ArrowRight") step(1);
+    else if (event.key === "ArrowLeft") step(-1);
+  };
+
+  const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragStart.current = event.clientX;
+    setDrag({ dx: 0, width: event.currentTarget.offsetWidth });
+  };
+
+  const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (drag) setDrag({ ...drag, dx: event.clientX - dragStart.current });
+  };
+
+  // Swiping left brings the next photo in from the right; a long swipe can skip a photo.
+  const onPointerUp = () => {
+    if (drag && Math.abs(drag.dx) > SWIPE_THRESHOLD) {
+      step(-Math.sign(drag.dx) * Math.max(1, Math.round(Math.abs(drag.dx) / (drag.width * DRAG_PER_STEP))));
+    }
+    setDrag(null);
+  };
+
+  const onWheel = (event: WheelEvent<HTMLDivElement>) => {
+    if (Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
+    const now = Date.now();
+    if (now < wheel.current.lockedUntil) return;
+    wheel.current.delta += event.deltaX;
+    if (Math.abs(wheel.current.delta) < WHEEL_THRESHOLD) return;
+    step(Math.sign(wheel.current.delta));
+    wheel.current = { delta: 0, lockedUntil: now + WHEEL_COOLDOWN };
+  };
+
+  // While dragging, the wheel turns along with the pointer.
+  const dragTurn = drag ? (-drag.dx / (drag.width * DRAG_PER_STEP)) * STEP_ANGLE : 0;
 
   return (
     <section
@@ -84,10 +143,18 @@ export default function HeroCarousel({ m }: HeroCarouselProps) {
       onPointerLeave={() => setHovered(false)}
       onFocus={() => setFocused(true)}
       onBlur={onBlur}
-      style={{ "--flow-turn": `${position * STEP_ANGLE}deg` } as CSSProperties}
+      onKeyDown={onKeyDown}
+      style={{ "--flow-turn": `${position * STEP_ANGLE + dragTurn}deg` } as CSSProperties}
       className="pointer-events-none relative flex flex-col items-center gap-l self-center pt-2 *:pointer-events-auto pb-24 [--flow-radius:calc(var(--flow-size)*1.08)] [--flow-size:min(54vw,240px)] [--flow-slot:270deg] md:pb-44 xl:absolute xl:inset-y-0 xl:right-[4%] xl:left-[54%] xl:justify-center xl:pt-24 xl:pb-0 xl:[--flow-radius:calc(var(--flow-size)*1.05)] xl:[--flow-size:clamp(260px,25vw,460px)] xl:[--flow-slot:210deg]"
     >
-      <div className="relative size-(--flow-size)">
+      <div
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={() => setDrag(null)}
+        onWheel={onWheel}
+        className={`relative size-(--flow-size) touch-pan-y select-none ${dragging ? "cursor-grabbing" : "cursor-grab"}`}
+      >
         {/* The pivot: one radius away from the active slot, on the opposite side. Clicks go through the wheel to the controls. */}
         <div className="pointer-events-none absolute top-[calc(50%-var(--flow-radius)*sin(var(--flow-slot)))] left-[calc(50%-var(--flow-radius)*cos(var(--flow-slot)))]">
           {/* The track the photos ride on. */}
@@ -108,7 +175,9 @@ export default function HeroCarousel({ m }: HeroCarouselProps) {
                       "--angle": `calc(var(--flow-slot) + ${index * STEP_ANGLE}deg - var(--flow-turn))`,
                     } as CSSProperties
                   }
-                  className="absolute top-[calc(var(--flow-size)/-2)] left-[calc(var(--flow-size)/-2)] size-(--flow-size) [transform:rotate(var(--angle))_translateX(var(--flow-radius))_rotate(calc(var(--angle)*-1))] transition-transform duration-1000 ease-[cubic-bezier(0.34,1.25,0.64,1)] motion-reduce:transition-none"
+                  className={`absolute top-[calc(var(--flow-size)/-2)] left-[calc(var(--flow-size)/-2)] size-(--flow-size) [transform:rotate(var(--angle))_translateX(var(--flow-radius))_rotate(calc(var(--angle)*-1))] duration-1000 ease-[cubic-bezier(0.34,1.25,0.64,1)] motion-reduce:transition-none ${
+                    dragging ? "transition-none" : "transition-transform"
+                  }`}
                 >
                   <div
                     className={`relative size-full transition-[scale,opacity] duration-1000 motion-reduce:transition-none ${
@@ -121,6 +190,7 @@ export default function HeroCarousel({ m }: HeroCarouselProps) {
                       height={640}
                       sizes="(min-width: 1280px) 460px, 240px"
                       loading="eager"
+                      draggable={false}
                       alt={step.alt}
                       className="size-full rounded-full bg-off-white object-cover shadow-[0_24px_48px_-16px_rgb(0_0_0/0.45)] ring-[6px] ring-off-white"
                     />
@@ -168,20 +238,6 @@ export default function HeroCarousel({ m }: HeroCarouselProps) {
           </button>
         ))}
 
-        <button
-          type="button"
-          onClick={() => setPlayChoice(!playing)}
-          aria-label={playing ? m.pause : m.play}
-          className="ml-2 grid size-9 place-items-center rounded-full bg-off-white/15 text-off-white transition-colors hover:bg-off-white/25"
-        >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden>
-            {playing ? (
-              <path d="M3 1.5h2.5v11H3zM8.5 1.5H11v11H8.5z" />
-            ) : (
-              <path d="M3.5 1.2 12.5 7l-9 5.8z" />
-            )}
-          </svg>
-        </button>
       </div>
     </section>
   );

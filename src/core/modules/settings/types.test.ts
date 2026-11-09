@@ -3,7 +3,15 @@ import { editions } from "@/data/options";
 import { DEFAULT_ANIMALS } from "@/data/animals";
 import { fromEuroInput, toEuroInput } from "@/core/utils/format";
 import { DEFAULT_ANIMAL_PROMPTS, POSE_PROMPT } from "@/data/prompts";
-import { catalogSettingsSchema, companySettingsSchema, localizedSiteContentSchema, promptSettingsSchema, siteContentSchema } from "./types";
+import {
+  catalogSettingsSchema,
+  companySettingsSchema,
+  localizedSiteContentSchema,
+  promptSettingsSchema,
+  shippingSettingsSchema,
+  siteContentSchema,
+  storedShippingOverridesSchema,
+} from "./types";
 
 const prices = { keychain: 2799, figurine: 2799 };
 
@@ -84,5 +92,31 @@ describe("prompt settings", () => {
     expect(parse({ base: POSE_PROMPT, animals: { PAPEGAAI: "A parrot." } })).toBe(true);
     expect(parse({ base: " ", animals: DEFAULT_ANIMAL_PROMPTS })).toBe(false);
     expect(parse({ base: POSE_PROMPT, animals: { "kat!": "x" } })).toBe(false);
+  });
+});
+
+describe("company settings", () => {
+  const saved = { legalName: "Palleys", address: "Bernheimlaan 26, 9050 Gentbrugge, België", enterpriseNumber: "", email: "hallo@palleys.be", phone: "", socials: { instagram: "", tiktok: "", facebook: "" } };
+
+  it("gives settings saved before the return address existed the starting one", () => {
+    expect(companySettingsSchema.parse(saved).returnAddress).toBe("Bernheimlaan 26, 9050 Gentbrugge");
+  });
+
+  it("keeps a return address the admin set", () => {
+    expect(companySettingsSchema.parse({ ...saved, returnAddress: "Elders 1, 9000 Gent" }).returnAddress).toBe("Elders 1, 9000 Gent");
+  });
+});
+
+describe("shipping settings", () => {
+  const pickupOff = { "be-pickup-kantienberg": { enabled: false, priceCents: 0 } };
+
+  it("reads saved prices without an option that was removed, keeping the rest as saved", () => {
+    const stored = { "be-bpost-home": { enabled: true, priceCents: 495 }, ...pickupOff };
+    expect(storedShippingOverridesSchema.parse(stored)).toEqual(pickupOff);
+  });
+
+  it("still refuses a broken price, and an unknown option when saving", () => {
+    expect(storedShippingOverridesSchema.safeParse({ "be-pickup-kantienberg": { enabled: false, priceCents: -1 } }).success).toBe(false);
+    expect(shippingSettingsSchema.safeParse({ shippingOverrides: { "be-bpost-home": { enabled: true, priceCents: 495 } } }).success).toBe(false);
   });
 });

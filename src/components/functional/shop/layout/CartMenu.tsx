@@ -52,6 +52,7 @@ export function lineChoices(
  * it opens an overview instead of jumping straight to the cart page. The overview lists the Palleys in the
  * cart with the subtotal and leads to checkout or the full cart page. It opens by itself right after
  * something was added (see useCartSnapshot), and closes on Escape, a click outside it or following a link.
+ * On phones it covers the page's full width, so the page behind it doesn't scroll while it's open.
  */
 export default function CartMenu({ pinned, onOpenChange, onReveal }: CartMenuProps) {
   const messages = useMessages();
@@ -99,6 +100,16 @@ export default function CartMenu({ pinned, onOpenChange, onReveal }: CartMenuPro
   }, [revealedAt, onReveal]);
 
   useEffect(() => onOpenChange(open), [open, onOpenChange]);
+
+  // Same breakpoint as the panel's full width (md:w-[400px]).
+  useEffect(() => {
+    if (!open || !window.matchMedia("(max-width: 767px)").matches) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -232,17 +243,28 @@ export default function CartMenu({ pinned, onOpenChange, onReveal }: CartMenuPro
             </div>
           ) : (
             <>
-              <ul className="flex max-h-[min(320px,45vh)] flex-col overflow-y-auto px-5" aria-label={m.linesLabel}>
+              <ul className="flex max-h-[min(320px,45vh)] flex-col overflow-y-auto overscroll-contain px-5" aria-label={m.linesLabel}>
                 {lines.map((line) => (
+                  /*
+                   * Name and price share the top row and the controls sit underneath, so a long description or a
+                   * wider price (after changing the quantity) no longer pushes the columns around.
+                   */
                   <li
                     key={line.id}
-                    className={`flex items-center gap-3 border-b border-off-white-dark py-3 last:border-b-0 ${busyLine === line.id ? "opacity-50" : ""}`}
+                    className={`flex items-start gap-3 border-b border-off-white-dark py-3 last:border-b-0 ${busyLine === line.id ? "opacity-50" : ""}`}
                   >
-                    <CartLinePhoto photoUrl={line.photoUrl} size={56} className="size-14 rounded-2xl" />
-                    <div className="flex min-w-0 flex-1 flex-col items-start">
-                      <p className="truncate font-label text-base font-bold">{miniTitle(line)}</p>
-                      {lineChoices(line, messages, locale, { withAnimal: false }) && <p className="truncate text-sm">{lineChoices(line, messages, locale, { withAnimal: false })}</p>}
-                      <div className="mt-1.5">
+                    <CartLinePhoto photoUrl={line.photoUrl} size={56} className="size-14 shrink-0 rounded-2xl" />
+                    <div className="flex min-w-0 flex-1 flex-col">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <p className="min-w-0 truncate font-label text-base font-bold">{miniTitle(line)}</p>
+                        <p className="shrink-0 font-label text-base font-extrabold text-medium-green tabular-nums">
+                          {formatPrice(line.total.amount, locale)}
+                        </p>
+                      </div>
+                      {lineChoices(line, messages, locale, { withAnimal: false }) && (
+                        <p className="truncate text-sm">{lineChoices(line, messages, locale, { withAnimal: false })}</p>
+                      )}
+                      <div className="mt-2 flex items-center justify-between gap-3">
                         <QuantityStepper
                           size="small"
                           quantity={line.quantity}
@@ -250,20 +272,17 @@ export default function CartMenu({ pinned, onOpenChange, onReveal }: CartMenuPro
                           disabled={busyLine !== null}
                           label={miniTitle(line)}
                         />
+                        <button
+                          type="button"
+                          onClick={() => updateLine(line.id, () => deleteCartLine(line.id))}
+                          disabled={busyLine !== null}
+                          className="-mr-2 grid size-9 shrink-0 place-items-center rounded-full transition-colors hover:bg-pink disabled:opacity-50"
+                          aria-label={fill(m.removeLabel, { title: miniTitle(line) })}
+                        >
+                          <Image src="/images/create/trash.svg" width={15} height={16.5} alt="" aria-hidden />
+                        </button>
                       </div>
                     </div>
-                    <p className="shrink-0 font-label text-base font-extrabold text-medium-green">
-                      {formatPrice(line.total.amount, locale)}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => updateLine(line.id, () => deleteCartLine(line.id))}
-                      disabled={busyLine !== null}
-                      className="grid size-9 shrink-0 place-items-center rounded-full transition-colors hover:bg-pink disabled:opacity-50"
-                      aria-label={fill(m.removeLabel, { title: miniTitle(line) })}
-                    >
-                      <Image src="/images/create/trash.svg" width={15} height={16.5} alt="" aria-hidden />
-                    </button>
                   </li>
                 ))}
               </ul>

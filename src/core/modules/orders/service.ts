@@ -6,7 +6,7 @@ import type { Prisma } from "@/db/generated/client";
 import { createDownloadUrl } from "@/core/networking/external/storage-client";
 import { tokenMatches } from "@/core/utils/tokens";
 import { collectibleImageUrl } from "@/core/modules/collectibles/utils";
-import { nextStepLabel, OPEN_ORDER_STATUSES, summarizeCheckIn } from "./check-in";
+import { checkInItemOf, nextStepLabel, OPEN_ORDER_STATUSES, summarizeCheckIn } from "./check-in";
 import { PAID_ORDER_STATUSES } from "./status";
 import { invoiceCounterKey, ORDER_COUNTER_KEY, orderYear, palleyNameOf } from "./utils";
 import { batchRef, invoiceNumber, orderRef } from "@/core/utils/naming";
@@ -126,13 +126,11 @@ export async function listOrdersForCheckIn(): Promise<OrderCheckInRow[]> {
       paidAt: true,
       shipment: { select: { deliveryType: true } },
       batch: { select: { status: true } },
-      items: { select: { checkedInAt: true, preview: { select: { status: true } } } },
+      items: { select: { checkedInAt: true, quantity: true, cancelledQuantity: true, preview: { select: { status: true } } } },
     },
   });
   return orders.map((order) => {
-    const summary = summarizeCheckIn(
-      order.items.map((item) => ({ previewStatus: item.preview?.status ?? null, checkedInAt: item.checkedInAt })),
-    );
+    const summary = summarizeCheckIn(order.items.map(checkInItemOf));
     const handover = isPersonalDelivery(order.shipment?.deliveryType);
     return {
       id: order.id,
@@ -189,6 +187,8 @@ export async function getOrderForAdmin(id: string): Promise<AdminOrderDetail | n
       payments: { orderBy: { createdAt: "desc" } },
       shipment: true,
       batch: { select: { id: true, number: true, status: true } },
+      reprintOf: { select: { id: true, number: true } },
+      reprints: { orderBy: { createdAt: "asc" }, select: { id: true, number: true } },
       statusChanges: { orderBy: { createdAt: "desc" } },
     },
   });
@@ -211,6 +211,7 @@ export async function getOrderForAdmin(id: string): Promise<AdminOrderDetail | n
         palleyName: PAID_ORDER_STATUSES.includes(order.status) ? palleyNameOf({ ...item, order }) : null,
         size: item.size,
         quantity: item.quantity,
+        cancelledQuantity: item.cancelledQuantity,
         unitCents: item.unitCents,
         notes: item.notes,
         photoUrl: photoUrls[0] ?? collectibleImageUrl(item.collectible?.imageKey ?? null),
@@ -226,6 +227,8 @@ export async function getOrderForAdmin(id: string): Promise<AdminOrderDetail | n
     number: order.number,
     invoiceNumber: order.invoiceNumber,
     batch: order.batch && { id: order.batch.id, ref: batchRef(order.batch.number), status: order.batch.status },
+    reprintOf: order.reprintOf,
+    reprints: order.reprints,
     status: order.status,
     createdBy: order.createdBy,
     email: order.email,
@@ -251,6 +254,7 @@ export async function getOrderForAdmin(id: string): Promise<AdminOrderDetail | n
     termsAcceptedAt: order.termsAcceptedAt?.toISOString() ?? null,
     locale: order.locale,
     marketingOptIn: order.marketingOptIn,
+    photoMarketingConsentAt: order.photoMarketingConsent ? (order.photoMarketingConsentAt?.toISOString() ?? null) : null,
     attentionReason: order.attentionReason,
     confirmationSentAt: order.confirmationSentAt?.toISOString() ?? null,
     paidAt: order.paidAt?.toISOString() ?? null,
@@ -277,6 +281,8 @@ export async function getOrderForAdmin(id: string): Promise<AdminOrderDetail | n
       priceCents: order.shipment.priceCents,
       trackingCode: order.shipment.trackingCode,
       trackingUrl: order.shipment.trackingUrl,
+      shippedAt: order.shipment.shippedAt?.toISOString() ?? null,
+      deliveredAt: order.shipment.deliveredAt?.toISOString() ?? null,
     },
     statusChanges: order.statusChanges.map((change) => ({
       fromStatus: change.fromStatus,

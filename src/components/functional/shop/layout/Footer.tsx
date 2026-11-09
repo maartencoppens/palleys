@@ -7,16 +7,39 @@ import { fill } from "@/core/locale/fill";
 import { getMessages } from "@/core/locale/server";
 import { getSiteSettings } from "@/core/modules/settings/service";
 import { PRIVACY_URL, TERMS_URL } from "@/data/checkout";
-import { SOCIAL_LINKS } from "@/data/company";
+import { CONTACT_DETAILS_URL, SOCIAL_LINKS } from "@/data/company";
+import { SHIPPING_POLICY_URL } from "@/data/shipping";
+import { RETURN_URL } from "@/data/returns";
 
 const socialIcons = [
-  { key: "instagram", label: "Instagram", icon: "/images/footer/instagram.svg", size: 56 },
-  { key: "tiktok", label: "TikTok", icon: "/images/footer/tiktok.svg", size: 50 },
-  { key: "facebook", label: "Facebook", icon: "/images/footer/facebook.svg", size: 56 },
+  {
+    key: "instagram",
+    label: "Instagram",
+    icon: "/images/footer/instagram.svg",
+    size: 56,
+  },
+  {
+    key: "tiktok",
+    label: "TikTok",
+    icon: "/images/footer/tiktok.svg",
+    size: 50,
+  },
+  {
+    key: "facebook",
+    label: "Facebook",
+    icon: "/images/footer/facebook.svg",
+    size: 56,
+  },
 ] as const;
 
 /* The profile URLs come from /admin/settings/company; an empty one hides its icon. */
-function Socials({ urls, label }: { urls: Record<(typeof socialIcons)[number]["key"], string>; label: string }) {
+function Socials({
+  urls,
+  label,
+}: {
+  urls: Record<(typeof socialIcons)[number]["key"], string>;
+  label: string;
+}) {
   return (
     <ul className="flex items-center gap-[38px]">
       {socialIcons
@@ -30,7 +53,13 @@ function Socials({ urls, label }: { urls: Record<(typeof socialIcons)[number]["k
               aria-label={fill(label, { network: social.label })}
               className="grid size-[50px] place-items-center rounded-lg transition-transform hover:scale-110"
             >
-              <Image className="max-w-none" src={social.icon} width={social.size} height={social.size} alt="" />
+              <Image
+                className="max-w-none"
+                src={social.icon}
+                width={social.size}
+                height={social.size}
+                alt=""
+              />
             </a>
           </li>
         ))}
@@ -97,14 +126,17 @@ export default async function Footer({
       links: [
         { label: m.contact, href: "/#contact" },
         { label: m.faq, href: "/#faq" },
+        { label: m.shipping, href: SHIPPING_POLICY_URL },
+        { label: m.returns, href: RETURN_URL },
       ],
     },
   ];
+  // Only the legal texts down here; shipping and returns are help, so they sit under "Hulp nodig?". The return policy
+  // is linked from /retour. No cookie policy: we only use strictly necessary cookies (cart, language, admin session).
   const legalLinks = [
-    { label: m.privacy, href: PRIVACY_URL },
     { label: m.terms, href: TERMS_URL },
-    { label: m.cookiePolicy, href: "/cookies" },
-    { label: m.cookieSettings, href: "/cookies#settings" },
+    { label: m.privacy, href: PRIVACY_URL },
+    { label: m.contactDetails, href: CONTACT_DETAILS_URL },
   ];
 
   return (
@@ -146,11 +178,7 @@ export default async function Footer({
             {/* Brand: logo, tagline and socials */}
             <div className="flex flex-col gap-8 xl:w-[clamp(300px,25.8vw,371px)] xl:shrink-0 xl:gap-[53px]">
               <div className="flex flex-col gap-5 xl:gap-[30px]">
-                <Link
-                  href="/"
-                  aria-label={nav.homeLabel}
-                  className="w-fit"
-                >
+                <Link href="/" aria-label={nav.homeLabel} className="w-fit">
                   <Image
                     className="h-auto w-[clamp(200px,24.2vw,349px)]"
                     src="/images/footer/palleys-logo.svg"
@@ -162,14 +190,11 @@ export default async function Footer({
                 <p className="font-label text-2xl leading-[normal] font-extrabold md:text-[32px]">
                   {m.tagline}
                 </p>
-                <p className="font-label text-xl leading-[normal] md:text-2xl">
-                  {m.subtextLine1}
-                  <br />
-                  {m.subtextLine2}
-                </p>
               </div>
 
-              <Suspense fallback={<Socials urls={SOCIAL_LINKS} label={m.social} />}>
+              <Suspense
+                fallback={<Socials urls={SOCIAL_LINKS} label={m.social} />}
+              >
                 <LiveSocials label={m.social} />
               </Suspense>
             </div>
@@ -236,11 +261,12 @@ export default async function Footer({
                 <CurrentYear /> {m.rights}
               </span>
             </p>
-            <ul className="flex flex-wrap items-center">
+            {/* On a phone the links wrap: spaced apart there, so no line starts with a "|". */}
+            <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 md:gap-x-0">
               {legalLinks.map((link, index) => (
                 <li key={link.href} className="flex items-center">
                   {index > 0 && (
-                    <span className="px-[5px]" aria-hidden>
+                    <span className="hidden px-[5px] md:inline" aria-hidden>
                       |
                     </span>
                   )}

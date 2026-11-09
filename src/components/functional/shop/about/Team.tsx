@@ -13,12 +13,12 @@ type Member = {
 
 // TODO: fill in the remaining pets and the portraits.
 const members: Member[] = [
-  { name: "Joran Vreye", petName: "Baloe" },
-  { name: "Emie Van de Veire" },
+  { name: "Joran Vreye", petName: "Baloo & Finn" },
+  { name: "Emie Van de Veire", petName: "Onyx & Lyra" },
   { name: "Maarten Coppens", petName: "Zorro" },
-  { name: "Reinhart Schepens" },
-  { name: "Bavo de Bondt" },
-  { name: "Lies De Praeter" },
+  { name: "Reinhart Schepens", petName: "Remus & Astor" },
+  { name: "Bavo de Bondt", petName: "Doris" },
+  { name: "Lies De Praeter", petName: "Pickwick" },
 ];
 
 // Avatar colours repeat in the Figma order.
@@ -38,11 +38,7 @@ export default async function Team() {
       aria-labelledby="team-title"
       className="mx-auto flex max-w-[1440px] flex-col items-center stack section-x section-y"
     >
-      <SectionHeader
-        tag={m.tag}
-        title={m.title}
-        titleId="team-title"
-      />
+      <SectionHeader tag={m.tag} title={m.title} titleId="team-title" />
 
       <ul
         data-animate="stagger"

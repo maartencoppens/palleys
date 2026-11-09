@@ -2,7 +2,7 @@
 
 // LEGAL-REVIEW: bump this whenever the terms change, and keep every published version reachable
 // (Order.termsVersion records which one a customer accepted).
-export const TERMS_VERSION = "2026-11-04b-concept";
+export const TERMS_VERSION = "2026-11-09-concept";
 export const TERMS_URL = "/algemene-voorwaarden";
 export const PRIVACY_URL = "/privacy";
 
@@ -23,6 +23,13 @@ export const RATE_LIMITS = {
   cart: { max: 120, windowMs: 10 * 60 * 1000 },
   uploads: { max: 20, windowMs: 60 * 60 * 1000 },
   orderStatus: { max: 120, windowMs: 10 * 60 * 1000 },
+  // /retour: looking up an order per IP, and per order number (so nobody floods a customer's inbox with links).
+  returnLookup: { max: 10, windowMs: 10 * 60 * 1000 },
+  returnLookupOrder: { max: 3, windowMs: 60 * 60 * 1000 },
+  // The contact form on the homepage: each message is a mail to us.
+  contact: { max: 5, windowMs: 10 * 60 * 1000 },
+  // Everything behind the link: the overview, photo uploads and sending a request.
+  returnSession: { max: 60, windowMs: 10 * 60 * 1000 },
 } as const;
 
 // Cart cookie: holds a random token, the cart itself lives in our database.

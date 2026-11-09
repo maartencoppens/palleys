@@ -34,7 +34,7 @@ const base =
 const variants = {
   orange: {
     className:
-      "h-[60px] gap-2.5 bg-accent-highlights px-9 py-m text-2xl font-bold text-button-primary-text hover:bg-accent-highlights-hover active:scale-[0.98] md:px-2xl md:text-[32px]",
+      "h-[60px] gap-2.5 bg-linear-to-b from-[#fbbb5c] to-accent-highlights px-9 py-m text-2xl font-bold text-button-primary-text [text-shadow:0_1px_1px_rgb(150_80_0/0.3)] shadow-[inset_0_1px_0_rgb(255_255_255/0.45),inset_0_-3px_0_rgb(190_100_10/0.25),0_10px_24px_-8px_rgb(0_0_0/0.45),0_4px_14px_-4px_rgb(247_168_54/0.55)] hover:-translate-y-0.5 hover:from-accent-highlights hover:to-accent-highlights-hover hover:shadow-[inset_0_1px_0_rgb(255_255_255/0.45),inset_0_-3px_0_rgb(190_100_10/0.25),0_16px_32px_-10px_rgb(0_0_0/0.5),0_6px_22px_-4px_rgb(247_168_54/0.7)] active:translate-y-0 active:scale-[0.98] active:shadow-[inset_0_2px_4px_rgb(150_80_0/0.25),0_4px_10px_-6px_rgb(0_0_0/0.4)] md:px-2xl md:text-[32px]",
     arrow: { src: "/images/arrow-lg.svg", width: 28.7143, height: 23 },
     arrowHover: "group-hover:translate-x-1",
   },

@@ -6,6 +6,7 @@ const personalized = (overrides: Partial<BatchItemSource> = {}): BatchItemSource
   productCode: "P-RING-KAT",
   reprintNr: 0,
   quantity: 1,
+  cancelledQuantity: 0,
   preview: { status: "PRINT_READY", processedKey: "previews/a/processed-1.zip" },
   collectible: null,
   ...overrides,
@@ -15,6 +16,7 @@ const collectible = (overrides: Partial<BatchItemSource> = {}): BatchItemSource 
   productCode: "COL-CLP-007",
   reprintNr: 0,
   quantity: 3,
+  cancelledQuantity: 0,
   preview: null,
   collectible: { modelKey: "collectibles/models/m.zip" },
   ...overrides,
@@ -48,8 +50,8 @@ describe("delivery groups", () => {
 
 describe("batch zip contents", () => {
   const orders = [
-    { number: "PLY1043", items: [personalized({ productCode: "P-FIG-HOND", preview: { status: "PRINT_READY", processedKey: "previews/b/p.zip" } })] },
-    { number: "PLY1042", items: [collectible(), personalized({ reprintNr: 1 })] },
+    { number: "PLY1043", reprintOf: null, items: [personalized({ productCode: "P-FIG-HOND", preview: { status: "PRINT_READY", processedKey: "previews/b/p.zip" } })] },
+    { number: "PLY1042", reprintOf: null, items: [collectible(), personalized({ reprintNr: 1 })] },
   ];
 
   it("puts each Palley under its order, named through naming.ts", () => {
@@ -69,8 +71,22 @@ describe("batch zip contents", () => {
     expect(csv[3]).toBe("PLY1043,PAL-PLY1043-01-P-FIG-HOND,P-FIG-HOND,Figure,1,PAL-PLY1043-01-P-FIG-HOND_print.zip");
   });
 
+  it("prints only the copies that weren't cancelled, and leaves a fully cancelled line out", () => {
+    const partly = [{ number: "PLY1042", reprintOf: null, items: [collectible({ cancelledQuantity: 1 }), personalized({ cancelledQuantity: 1, preview: { status: "PAID", processedKey: null } })] }];
+    const { manifest, missing } = batchContents("BATCH-0001", partly);
+    expect(missing).toEqual([]);
+    expect(manifest.map((row) => [row.palleyName, row.copies])).toEqual([["PAL-PLY1042-02-COL-CLP-007", 2]]);
+    expect(isOrderPrintReady(partly[0].items)).toBe(true);
+    expect(isOrderPrintReady([personalized({ cancelledQuantity: 1 })])).toBe(false);
+  });
+
+  it("names a reprint order's Palleys after the first order, under its own folder", () => {
+    const { entries } = batchContents("BATCH-0002", [{ number: "PLY1050", reprintOf: { number: "PLY1042" }, items: [personalized({ reprintNr: 1 })] }]);
+    expect(entries.map((entry) => entry.path)).toEqual(["BATCH-0002/PLY1050/PAL-PLY1042-01-P-RING-KAT-R1_print.zip"]);
+  });
+
   it("names what has no file instead of leaving it out", () => {
-    const { missing } = batchContents("BATCH-0001", [{ number: "PLY1042", items: [personalized({ preview: { status: "APPROVED", processedKey: null } })] }]);
+    const { missing } = batchContents("BATCH-0001", [{ number: "PLY1042", reprintOf: null, items: [personalized({ preview: { status: "APPROVED", processedKey: null } })] }]);
     expect(missing).toEqual(["PAL-PLY1042-01-P-RING-KAT"]);
   });
 

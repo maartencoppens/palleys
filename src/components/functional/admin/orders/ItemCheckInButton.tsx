@@ -26,6 +26,9 @@ export function ItemCheckInButton({ orderId, itemId, stage }: { orderId: string;
     }
   }
 
+  // Every copy cancelled or withdrawn before it left: nothing to check.
+  if (stage === "cancelled") return null;
+
   return (
     <div className="flex flex-col gap-1">
       <label className={`flex items-center gap-2 font-label text-sm font-bold ${stage === "in_pipeline" ? "cursor-not-allowed text-text-muted" : "cursor-pointer text-medium-green"}`}>

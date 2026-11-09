@@ -41,7 +41,8 @@ const nl = {
     {
       question: "Kan ik mijn bestelling terugsturen?",
       answer:
-        "Een Palley op maat maken we speciaal voor jou, daarom kan je hem niet terugsturen. Een Palley uit onze collectie kan je wel binnen 14 dagen na ontvangst terugsturen. Is er iets mis met je bestelling, neem dan contact met ons op.",
+        // LEGAL-REVIEW: the return policy in short; the details are on /retour.
+        "Een Palley op maat maken we speciaal voor jou, daarom kun je hem niet terugsturen omdat je van gedachten veranderd bent. Zolang je bestelling niet in productie is, annuleer je wel kosteloos. Een Palley uit onze collectie kun je zonder reden herroepen tot 14 dagen nadat je hem ontvangen of opgehaald hebt. Is er iets mis met je bestelling, dan printen we gratis opnieuw of betalen we terug. Alles regel je via palleys.be/retour.",
     },
     {
       question: "Welk goed doel steunen jullie?",
@@ -63,8 +64,9 @@ const en: typeof nl = {
     "The perfect gift for animal lovers",
   ],
   deliveryTime: "2-3 weeks",
+  // LEGAL-REVIEW: see RETURN_NOTE in ./options.
   returnNote:
-    "Every Palley is made especially for your pet, so it cannot be returned. Did it arrive damaged, or is it not what you ordered? Then we’ll sort it out.",
+    "We make a custom Palley especially for you: it can’t be withdrawn, but as long as your order isn’t in production you can cancel free of charge. A Palley from our collection can be withdrawn without a reason until 14 days after receipt. Damaged or not what you ordered? Then we reprint it for free or refund you.",
   faq: [
     {
       question: "How do I make a Palley of my pet?",
@@ -93,7 +95,8 @@ const en: typeof nl = {
     {
       question: "Can I return my order?",
       answer:
-        "We make a custom Palley especially for you, so it cannot be returned. A Palley from our collection can be returned within 14 days of receipt. If something is wrong with your order, please contact us.",
+        // LEGAL-REVIEW: see the Dutch answer.
+        "We make a custom Palley especially for you, so you can’t send it back because you changed your mind. As long as your order isn’t in production, you can cancel free of charge. A Palley from our collection can be withdrawn without a reason until 14 days after you received or picked it up. If something is wrong with your order, we reprint it for free or refund you. You can arrange everything at palleys.be/retour.",
     },
     {
       question: "Which charity do you support?",

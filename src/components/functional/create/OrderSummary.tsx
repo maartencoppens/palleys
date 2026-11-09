@@ -7,6 +7,8 @@ type OrderSummaryProps = {
   edition: string | null;
   /** Null for a figurine: nothing to attach. */
   attachment: string | null;
+  /** Longest side, e.g. "3.7 cm". */
+  size: string;
   /** File name for one photo, "3 photos" for several. */
   photos: string | null;
   priceCents: number;
@@ -17,6 +19,7 @@ export default function OrderSummary({
   pet,
   edition,
   attachment,
+  size,
   photos,
   priceCents,
 }: OrderSummaryProps) {
@@ -26,6 +29,7 @@ export default function OrderSummary({
     { label: m.pet, value: pet },
     { label: m.palley, value: edition },
     ...(attachment ? [{ label: m.attachment, value: attachment }] : []),
+    { label: m.size, value: size },
     { label: m.photos, value: photos },
   ];
 

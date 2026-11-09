@@ -7,7 +7,7 @@ export type { Messages };
 export const MESSAGES: Record<Locale, Messages> = { nl, en };
 
 // What the browser needs: everything else is only read on the server and stays out of every page.
-const CLIENT_NAMESPACES = ["common", "nav", "options", "shop", "contact", "create", "cart", "checkout", "shipping", "orderReturn"] as const;
+const CLIENT_NAMESPACES = ["common", "nav", "options", "shop", "contact", "create", "cart", "checkout", "shipping", "orderReturn", "returns"] as const;
 
 export type ClientMessages = Pick<Messages, (typeof CLIENT_NAMESPACES)[number]>;
 

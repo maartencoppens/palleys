@@ -34,11 +34,11 @@ export default async function CreatePage() {
   const { create: m } = await getMessages();
   return (
     <>
-      {/* Same banner and navbar as the homepage, on the hero green. */}
+      {/* Same banner and navbar as the homepage, on the hero green. The navbar doesn't follow the scroll here: the stepper sticks instead. */}
       <div className="bg-hero">
         <InfoBanner />
         <div className="page-container py-m">
-          <Navbar />
+          <Navbar pinOnScroll={false} />
         </div>
       </div>
 

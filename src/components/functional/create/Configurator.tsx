@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Label, Textarea } from "@/components/design/form";
 import { Link, useLocale, useMessages } from "@/core/locale/client";
 import { fill, fillNodes } from "@/core/locale/fill";
+import { attachmentIcons } from "./AttachmentIcons";
 import OrderSummary from "./OrderSummary";
 import PhotoTips from "./PhotoTips";
 import PhotoUpload, { type UploadedPhoto } from "./PhotoUpload";
@@ -21,7 +22,7 @@ import Stepper from "@/components/design/Stepper";
 import Panel from "@/components/design/Panel";
 import ChoiceChips from "@/components/design/ChoiceChips";
 import { formatPrice } from "@/core/utils/format";
-import { editionPriceCents } from "@/core/modules/catalog/utils";
+import { editionPriceCents, shownSizeLabel } from "@/core/modules/catalog/utils";
 import type { CatalogSettings } from "@/core/modules/settings/types";
 import { useAddPalleyToCart } from "@/core/hooks/useAddPalleyToCart";
 import { PRIVACY_URL, TERMS_URL } from "@/data/checkout";
@@ -47,13 +48,18 @@ type ConfiguratorProps = {
 export default function Configurator({ catalog, deliveryTime, returnNote }: ConfiguratorProps) {
   const { create: m, options, common } = useMessages();
   const locale = useLocale();
+  const sizeLabel = shownSizeLabel(locale);
   const animalOptions = catalog.animals
     .filter((option) => !catalog.disabledAnimals.includes(option.value))
     .map((option) => ({ value: option.value, label: option.labels[locale] }));
   const editionOptions = editions
     .filter((option) => !catalog.disabledEditions.includes(option.value))
     .map((option) => ({ value: option.value, label: options.editions[option.value] }));
-  const attachmentOptions = attachments.map((option) => ({ value: option.value, label: options.attachments[option.value] }));
+  const attachmentOptions = attachments.map((option) => ({
+    value: option.value,
+    label: options.attachments[option.value],
+    icon: attachmentIcons[option.value],
+  }));
   const [animal, setAnimal] = useState<string | null>(null);
   // Palleys are keychains first, so that's preselected (when on sale); switching to a figure is one tap.
   const [edition, setEdition] = useState<Edition>(editionOptions[0].value);
@@ -189,7 +195,6 @@ export default function Configurator({ catalog, deliveryTime, returnNote }: Conf
               options={editionOptions}
               value={edition}
               onChange={setEdition}
-              hint={withKeychain ? undefined : m.choose.size}
             />
             {withKeychain && (
               <ChoiceChips
@@ -198,9 +203,22 @@ export default function Configurator({ catalog, deliveryTime, returnNote }: Conf
                 options={attachmentOptions}
                 value={attachment}
                 onChange={setAttachment}
-                hint={`${m.choose.size} ${m.choose.keychainHint}`}
+                hint={m.choose.keychainHint}
               />
             )}
+            {/* The size on its own, with a measuring line, so nobody expects a big statue. Same for keychain and figurine. */}
+            <div className="flex flex-col items-start gap-3 rounded-[20px] bg-page p-4 sm:flex-row sm:items-center sm:gap-5 md:p-5">
+              <div className="flex w-[84px] shrink-0 flex-col items-center gap-1 text-medium-green" aria-hidden>
+                <span className="font-label text-xl leading-none font-extrabold whitespace-nowrap">{sizeLabel}</span>
+                <svg width="84" height="12" viewBox="0 0 84 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 1v10M83 1v10M1 6h82M6 2.5 1 6l5 3.5M78 2.5 83 6l-5 3.5" />
+                </svg>
+              </div>
+              <p className="text-base leading-[1.5] text-text-primary">
+                <strong className="block font-label font-bold">{m.choose.sizeTitle}</strong>
+                {fill(m.choose.size, { size: sizeLabel })} {m.choose.sizeCompare}
+              </p>
+            </div>
           </Panel>
 
           <Panel
@@ -278,19 +296,30 @@ export default function Configurator({ catalog, deliveryTime, returnNote }: Conf
                   }
                   className="mt-px size-6 shrink-0 cursor-pointer accent-medium-green"
                 />
-                <span id="consent-label">
-                  {fillNodes(m.order.consent, {
-                    terms: (
-                      <Link href={TERMS_URL} className="font-semibold text-medium-green underline underline-offset-2">
-                        {m.order.terms}
-                      </Link>
-                    ),
-                    privacy: (
-                      <Link href={PRIVACY_URL} className="font-semibold text-medium-green underline underline-offset-2">
-                        {m.order.privacy}
-                      </Link>
-                    ),
-                  })}
+                {/* Spelled out point by point, so it's clear what ticking the box means. */}
+                <span id="consent-label" className="flex flex-col gap-1">
+                  <span className="font-label font-semibold">{m.order.consentIntro}</span>
+                  <span className="flex flex-col gap-1">
+                    {m.order.consentPoints.map((point) => (
+                      <span key={point} className="flex gap-2">
+                        <span className="text-medium-green" aria-hidden>•</span>
+                        <span>
+                          {fillNodes(point, {
+                            terms: (
+                              <Link href={TERMS_URL} className="font-semibold text-medium-green underline underline-offset-2">
+                                {m.order.terms}
+                              </Link>
+                            ),
+                            privacy: (
+                              <Link href={PRIVACY_URL} className="font-semibold text-medium-green underline underline-offset-2">
+                                {m.order.privacy}
+                              </Link>
+                            ),
+                          })}
+                        </span>
+                      </span>
+                    ))}
+                  </span>
                 </span>
               </label>
               {showErrors && !consent && (
@@ -423,6 +452,7 @@ export default function Configurator({ catalog, deliveryTime, returnNote }: Conf
             pet={animalLabel}
             edition={editionLabel}
             attachment={attachmentLabel}
+            size={sizeLabel}
             photos={photosLabel}
             priceCents={priceCents}
           />

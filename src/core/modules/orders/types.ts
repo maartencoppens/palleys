@@ -199,6 +199,9 @@ export type AdminOrderDetail = {
   number: string;
   invoiceNumber: string | null;
   batch: { id: string; ref: string; status: BatchStatus } | null;
+  /** A reprint after a warranty claim, and the order it reprints; or the reprints made for this one. */
+  reprintOf: { id: string; number: string } | null;
+  reprints: { id: string; number: string }[];
   status: OrderStatus;
   createdBy: string | null;
   email: string | null;
@@ -216,6 +219,8 @@ export type AdminOrderDetail = {
   termsAcceptedAt: string | null;
   locale: string;
   marketingOptIn: boolean;
+  /** May we use the photo and the Palley for marketing (art. 5.4); null = never given or withdrawn. */
+  photoMarketingConsentAt: string | null;
   attentionReason: string | null;
   confirmationSentAt: string | null;
   paidAt: string | null;
@@ -234,6 +239,8 @@ export type AdminOrderDetail = {
     palleyName: string | null;
     size: string;
     quantity: number;
+    /** Copies cancelled or withdrawn before they left (an approved return request): not made. */
+    cancelledQuantity: number;
     unitCents: number;
     notes: string | null;
     photoUrl: string | null;
@@ -263,6 +270,9 @@ export type AdminOrderDetail = {
     priceCents: number;
     trackingCode: string | null;
     trackingUrl: string | null;
+    shippedAt: string | null;
+    /** Filled in by the team; empty = the estimate in returns/utils.ts. */
+    deliveredAt: string | null;
   } | null;
   statusChanges: { fromStatus: OrderStatus | null; toStatus: OrderStatus; source: string; note: string | null; createdAt: string }[];
 };

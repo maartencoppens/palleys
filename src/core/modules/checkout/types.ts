@@ -40,6 +40,8 @@ export const checkoutSchema = z
     // LEGAL-REVIEW: must be an explicit, unticked-by-default checkbox in the form.
     acceptTerms: z.literal(true),
     marketingOptIn: z.boolean().default(false),
+    // LEGAL-REVIEW: separate, voluntary and unticked by default (art. 5.4). Only counts when the order has a Palley op maat.
+    photoMarketingConsent: z.boolean().default(false),
     locale: z.enum(LOCALES).default(DEFAULT_LOCALE),
     // The total the customer saw. Never used as a price: only compared, so a price that changed meanwhile is shown
     // to them before they pay it.
