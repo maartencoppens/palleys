@@ -54,6 +54,7 @@ type CollectibleRow = {
   priceCents: number;
   imageKey: string | null;
   soldOut: boolean;
+  stock: number | null;
 };
 
 const toView = (row: CollectibleRow, locale: Locale): CollectibleView => ({
@@ -63,6 +64,7 @@ const toView = (row: CollectibleRow, locale: Locale): CollectibleView => ({
   priceCents: row.priceCents,
   imageUrl: collectibleImageUrl(row.imageKey),
   soldOut: row.soldOut,
+  stock: row.stock,
 });
 
 const VISIBLE = { published: true, archivedAt: null, imageKey: { not: null } } satisfies Prisma.CollectibleWhereInput;
@@ -70,6 +72,12 @@ const VISIBLE = { published: true, archivedAt: null, imageKey: { not: null } } s
 export async function listPublishedCollectibles(locale: Locale, limit?: number): Promise<CollectibleView[]> {
   const rows = await prisma.collectible.findMany({ where: VISIBLE, orderBy: ORDER, take: limit });
   return rows.map((row) => toView(row, locale));
+}
+
+/** The published collectibles for the sitemap: their address, last change and photo. */
+export async function listCollectiblesForSitemap() {
+  const rows = await prisma.collectible.findMany({ where: VISIBLE, orderBy: ORDER, select: { slug: true, updatedAt: true, imageKey: true } });
+  return rows.map((row) => ({ slug: row.slug, updatedAt: row.updatedAt, imageUrl: collectibleImageUrl(row.imageKey) }));
 }
 
 export async function getPublishedCollectible(slug: string, locale: Locale): Promise<CollectibleView | null> {

@@ -6,16 +6,18 @@ import LegalPage from "@/components/functional/shop/legal/LegalPage";
 import LegalText from "@/components/functional/shop/legal/LegalText";
 import { Link } from "@/core/locale/client";
 import { fill } from "@/core/locale/fill";
-import { getLocale, getMessages, localeAlternates, metadataLocale } from "@/core/locale/server";
+import { getLocale, getMessages, metadataLocale } from "@/core/locale/server";
 import { getDeliveryOptions } from "@/core/modules/shipping/service";
 import { formatPrice } from "@/core/utils/format";
 import { RETURN_POLICY_URL } from "@/data/returns";
 import { SHIPPING_POLICY_URL, STATIC_DELIVERY_OPTIONS } from "@/data/shipping";
 import { SHOWN_KEYCHAIN_SIZE } from "@/data/sizes";
+import { pageMetadata } from "@/core/seo/metadata";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/verzendbeleid">): Promise<Metadata> {
   const { locale, messages } = await metadataLocale(params);
-  return { title: messages.meta.shippingPolicy, alternates: localeAlternates(locale, SHIPPING_POLICY_URL) };
+  const m = messages.meta.shippingPolicy;
+  return pageMetadata({ locale, path: SHIPPING_POLICY_URL, title: m.title, description: m.description });
 }
 
 type Price = { id: string; label: string; priceCents: number };

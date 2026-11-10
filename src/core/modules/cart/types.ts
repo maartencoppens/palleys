@@ -23,18 +23,34 @@ export const addToCartSchema = z
   })
   .refine((input) => input.edition !== "keychain" || input.attachment, { path: ["attachment"] });
 
-export const addCollectibleToCartSchema = z.object({ collectibleId: z.uuid() });
+// A collectible comes as a keychain (with a clip or a key ring) or as a figurine. Older clients send only the id.
+export const addCollectibleToCartSchema = z.object({
+  collectibleId: z.uuid(),
+  edition: editionSchema.default("keychain"),
+  attachment: attachmentSchema.optional(),
+});
 
 export const removeFromCartSchema = z.object({ lineId: z.uuid() });
 
-export const updateCartLineSchema = z.object({
-  lineId: z.uuid(),
-  quantity: z.number().int().min(1).max(MAX_LINE_QUANTITY).optional(),
-  attachment: attachmentSchema.optional(),
-}).refine((input) => input.quantity !== undefined || input.attachment, { path: ["quantity"] });
+// Changing a line in the cart: how many, and the choices. Animal and notes only on a Palley op maat.
+export const updateCartLineSchema = z
+  .object({
+    lineId: z.uuid(),
+    quantity: z.number().int().min(1).max(MAX_LINE_QUANTITY).optional(),
+    edition: editionSchema.optional(),
+    attachment: attachmentSchema.optional(),
+    animal: animalSchema.optional(),
+    notes: z.string().trim().max(MAX_NOTES_LENGTH).optional(),
+  })
+  .refine(
+    (input) => [input.quantity, input.edition, input.attachment, input.animal, input.notes].some((value) => value !== undefined),
+    { path: ["quantity"] },
+  );
 
 export type AddToCartInput = z.infer<typeof addToCartSchema>;
 export type AddCollectibleToCartInput = z.infer<typeof addCollectibleToCartSchema>;
+// What the shop sends: the edition may be left out (keychain).
+export type AddCollectibleToCartRequest = z.input<typeof addCollectibleToCartSchema>;
 export type RemoveFromCartInput = z.infer<typeof removeFromCartSchema>;
 export type UpdateCartLineInput = z.infer<typeof updateCartLineSchema>;
 
@@ -46,7 +62,7 @@ export type CartLineView = {
   kind: "personalized" | "collectible";
   /** The collectible's name per language; a personalised Palley gets its name from the shop's texts. */
   productTitles: Record<Locale, string>;
-  /** The choices as values, which the shop shows in its language. Null for a collectible. */
+  /** The animal as a value, which the shop shows in its language. Null for a collectible. */
   animal: string | null;
   /** The animal's name per language, from the live list. Null for a collectible. */
   animalLabels: Record<Locale, string> | null;

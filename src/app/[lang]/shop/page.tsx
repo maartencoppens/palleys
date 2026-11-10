@@ -6,17 +6,24 @@ import PageHero from "@/components/design/PageHero";
 import { CollectibleCardSkeleton, CollectibleGrid } from "@/components/functional/shop/collection/CollectibleGrid";
 import Footer from "@/components/functional/shop/layout/Footer";
 import SiteAnimations from "@/components/functional/SiteAnimations";
-import { getLocale, getMessages, localeAlternates, metadataLocale } from "@/core/locale/server";
+import { getLocale, getMessages, metadataLocale } from "@/core/locale/server";
 import { listPublishedCollectibles } from "@/core/modules/collectibles/service";
+import { pageMetadata } from "@/core/seo/metadata";
+import JsonLd from "@/components/functional/seo/JsonLd";
+import { localizedPath } from "@/core/locale/config";
+import { absoluteUrl } from "@/core/seo/metadata";
+import { breadcrumbData } from "@/core/seo/structured-data";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/shop">): Promise<Metadata> {
   const { locale, messages } = await metadataLocale(params);
-  return { ...messages.meta.shop, alternates: localeAlternates(locale, "/shop") };
+  const m = messages.meta.shop;
+  return pageMetadata({ locale, path: "/shop", title: m.title, description: m.description, keywords: m.keywords });
 }
 
 async function LiveCollection() {
   await connection();
-  const [collectibles, { shop: m, common }] = await Promise.all([getLocale().then((locale) => listPublishedCollectibles(locale)), getMessages()]);
+  const [locale, { shop: m, common, nav }] = await Promise.all([getLocale(), getMessages()]);
+  const collectibles = await listPublishedCollectibles(locale);
   if (collectibles.length === 0) {
     return (
       <div className="flex flex-col items-center gap-5 rounded-3xl bg-white px-6 py-14 text-center">
@@ -28,7 +35,29 @@ async function LiveCollection() {
       </div>
     );
   }
-  return <CollectibleGrid collectibles={collectibles} />;
+  return (
+    <>
+      <CollectibleGrid collectibles={collectibles} />
+      {/* The collection as a list of products, so search engines can link each one from here. */}
+      <JsonLd
+        data={[
+          {
+            "@type": "ItemList",
+            itemListElement: collectibles.map((collectible, index) => ({
+              "@type": "ListItem",
+              position: index + 1,
+              name: collectible.name,
+              url: absoluteUrl(localizedPath(`/shop/${collectible.slug}`, locale)),
+            })),
+          },
+          breadcrumbData(locale, [
+            { name: nav.home, path: "/" },
+            { name: nav.collection, path: "/shop" },
+          ]),
+        ]}
+      />
+    </>
+  );
 }
 
 export default async function ShopPage() {

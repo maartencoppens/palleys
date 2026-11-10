@@ -29,6 +29,8 @@ export const collectibleInputSchema = z
     animalCode: animalOptionSchema.shape.code.nullable().default(null),
     published: z.boolean(),
     soldOut: z.boolean(),
+    // Finished copies on the shelf; null = not counted, everything is printed to order.
+    stock: z.number().int().min(0).max(COLLECTIBLE_LIMITS.stock).nullable().default(null),
     sortOrder: z.number().int().min(0).max(9999),
     translations: collectibleTranslationsSchema.default({}),
   })
@@ -57,6 +59,8 @@ export type CollectibleView = {
   priceCents: number;
   imageUrl: string | null;
   soldOut: boolean;
+  /** Finished copies ready to send; null when the stock isn't counted. */
+  stock: number | null;
 };
 
 export type AdminCollectible = CollectibleView & {

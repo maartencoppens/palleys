@@ -19,16 +19,16 @@ const socialIcons = [
     size: 56,
   },
   {
-    key: "tiktok",
-    label: "TikTok",
-    icon: "/images/footer/tiktok.svg",
-    size: 50,
-  },
-  {
     key: "facebook",
     label: "Facebook",
     icon: "/images/footer/facebook.svg",
     size: 56,
+  },
+  {
+    key: "tiktok",
+    label: "TikTok",
+    icon: "/images/footer/tiktok.svg",
+    size: 50,
   },
 ] as const;
 

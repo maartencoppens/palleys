@@ -23,9 +23,12 @@ describe("collectible names", () => {
     expect(collectibleIdOf({ number: 7, animalCode: null })).toBeNull();
   });
 
-  it("codes an order line by the attachment the customer chose", () => {
-    expect(collectibleProductCode(7, "clip")).toBe("COL-CLP-007");
-    expect(collectibleProductCode(7, "key-ring")).toBe("COL-RING-007");
+  it("codes an order line by the edition and attachment the customer chose", () => {
+    expect(collectibleProductCode(7, "keychain", "clip")).toBe("COL-CLP-007");
+    expect(collectibleProductCode(7, "keychain", "key-ring")).toBe("COL-RING-007");
+    expect(collectibleProductCode(7, "figure", null)).toBe("COL-FIG-007");
+    // A figurine has nothing to attach, whatever the line still remembers.
+    expect(collectibleProductCode(7, "figure", "clip")).toBe("COL-FIG-007");
   });
 });
 

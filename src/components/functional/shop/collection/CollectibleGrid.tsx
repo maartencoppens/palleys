@@ -13,6 +13,7 @@ export async function CollectibleCard({ collectible }: { collectible: Collectibl
       image={collectible.imageUrl!}
       tag={collectible.soldOut ? m.soldOut : (collectible.tag ?? undefined)}
       soldOut={collectible.soldOut}
+      stock={collectible.stock}
     />
   );
 }

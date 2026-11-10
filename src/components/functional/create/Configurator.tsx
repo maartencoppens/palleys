@@ -7,6 +7,7 @@ import { Link, useLocale, useMessages } from "@/core/locale/client";
 import { fill, fillNodes } from "@/core/locale/fill";
 import { attachmentIcons } from "./AttachmentIcons";
 import OrderSummary from "./OrderSummary";
+import PalleySize from "@/components/functional/shop/PalleySize";
 import PhotoTips from "./PhotoTips";
 import PhotoUpload, { type UploadedPhoto } from "./PhotoUpload";
 import {
@@ -45,33 +46,6 @@ type ConfiguratorProps = {
  * highlighted, and the stepper reflects progress. "Add to cart" checks everything and, if something is
  * missing, jumps to that step and shows what's needed.
  */
-/*
- * A Palley next to a €2 coin, to scale: the pet is 3.7 cm on its longest side, the coin 2.575 cm across
- * (1 cm = 16.5 units). Decorative: the text next to it says the same.
- */
-function SizeComparison({ size }: { size: string }) {
-  return (
-    <svg className="h-[84px] w-[170px] shrink-0 md:h-[100px] md:w-[203px]" viewBox="0 0 154 76" fill="none" aria-hidden>
-      <circle cx="27" cy="46.5" r="21" fill="#c9cdd2" stroke="#a9aeb4" />
-      <circle cx="27" cy="46.5" r="14.5" fill="#e3c26a" />
-      <text x="27" y="44" textAnchor="middle" dominantBaseline="central" fill="#8a6a1c" className="font-label text-[13px] font-extrabold">
-        2
-      </text>
-      <text x="27" y="53.5" textAnchor="middle" dominantBaseline="central" fill="#8a6a1c" className="font-label text-[4.5px] font-bold tracking-[0.5px]">
-        EURO
-      </text>
-      <path
-        className="fill-medium-green"
-        d="M66 15 69.5 6l6 6.5q4.5-1.3 9 0l6-6.5 3.5 9q3.5 5 2 11.5-1 4.5-4.5 7 8.5 5.5 8.5 18.5 0 12-9 14 4-3 3-7v1q-1 6-8 7H74q-11 0-12-11-1-15 6.5-22.5-3.5-2.5-4.5-7-1.5-6.5 2-11.5Z"
-      />
-      <path className="stroke-medium-green" d="M112 6v61M109 6h6M109 67h6" strokeWidth="1.4" strokeLinecap="round" />
-      <text x="118" y="37" dominantBaseline="central" className="fill-medium-green font-label text-[11px] font-extrabold">
-        {size}
-      </text>
-    </svg>
-  );
-}
-
 export default function Configurator({ catalog, deliveryTime, returnNote }: ConfiguratorProps) {
   const { create: m, options, common } = useMessages();
   const locale = useLocale();
@@ -234,13 +208,7 @@ export default function Configurator({ catalog, deliveryTime, returnNote }: Conf
               />
             )}
             {/* The size on its own, so nobody expects a big statue. Same for keychain and figurine. */}
-            <div className="flex flex-col items-start gap-3 rounded-[20px] bg-page p-4 sm:flex-row sm:items-center sm:gap-5 md:p-5">
-              <SizeComparison size={sizeLabel} />
-              <p className="text-base leading-[1.4] text-text-primary">
-                <strong className="block font-label font-bold">{m.choose.sizeTitle}</strong>
-                {fill(m.choose.size, { size: sizeLabel })}
-              </p>
-            </div>
+            <PalleySize size={sizeLabel} title={m.choose.sizeTitle} text={fill(m.choose.size, { size: sizeLabel })} />
           </Panel>
 
           <Panel
@@ -474,7 +442,7 @@ export default function Configurator({ catalog, deliveryTime, returnNote }: Conf
             pet={animalLabel}
             edition={editionLabel}
             attachment={attachmentLabel}
-            size={sizeLabel}
+            size={fill(m.summary.sizeValue, { size: sizeLabel })}
             photos={photosLabel}
             priceCents={priceCents}
           />

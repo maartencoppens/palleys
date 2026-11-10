@@ -6,15 +6,17 @@ import LegalPage from "@/components/functional/shop/legal/LegalPage";
 import LegalText from "@/components/functional/shop/legal/LegalText";
 import { Link } from "@/core/locale/client";
 import { fill } from "@/core/locale/fill";
-import { getMessages, localeAlternates, metadataLocale } from "@/core/locale/server";
+import { getMessages, metadataLocale } from "@/core/locale/server";
 import { getSiteSettings } from "@/core/modules/settings/service";
 import { COMPANY } from "@/data/company";
 import { PRIVACY_URL, TERMS_URL, TERMS_VERSION } from "@/data/checkout";
 import { RETURN_POLICY_URL } from "@/data/returns";
+import { pageMetadata } from "@/core/seo/metadata";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/algemene-voorwaarden">): Promise<Metadata> {
   const { locale, messages } = await metadataLocale(params);
-  return { title: messages.meta.terms, alternates: localeAlternates(locale, TERMS_URL) };
+  const m = messages.meta.terms;
+  return pageMetadata({ locale, path: TERMS_URL, title: m.title, description: m.description });
 }
 
 type Company = Pick<typeof COMPANY, "legalName" | "address" | "enterpriseNumber" | "email">;

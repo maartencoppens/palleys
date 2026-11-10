@@ -1,5 +1,5 @@
-import { COLLECTIBLE_EDITION, COLLECTIBLE_IMAGE_ROUTE, COLLECTIBLE_KEY_PREFIX } from "@/data/collectibles";
-import type { Attachment } from "@/data/options";
+import { COLLECTIBLE_IMAGE_ROUTE, COLLECTIBLE_KEY_PREFIX } from "@/data/collectibles";
+import type { Attachment, Edition } from "@/data/options";
 import { collectibleId, productCode } from "@/core/utils/naming";
 
 /** "Golden Retriever!" → "golden-retriever". Accents go, so the URL stays plain. */
@@ -14,9 +14,9 @@ export function slugify(name: string) {
     .replace(/-+$/, "");
 }
 
-/** COL-CLP-007: what an order line for this collectible is, with the attachment the customer chose. */
-export function collectibleProductCode(collectibleNr: number, attachment: Attachment) {
-  return productCode({ kind: "COL", edition: COLLECTIBLE_EDITION, attachment, collectibleNr });
+/** COL-CLP-007 or COL-FIG-007: what an order line for this collectible is, as the customer chose it. */
+export function collectibleProductCode(collectibleNr: number, edition: Edition, attachment: Attachment | null) {
+  return productCode({ kind: "COL", edition, attachment: edition === "keychain" ? attachment : null, collectibleNr });
 }
 
 /** COL-007-HOND, or null while no animal is chosen for it. */

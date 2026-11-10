@@ -3,6 +3,8 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import Cart, { CartSkeleton } from "@/components/functional/shop/cart/Cart";
 import { getMessages, getSiteContent, metadataLocale } from "@/core/locale/server";
+import { getSiteSettings } from "@/core/modules/settings/service";
+import { editions } from "@/data/options";
 import Footer from "@/components/functional/shop/layout/Footer";
 import InfoBanner from "@/components/functional/shop/home/InfoBanner";
 import Navbar from "@/components/functional/shop/layout/Navbar";
@@ -14,8 +16,12 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/cart">): P
 
 async function LiveCart() {
   await connection();
-  const content = await getSiteContent();
-  return <Cart deliveryTime={content.deliveryTime} returnNote={content.returnNote} />;
+  const [content, { catalog }] = await Promise.all([getSiteContent(), getSiteSettings()]);
+  const animals = catalog.animals
+    .filter((animal) => !catalog.disabledAnimals.includes(animal.value))
+    .map((animal) => ({ value: animal.value, labels: animal.labels }));
+  const onSale = editions.map((edition) => edition.value).filter((edition) => !catalog.disabledEditions.includes(edition));
+  return <Cart deliveryTime={content.deliveryTime} returnNote={content.returnNote} animals={animals} editions={onSale} />;
 }
 
 export default async function CartPage() {

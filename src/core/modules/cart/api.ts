@@ -1,6 +1,6 @@
 import { api } from "@/core/networking/api";
 import type { Attachment } from "@/data/options";
-import type { AddCollectibleToCartInput, AddToCartInput, CartView } from "./types";
+import type { AddCollectibleToCartRequest, AddToCartInput, CartView, UpdateCartLineInput } from "./types";
 
 // Client-side wrappers around app/api/cart. The cart token stays in an httpOnly cookie.
 
@@ -14,7 +14,7 @@ export async function postAddToCart(input: AddToCartInput) {
   return data.cart;
 }
 
-export async function postAddCollectibleToCart(input: AddCollectibleToCartInput) {
+export async function postAddCollectibleToCart(input: AddCollectibleToCartRequest) {
   const { data } = await api.post<{ cart: CartView }>("/cart", input);
   return data.cart;
 }
@@ -26,6 +26,12 @@ export async function patchCartLine(lineId: string, quantity: number) {
 
 export async function patchCartLineAttachment(lineId: string, attachment: Attachment) {
   const { data } = await api.patch<{ cart: CartView | null }>("/cart", { lineId, attachment });
+  return data.cart;
+}
+
+/** Changes a line's choices: edition, attachment, and for a Palley op maat the animal and notes. */
+export async function patchCartLineChoices(changes: Omit<UpdateCartLineInput, "quantity">) {
+  const { data } = await api.patch<{ cart: CartView | null }>("/cart", changes);
   return data.cart;
 }
 

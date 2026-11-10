@@ -117,7 +117,7 @@ function expectedProductCode(
 ) {
   const attachment = item.attachment as Attachment | null;
   try {
-    if (item.collectible) return collectibleProductCode(item.collectible.number, attachment ?? DEFAULT_ATTACHMENT);
+    if (item.collectible) return collectibleProductCode(item.collectible.number, "keychain", attachment ?? DEFAULT_ATTACHMENT);
     const animal = animals.find((option) => option.value === item.animal);
     if (!animal || !item.edition) return null;
     return productCode({ kind: "P", edition: item.edition as Edition, attachment, animalCode: animal.code });

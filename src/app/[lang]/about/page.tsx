@@ -6,12 +6,14 @@ import Team from "@/components/functional/shop/about/Team";
 import Charity from "@/components/functional/shop/home/Charity";
 import Footer from "@/components/functional/shop/layout/Footer";
 import SiteAnimations from "@/components/functional/SiteAnimations";
-import { getMessages, localeAlternates, metadataLocale } from "@/core/locale/server";
+import { getMessages, metadataLocale } from "@/core/locale/server";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/core/seo/metadata";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/about">): Promise<Metadata> {
   const { locale, messages } = await metadataLocale(params);
-  return { ...messages.meta.about, alternates: localeAlternates(locale, "/about") };
+  const m = messages.meta.about;
+  return pageMetadata({ locale, path: "/about", title: m.title, description: m.description, keywords: m.keywords });
 }
 
 /*

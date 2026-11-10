@@ -15,7 +15,7 @@ import { attachments, DEFAULT_ATTACHMENT } from "@/data/options";
 import { findAnimal } from "@/core/modules/animals/utils";
 import { collectibleProductCode } from "@/core/modules/collectibles/utils";
 import { productCode } from "@/core/utils/naming";
-import { MANUAL_PAYMENT_PROVIDER } from "@/data/payment-methods";
+import { MANUAL_PAYMENT_PROVIDER, STOCK_PAYMENT_METHOD } from "@/data/payment-methods";
 import { CURRENCY } from "@/data/pricing";
 import { HANDOVER_DELIVERY } from "@/data/shipping";
 import { activeQuantity, allItemsCheckedIn, checkInItemOf, ITEM_READY_PREVIEW_STATUS, OPEN_ORDER_STATUSES } from "./check-in";
@@ -83,21 +83,22 @@ async function resolveLines(input: ManualOrderInput) {
     }
     const collectible = collectibles.find((row) => row.id === line.collectibleId);
     if (!collectible) throw new OrderActionError("Deze collectible bestaat niet meer");
-    const attachment = line.attachment ?? DEFAULT_ATTACHMENT;
+    const attachment = line.edition === "keychain" ? (line.attachment ?? DEFAULT_ATTACHMENT) : null;
     return {
       position,
       previewId: null,
       collectibleId: collectible.id,
-      productCode: collectibleProductCode(collectible.number, attachment),
+      productCode: collectibleProductCode(collectible.number, line.edition, attachment),
       size: DEFAULT_SIZE,
-      edition: null,
+      edition: line.edition,
       attachment,
       animal: null,
       title: collectible.name,
       notes: line.notes,
       quantity: line.quantity,
-      unitCents: line.unitCents ?? collectible.priceCents,
-      withdrawable: true,
+      // A stock order costs nothing: nobody buys it (yet).
+      unitCents: input.stockOrder ? 0 : (line.unitCents ?? collectible.priceCents),
+      withdrawable: !input.stockOrder,
     };
   });
 }
@@ -113,7 +114,20 @@ async function resolveDelivery(input: ManualOrderInput, lines: LineData[]) {
   return { ...option, priceCents: input.delivery.priceCents ?? option.priceCents };
 }
 
-export async function createManualOrder(input: ManualOrderInput, adminName: string): Promise<ManualOrderResult> {
+/** What a stock order is filed under: the shop itself, handed over to ourselves, nothing to pay. */
+function asStockOrder(input: ManualOrderInput): ManualOrderInput {
+  return {
+    ...input,
+    customer: { firstName: "Palleys", lastName: "Voorraad", email: null, phone: undefined },
+    delivery: { type: "handover" },
+    payment: { type: "later" },
+    sendConfirmation: false,
+    note: input.note ?? "Voorraadorder",
+  };
+}
+
+export async function createManualOrder(request: ManualOrderInput, adminName: string): Promise<ManualOrderResult> {
+  const input = request.stockOrder ? asStockOrder(request) : request;
   const lines = await resolveLines(input);
   const delivery = await resolveDelivery(input, lines);
   const totals = computeTotals(lines, delivery.priceCents);
@@ -135,6 +149,7 @@ export async function createManualOrder(input: ManualOrderInput, adminName: stri
       data: {
         number,
         createdBy: adminName,
+        stockOrder: input.stockOrder,
         email: input.customer.email,
         firstName: input.customer.firstName,
         lastName: input.customer.lastName,
@@ -174,7 +189,10 @@ export async function createManualOrder(input: ManualOrderInput, adminName: stri
   const previews = lines.flatMap((line, lineIndex) => (line.previewId ? { lineIndex, previewId: line.previewId } : []));
   const result: ManualOrderResult = { orderId: order.id, number: order.number, previews, paymentLinkFailed: false };
 
-  if (input.payment.type === "paid") {
+  if (input.stockOrder) {
+    // Settled right away, so it goes to the print queue and into a batch like any paid order.
+    await recordManualPayment(order.id, STOCK_PAYMENT_METHOD, adminName, { sendConfirmation: false });
+  } else if (input.payment.type === "paid") {
     await recordManualPayment(order.id, input.payment.method, adminName, { sendConfirmation: input.sendConfirmation });
   } else if (input.payment.type === "bancontact") {
     // The order is in the database by now. A failed link doesn't undo it: the order page can make a new one.
@@ -185,7 +203,7 @@ export async function createManualOrder(input: ManualOrderInput, adminName: stri
       result.paymentLinkFailed = true;
     }
   }
-  console.info(`[orders] ${order.number} added by an admin (${input.payment.type})`);
+  console.info(`[orders] ${order.number} added by an admin (${input.stockOrder ? "stock" : input.payment.type})`);
   return result;
 }
 

@@ -37,6 +37,9 @@ const lineQuantity = z.number().int().min(1).max(MAX_LINE_QUANTITY);
 const lineUnitCents = z.number().int().min(0).max(MAX_PRODUCT_PRICE_CENTS).optional();
 
 export const manualOrderSchema = z.object({
+  // A stock order: collectibles we have made ahead, for nobody in particular. The server fills in the rest (no customer,
+  // no price, handed over, nothing to pay); finishing it adds the copies to the collectible's stock.
+  stockOrder: z.boolean().default(false),
   customer: z.object({
     // Optional: a friend you hand it to doesn't need a confirmation mail.
     email: z
@@ -62,6 +65,7 @@ export const manualOrderSchema = z.object({
         z.object({
           kind: z.literal("collectible"),
           collectibleId: z.uuid(),
+          edition: editionSchema.default("keychain"),
           attachment: attachmentSchema.optional(),
           quantity: lineQuantity,
           unitCents: lineUnitCents,
@@ -95,6 +99,9 @@ export const manualOrderSchema = z.object({
     .max(500)
     .optional()
     .transform((value) => value || undefined),
+}).refine((input) => !input.stockOrder || input.lines.every((line) => line.kind === "collectible"), {
+  path: ["lines"],
+  message: "Een voorraadorder bevat alleen collectibles",
 });
 
 export const manualPaymentSchema = z.discriminatedUnion("type", [

@@ -40,7 +40,7 @@ function ItemRow({ item }: { item: ReturnItemView }) {
 
   return (
     <div role="listitem" className="flex gap-4 border-b border-off-white-dark py-4 last:border-b-0">
-      <CartLinePhoto photoUrl={item.imageUrl} size={72} className="size-[72px] rounded-2xl" />
+      <CartLinePhoto photoUrl={item.imageUrl} kind={item.kind} size={72} className="size-[72px] rounded-2xl" />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <p className="font-label text-sm font-bold text-text-muted">{m.overview.kinds[item.kind]}</p>
         <p className="font-label font-bold text-medium-green">{item.title}</p>

@@ -426,7 +426,7 @@ export default function CheckoutForm({ deliveryTime, instagramUrl }: { deliveryT
         <ul className="flex flex-col gap-4" aria-label={m.products}>
           {lines.map((line) => (
             <li key={line.id} className="flex items-start gap-4">
-              <CartLinePhoto photoUrl={line.photoUrl} size={64} className="size-16 rounded-xl" />
+              <CartLinePhoto photoUrl={line.photoUrl} kind={line.kind} size={64} className="size-16 rounded-xl" />
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <p className="font-label text-base font-bold text-text-primary">
                   {lineName(line, messages, locale)} {line.quantity > 1 && <span className="text-text-muted">× {line.quantity}</span>}

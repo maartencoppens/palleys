@@ -52,6 +52,8 @@ export function CollectibleForm({
   const [sortOrder, setSortOrder] = useState(String(collectible?.sortOrder ?? nextSortOrder));
   const [published, setPublished] = useState(collectible?.published ?? true);
   const [soldOut, setSoldOut] = useState(collectible?.soldOut ?? false);
+  // Empty = the stock isn't counted (printed to order).
+  const [stock, setStock] = useState(collectible?.stock === null || collectible?.stock === undefined ? "" : String(collectible.stock));
   const [image, setImage] = useState({ key: collectible?.imageKey ?? null, url: collectible?.imageUrl ?? null });
   const [model, setModel] = useState({ key: collectible?.modelKey ?? null, fileName: collectible?.modelFileName ?? null });
   const modelInputRef = useRef<HTMLInputElement>(null);
@@ -118,6 +120,10 @@ export function CollectibleForm({
     }
     if (published && !image.key) return setError("Voeg een foto toe, of zet het product nog niet op de website");
     if (published && !animalCode) return setError("Kies het dier, of zet het product nog niet op de website");
+    const stockCount = stock.trim() === "" ? null : Number(stock.trim());
+    if (stockCount !== null && (!Number.isInteger(stockCount) || stockCount < 0 || stockCount > COLLECTIBLE_LIMITS.stock)) {
+      return setError("Vul een geldige voorraad in (een heel getal vanaf 0), of laat het veld leeg");
+    }
 
     const cleaned = Object.fromEntries(
       TRANSLATED_LOCALES.map((locale) => [locale, trimTranslation(translations[locale])]),
@@ -138,6 +144,7 @@ export function CollectibleForm({
       animalCode: animalCode || null,
       published,
       soldOut,
+      stock: stockCount,
       sortOrder: Math.max(0, Number.parseInt(sortOrder, 10) || 0),
       translations: cleaned,
     };
@@ -340,6 +347,23 @@ export function CollectibleForm({
             Uitverkocht (blijft zichtbaar, maar niet te bestellen)
           </label>
         </div>
+        <label htmlFor="collectible-stock" className={`mt-5 block ${fieldLabelClassName}`}>
+          Voorraad (afgewerkte exemplaren klaar om te versturen; leeg = niet bijhouden, alles op bestelling)
+        </label>
+        <Input
+          id="collectible-stock"
+          type="number"
+          min={0}
+          max={COLLECTIBLE_LIMITS.stock}
+          value={stock}
+          onChange={(event) => setStock(event.target.value)}
+          placeholder="—"
+          className={`mt-2 w-28 ${compactFieldClassName}`}
+        />
+        <p className="mt-1 text-sm text-text-muted">
+          Een betaalde bestelling haalt eraf, een afgeronde voorraadorder (Orders → Order toevoegen) zet erbij. Op de website staat
+          het aantal bij het product.
+        </p>
         <label htmlFor="collectible-order" className={`mt-5 block ${fieldLabelClassName}`}>
           Volgorde (laag = eerst, de eerste vier staan op de homepage)
         </label>

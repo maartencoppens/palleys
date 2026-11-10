@@ -8,8 +8,10 @@ import { lineChoices, lineName, palleyCount } from "@/components/functional/shop
 import { Link, useLocale, useMessages } from "@/core/locale/client";
 import { fill } from "@/core/locale/fill";
 import { loadCart, publishCart } from "@/core/hooks/useCartSnapshot";
-import { deleteCartLine, patchCartLine } from "@/core/modules/cart/api";
-import type { CartView } from "@/core/modules/cart/types";
+import { deleteCartLine, patchCartLine, patchCartLineChoices } from "@/core/modules/cart/api";
+import type { CartView, UpdateCartLineInput } from "@/core/modules/cart/types";
+import type { Edition } from "@/data/options";
+import CartLineEditor, { type CartAnimalOption } from "./CartLineEditor";
 import { formatPrice } from "@/core/utils/format";
 import CartLinePhoto from "./CartLinePhoto";
 import QuantityStepper from "./QuantityStepper";
@@ -28,13 +30,22 @@ const nextSteps = (m: ReturnType<typeof useMessages>["cart"]["next"], deliveryTi
  * checkout. Expired uploads are already removed server-side before we get here.
  * Every change is shared with the navbar's mini cart through useCartSnapshot.
  */
-export default function Cart({ deliveryTime, returnNote }: { deliveryTime: string; returnNote: string }) {
+type CartProps = {
+  deliveryTime: string;
+  returnNote: string;
+  /** What a line can still be changed to: the animals and editions on sale. */
+  animals: CartAnimalOption[];
+  editions: readonly Edition[];
+};
+
+export default function Cart({ deliveryTime, returnNote, animals, editions }: CartProps) {
   const messages = useMessages();
   const locale = useLocale();
   const { cart: m, common } = messages;
   const [state, setState] = useState<State>({ status: "loading" });
   const [removing, setRemoving] = useState<string | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
   const busyLine = removing ?? updating;
   const [redirecting, setRedirecting] = useState(false);
 
@@ -66,6 +77,16 @@ export default function Cart({ deliveryTime, returnNote }: { deliveryTime: strin
     } finally {
       setUpdating(null);
     }
+  };
+
+  // Errors stay in the editor (it throws back), so a failed save keeps what the shopper picked.
+  const saveChoices = async (lineId: string, changes: Omit<UpdateCartLineInput, "lineId" | "quantity">) => {
+    if (Object.keys(changes).length > 0) {
+      const cart = await patchCartLineChoices({ lineId, ...changes });
+      publishCart(cart);
+      setState({ status: "ready", cart });
+    }
+    setEditing(null);
   };
 
   const remove = async (lineId: string) => {
@@ -106,7 +127,7 @@ export default function Cart({ deliveryTime, returnNote }: { deliveryTime: strin
       <div className="flex flex-col items-center gap-6 rounded-3xl bg-white px-6 py-10 text-center md:rounded-[32px] md:py-14">
         <div className="relative size-40 overflow-hidden rounded-full bg-light-yellow md:size-48">
           <Image
-            src="/images/products/golden-retriever.png"
+            src="/images/products/golden-retriever.webp"
             alt=""
             fill
             sizes="192px"
@@ -175,6 +196,7 @@ export default function Cart({ deliveryTime, returnNote }: { deliveryTime: strin
               >
                 <CartLinePhoto
                   photoUrl={line.photoUrl}
+                  kind={line.kind}
                   size={112}
                   className="size-20 rounded-2xl sm:size-24 md:size-28"
                 />
@@ -220,7 +242,28 @@ export default function Cart({ deliveryTime, returnNote }: { deliveryTime: strin
                       <Image src="/images/create/trash.svg" width={13} height={14.3} alt="" aria-hidden />
                       {removing === line.id ? m.removing : m.remove}
                     </button>
+                    {editing !== line.id && (
+                      <button
+                        type="button"
+                        onClick={() => setEditing(line.id)}
+                        disabled={busyLine !== null}
+                        aria-label={fill(m.edit.label, { title: lineName(line, messages, locale) })}
+                        className="flex items-center gap-1.5 rounded-full py-1 font-label text-sm font-bold text-medium-green underline-offset-4 transition-colors hover:underline disabled:opacity-50"
+                      >
+                        <PencilIcon />
+                        {m.edit.open}
+                      </button>
+                    )}
                   </div>
+                  {editing === line.id && (
+                    <CartLineEditor
+                      line={line}
+                      animals={animals}
+                      editions={editions}
+                      onSave={(changes) => saveChoices(line.id, changes)}
+                      onCancel={() => setEditing(null)}
+                    />
+                  )}
                 </div>
               </li>
             ))}
@@ -332,6 +375,14 @@ export function CartSkeleton() {
       </div>
       <div className="h-72 animate-pulse rounded-3xl bg-white md:rounded-[32px] lg:w-[420px]" />
     </div>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg className="size-3.5" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path d="M11 2.5 13.5 5 6 12.5H3.5V10L11 2.5Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+    </svg>
   );
 }
 

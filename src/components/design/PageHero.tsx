@@ -42,7 +42,7 @@ export default function PageHero({ eyebrow, title, intro, backdropClassName = "b
               </p>
               <h1
                 data-hero-item
-                className="font-display text-[clamp(2.25rem,1.2rem+4.4vw,5rem)] leading-none font-medium tracking-[-0.02em] [overflow-wrap:break-word] hyphens-auto"
+                className="font-display text-[clamp(1.75rem,0.9rem+4.8vw,5rem)] leading-none font-medium tracking-[-0.02em] [overflow-wrap:break-word] hyphens-auto"
               >
                 {title}
               </h1>

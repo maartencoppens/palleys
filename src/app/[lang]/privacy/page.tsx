@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import CompanyValue from "@/components/functional/shop/legal/CompanyValue";
 import LegalPage from "@/components/functional/shop/legal/LegalPage";
 import LegalText from "@/components/functional/shop/legal/LegalText";
-import { getMessages, localeAlternates, metadataLocale } from "@/core/locale/server";
+import { getMessages, metadataLocale } from "@/core/locale/server";
 import { PRIVACY_URL } from "@/data/checkout";
+import { pageMetadata } from "@/core/seo/metadata";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/privacy">): Promise<Metadata> {
   const { locale, messages } = await metadataLocale(params);
-  return { title: messages.meta.privacy, alternates: localeAlternates(locale, PRIVACY_URL) };
+  const m = messages.meta.privacy;
+  return pageMetadata({ locale, path: PRIVACY_URL, title: m.title, description: m.description });
 }
 
 // LEGAL-REVIEW: the privacy policy; company name, address and e-mail come from the company settings.

@@ -31,7 +31,7 @@ export default async function Charity({
       <Image
         data-animate="pop"
         className="h-auto w-full max-w-[420px] self-center lg:max-w-[560px] lg:min-w-0 lg:flex-[1_1_560px]"
-        src="/images/about/goeddoel.png"
+        src="/images/about/goeddoel.webp"
         width={560}
         height={560}
         alt={m.photoAlt}
@@ -68,7 +68,7 @@ export default async function Charity({
           href="https://www.dierenasielgent.be/"
           target="_blank"
           rel="noopener noreferrer"
-          className="group mt-8 flex items-center gap-2.5 border-b border-light-green py-s text-xl leading-[19.5px] font-bold text-off-white transition-colors hover:border-accent-highlights md:mt-10 md:text-2xl"
+          className="group mt-8 flex items-center gap-2.5 self-center border-b border-light-green py-s text-xl leading-[19.5px] font-bold text-off-white transition-colors hover:border-accent-highlights md:mt-10 md:text-2xl"
         >
           {m.link}
           {/* Figma rotates the standard arrow by -31.9° inside a 36×34 box. */}

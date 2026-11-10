@@ -13,12 +13,32 @@ type Member = {
 
 // TODO: fill in the remaining pets and the portraits.
 const members: Member[] = [
-  { name: "Joran Vreye", petName: "Baloo & Finn" },
-  { name: "Emie Van de Veire", petName: "Onyx & Lyra" },
-  { name: "Maarten Coppens", petName: "Zorro" },
-  { name: "Reinhart Schepens", petName: "Remus & Astor" },
-  { name: "Bavo de Bondt", petName: "Doris" },
-  { name: "Lies De Praeter", petName: "Pickwick" },
+  {
+    name: "Joran Vreye",
+    petName: "Baloo & Finn",
+    photo: "/images/team/joran.jpeg",
+  },
+  {
+    name: "Emie Van de Veire",
+    petName: "Onyx & Lyra",
+    photo: "/images/team/emie.png",
+  },
+  {
+    name: "Maarten Coppens",
+    petName: "Zorro",
+    photo: "/images/team/maarten.jpeg",
+  },
+  {
+    name: "Reinhart Schepens",
+    petName: "Remus & Astor",
+    photo: "/images/team/reinhart.jpeg",
+  },
+  { name: "Bavo de Bondt", petName: "Doris", photo: "/images/team/bavo.png" },
+  {
+    name: "Lies De Praeter",
+    petName: "Pickwick",
+    photo: "/images/team/lies.jpeg",
+  },
 ];
 
 // Avatar colours repeat in the Figma order.

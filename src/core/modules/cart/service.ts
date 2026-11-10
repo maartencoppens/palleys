@@ -13,12 +13,13 @@ import type { CatalogSettings } from "@/core/modules/settings/types";
 import { createToken, hashToken } from "@/core/utils/tokens";
 import { CART_TTL_MS } from "@/data/checkout";
 import { CURRENCY, MAX_LINE_QUANTITY, MAX_ORDER_LINES } from "@/data/pricing";
-import { attachments, DEFAULT_ATTACHMENT, type Attachment, type Edition } from "@/data/options";
+import { attachments, DEFAULT_ATTACHMENT, editions, type Attachment, type Edition } from "@/data/options";
+import { COLLECTIBLE_EDITION } from "@/data/collectibles";
 import { findAnimal } from "@/core/modules/animals/utils";
 import type { KeychainSize } from "@/data/sizes";
 import { attachmentSchema, editionSchema } from "./types";
 import type {
-  AddCollectibleToCartInput,
+  AddCollectibleToCartRequest,
   AddToCartInput,
   CartLineView,
   CartView,
@@ -128,13 +129,13 @@ export type ResolvedCartLine = {
       kind: "collectible";
       previewId: null;
       collectibleId: string;
-      edition: null;
-      attachment: Attachment;
+      edition: Edition;
+      attachment: Attachment | null;
       animal: null;
       animalLabel: null;
       animalLabels: null;
-      editionLabel: null;
-      attachmentLabel: string;
+      editionLabel: string;
+      attachmentLabel: string | null;
       imageUrl: string | null;
     }
 );
@@ -163,30 +164,34 @@ export async function assertPreviewCanBeOrdered(previewId: string) {
 // A line from before the choice existed, or a collectible nobody has chosen for yet, gets the standard one.
 const chosenAttachment = (value: string | null) => attachmentSchema.safeParse(value).data ?? DEFAULT_ATTACHMENT;
 const labelOf = (value: Attachment) => attachments.find((option) => option.value === value)!.label;
+const editionLabelOf = (value: Edition) => editions.find((option) => option.value === value)!.label;
+// A collectible line from before the choice existed is a keychain.
+const collectibleEdition = (value: string | null) => editionSchema.safeParse(value).data ?? COLLECTIBLE_EDITION;
 
 function resolveLine(line: StoredLine, catalog: CatalogSettings): ResolvedCartLine | null {
   if (line.collectible) {
     const collectible = line.collectible;
     if (!collectible.published || collectible.soldOut || collectible.archivedAt) return null;
-    const attachment = chosenAttachment(line.attachment);
+    const edition = collectibleEdition(line.edition);
+    const attachment = edition === "keychain" ? chosenAttachment(line.attachment) : null;
     return {
       id: line.id,
       kind: "collectible",
       previewId: null,
       collectibleId: collectible.id,
-      edition: null,
+      edition,
       attachment,
       animal: null,
       size: DEFAULT_SIZE,
-      productCode: collectibleProductCode(collectible.number, attachment),
+      productCode: collectibleProductCode(collectible.number, edition, attachment),
       title: collectible.name,
       titles: Object.fromEntries(
         LOCALES.map((locale) => [locale, localizedTexts({ ...collectible, description: null, tag: null }, locale).name]),
       ) as Record<Locale, string>,
       animalLabel: null,
       animalLabels: null,
-      editionLabel: null,
-      attachmentLabel: labelOf(attachment),
+      editionLabel: editionLabelOf(edition),
+      attachmentLabel: attachment && labelOf(attachment),
       notes: null,
       quantity: line.quantity,
       unitCents: collectible.priceCents,
@@ -370,26 +375,35 @@ export async function addPreviewToCart(
   return { cart: await toView(await loadLines(cart.id)), token: cartToken };
 }
 
-/** Adds a collectible. Adding the same one again is one more copy, up to the line's maximum. */
+/** The stored choice of a collectible line: a figurine has nothing to attach, a keychain always has something. */
+const collectibleChoice = (edition: Edition, attachment: Attachment | null | undefined) => ({
+  edition,
+  attachment: edition === "keychain" ? (attachment ?? DEFAULT_ATTACHMENT) : null,
+});
+
+/** Adds a collectible as the shopper chose it. The same collectible in the same edition again is one more copy. */
 export async function addCollectibleToCart(
   token: string | null,
-  input: AddCollectibleToCartInput,
+  input: AddCollectibleToCartRequest,
 ): Promise<{ cart: CartView; token: string }> {
   if (!(await findOrderableCollectible(input.collectibleId))) throw new CartError("collectible_unavailable");
 
   const { cart, cartToken } = await findOrCreateCart(token);
-  const key = { cartId: cart.id, collectibleId: input.collectibleId };
-  const existing = await prisma.cartLine.findUnique({ where: { cartId_collectibleId: key }, select: { quantity: true } });
+  const choice = collectibleChoice(input.edition ?? COLLECTIBLE_EDITION, input.attachment);
+  const existing = await prisma.cartLine.findFirst({
+    where: { cartId: cart.id, collectibleId: input.collectibleId, ...choice },
+    select: { id: true, quantity: true },
+  });
 
   if (existing) {
     await prisma.cartLine.update({
-      where: { cartId_collectibleId: key },
+      where: { id: existing.id },
       data: { quantity: Math.min(existing.quantity + 1, MAX_LINE_QUANTITY) },
     });
   } else {
     const lineCount = await prisma.cartLine.count({ where: { cartId: cart.id } });
     if (lineCount >= MAX_ORDER_LINES) throw new CartError("cart_full");
-    await prisma.cartLine.create({ data: { ...key, size: DEFAULT_SIZE } });
+    await prisma.cartLine.create({ data: { cartId: cart.id, collectibleId: input.collectibleId, ...choice, size: DEFAULT_SIZE } });
   }
   await prisma.cart.update({ where: { id: cart.id }, data: { expiresAt: nextExpiry() } });
   return { cart: await toView(await loadLines(cart.id)), token: cartToken };
@@ -403,18 +417,60 @@ export async function removeFromCart(token: string | null, input: RemoveFromCart
   return toView(await loadLines(cart.id));
 }
 
+/**
+ * Changes a line: how many, and the choices. On a Palley op maat everything the configurator asked can still change
+ * (animal, keychain or figurine, attachment, notes); the photos stay. A collectible can switch edition and attachment;
+ * when that makes it the same as another line in the cart, the two become one.
+ */
 export async function updateCartLineQuantity(
   token: string | null,
   input: UpdateCartLineInput,
 ): Promise<CartView | null> {
   const cart = await findCart(token);
   if (!cart) return null;
-  const { count } = await prisma.cartLine.updateMany({
-    // A figurine has nothing to attach.
-    where: { id: input.lineId, cartId: cart.id, ...(input.attachment && { OR: [{ edition: null }, { edition: { not: "figure" } }] }) },
-    data: { quantity: input.quantity, attachment: input.attachment },
+  const line = await prisma.cartLine.findFirst({
+    // Scoped to this cart: a line id from someone else's cart does nothing.
+    where: { id: input.lineId, cartId: cart.id },
+    select: { id: true, previewId: true, collectibleId: true, edition: true, attachment: true, quantity: true },
   });
-  if (count === 0) throw new CartError("line_not_found");
+  if (!line) throw new CartError("line_not_found");
+  const quantity = input.quantity ?? line.quantity;
+
+  if (line.collectibleId) {
+    const choice = collectibleChoice(input.edition ?? collectibleEdition(line.edition), input.attachment ?? chosenAttachment(line.attachment));
+    const twin = await prisma.cartLine.findFirst({
+      where: { cartId: cart.id, collectibleId: line.collectibleId, id: { not: line.id }, ...choice },
+      select: { id: true, quantity: true },
+    });
+    if (twin) {
+      await prisma.$transaction([
+        prisma.cartLine.update({ where: { id: twin.id }, data: { quantity: Math.min(twin.quantity + quantity, MAX_LINE_QUANTITY) } }),
+        prisma.cartLine.delete({ where: { id: line.id } }),
+      ]);
+    } else {
+      await prisma.cartLine.update({ where: { id: line.id }, data: { quantity, ...choice } });
+    }
+    return toView(await loadLines(cart.id));
+  }
+
+  const { catalog } = await getShopSettings();
+  if (input.animal !== undefined) {
+    const onSale = findAnimal(catalog.animals, input.animal) && !catalog.disabledAnimals.includes(input.animal);
+    if (!onSale) throw new CartError("option_unavailable");
+  }
+  if (input.edition !== undefined && catalog.disabledEditions.includes(input.edition)) throw new CartError("option_unavailable");
+  const edition = input.edition ?? editionSchema.safeParse(line.edition).data;
+  await prisma.cartLine.update({
+    where: { id: line.id },
+    data: {
+      quantity,
+      ...(input.animal !== undefined && { animal: input.animal }),
+      ...(input.notes !== undefined && { notes: input.notes || null }),
+      ...(edition && { edition }),
+      // A figurine has nothing to attach; a keychain keeps its choice or gets the standard one.
+      attachment: edition === "keychain" ? (input.attachment ?? chosenAttachment(line.attachment)) : null,
+    },
+  });
   return toView(await loadLines(cart.id));
 }
 

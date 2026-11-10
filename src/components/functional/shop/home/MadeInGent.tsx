@@ -48,10 +48,9 @@ const stepIcons = [
 /*
  * "Made in Gent" (Figma: made-in-gent, 1440×864): workshop photo next to a green panel, with large
  * rounded corners top-right and bottom-left that reveal the page background of the section above.
- * From 1024px the photo and panel sit side by side (panel 734px of 1440). Below that they stack and the
- * photo fills whatever height the panel leaves, at least 4:3; on phones the panel keeps roomy spacing, so the section
- * can run slightly taller than one screen there. Like the other sections it stops at 1440px; on wider screens the page
- * background shows on both sides.
+ * The card is as tall as its content, not a full screen: from 1024px the photo is a narrower strip (40%) beside the panel,
+ * which keeps the panel short; stacked below that, the photo is a strip of at most 340px. Like the other sections it
+ * stops at 1440px; on wider screens the page background shows on both sides.
  *
  * The four steps are tiles with an icon (two columns from 640px) rather than a run of paragraphs, so the panel
  * scans at a glance. All text on the green is off-white; the pink from Figma was too faint to read.
@@ -61,14 +60,14 @@ export default async function MadeInGent() {
   return (
     <section
       id="made-in-gent"
-      className="mx-auto flex min-h-svh w-full max-w-[1440px] flex-col overflow-hidden rounded-tr-section-lg rounded-bl-section-lg bg-light-yellow lg:flex-row"
+      className="mx-auto flex w-full max-w-[1440px] flex-col overflow-hidden rounded-tr-section-lg rounded-bl-section-lg bg-light-yellow lg:flex-row"
       aria-labelledby="made-in-gent-title"
     >
       {/*
        * Stacked (below 1024px) the photo is a wide strip of a portrait shot: it gets a 4:3 height on phones and the
        * crop follows the keychain in the open hand, which sits in the lower half of the photo.
        */}
-      <div className="relative min-h-[min(75vw,440px)] flex-1 lg:min-h-0">
+      <div className="relative min-h-[min(60vw,340px)] flex-1 lg:min-h-0">
         <Image
           className="object-cover object-[55%_74%] lg:object-center"
           src="/images/gent/workshop.jpeg"
@@ -78,7 +77,7 @@ export default async function MadeInGent() {
         />
       </div>
 
-      <div className="flex shrink-0 flex-col items-start gap-6 bg-medium-green section-x section-y lg:w-[51%] lg:p-[clamp(32px,3.96vw,57px)]">
+      <div className="flex shrink-0 flex-col items-start gap-6 bg-medium-green section-x section-y lg:w-[60%] lg:p-[clamp(32px,3.96vw,57px)]">
         <header data-animate="fade-up" className="flex flex-col gap-s">
           <p className="font-label text-xl leading-[19.5px] font-semibold text-accent-highlights md:text-[32px]">
             {m.tag}
@@ -98,7 +97,7 @@ export default async function MadeInGent() {
           {m.text}
         </p>
 
-        <ul data-animate="stagger" className="grid w-full max-w-[620px] gap-3 sm:grid-cols-2">
+        <ul data-animate="stagger" className="grid w-full max-w-[720px] gap-3 sm:grid-cols-2">
           {m.steps.map((step, index) => (
             <li
               key={step.title}

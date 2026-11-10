@@ -29,7 +29,7 @@ export default async function WhyPalleys() {
         <Image
           data-animate="pop"
           className="h-auto w-full max-w-[1266px] lg:w-[min(100%,max(560px,calc((100svh-601px)*2.098)))]"
-          src="/images/info/pets-together.png"
+          src="/images/info/pets-together.webp"
           width={1266}
           height={603.5}
           alt={m.photoAlt}

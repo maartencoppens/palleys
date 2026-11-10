@@ -77,7 +77,9 @@ export function itemTitle(
     const name = item.collectible
       ? localizedTexts({ name: item.title, description: null, tag: null, translations: item.collectible.translations }, locale).name
       : item.title;
-    return [name, item.attachment ? (attachments[item.attachment as Attachment] ?? item.attachment) : null].filter(Boolean).join(" · ");
+    // A collectible keychain is the standard: only the figurine says so.
+    const figurine = item.edition === "figure" ? editions.figure : null;
+    return [name, figurine, item.attachment ? (attachments[item.attachment as Attachment] ?? item.attachment) : null].filter(Boolean).join(" · ");
   }
   return [
     // A removed animal: the order still has its Dutch title.

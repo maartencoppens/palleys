@@ -67,7 +67,7 @@ vi.mock("@/core/networking/external/email-client", () => ({
 
 const { default: sharp } = await import("sharp");
 const { prisma } = await import("@/db/client");
-const { addCollectibleToCart, getCart } = await import("@/core/modules/cart/service");
+const { addCollectibleToCart, getCart, updateCartLineQuantity } = await import("@/core/modules/cart/service");
 const { startCheckout } = await import("@/core/modules/checkout/service");
 const { checkoutSchema } = await import("@/core/modules/checkout/types");
 const {
@@ -275,6 +275,74 @@ describe("collectibles", () => {
   it("doesn't mail the team about an order an admin added", async () => {
     await addOrder({ customer: { ...friend, email: "vriend@example.be" }, payment: { type: "paid", method: "cash" }, sendConfirmation: true });
     expect(mail.sent.map((message) => message.to)).toEqual(["vriend@example.be"]);
+  });
+});
+
+describe("collectible editions and stock", () => {
+  it("keeps a figurine and a keychain of the same collectible apart, and merges lines that become the same", async () => {
+    const { id } = await newCollectible();
+    const { token } = await addCollectibleToCart(null, { collectibleId: id, edition: "keychain", attachment: "clip" });
+    const { cart } = await addCollectibleToCart(token, { collectibleId: id, edition: "figure", attachment: "clip" });
+    expect(cart.lines.map((line) => [line.edition, line.attachment])).toEqual([
+      ["keychain", "clip"],
+      ["figure", null],
+    ]);
+
+    // The figurine becomes a keychain with a clip as well: one line of two.
+    const figurine = cart.lines.find((line) => line.edition === "figure")!;
+    const merged = await updateCartLineQuantity(token, { lineId: figurine.id, edition: "keychain", attachment: "clip" });
+    expect(merged?.lines).toHaveLength(1);
+    expect(merged?.lines[0]).toMatchObject({ edition: "keychain", attachment: "clip", quantity: 2 });
+  });
+
+  it("orders a figurine as COL-FIG", async () => {
+    const { id } = await newCollectible();
+    const { orderId } = await addOrder({ lines: [{ kind: "collectible", collectibleId: id, edition: "figure", attachment: "clip", quantity: 1 }] });
+    const collectible = await prisma.collectible.findUniqueOrThrow({ where: { id } });
+    expect((await loadOrder(orderId)).items[0]).toMatchObject({
+      edition: "figure",
+      attachment: null,
+      productCode: `COL-FIG-${String(collectible.number).padStart(3, "0")}`,
+    });
+  });
+
+  it("takes paid copies off a counted stock, never below zero, and leaves an uncounted one alone", async () => {
+    const counted = await newCollectible({ stock: 3 });
+    const uncounted = await newCollectible();
+    const paid = { payment: { type: "paid", method: "cash" } };
+    await addOrder({ lines: [{ kind: "collectible", collectibleId: counted.id, quantity: 2 }], ...paid });
+    expect((await prisma.collectible.findUniqueOrThrow({ where: { id: counted.id } })).stock).toBe(1);
+    await addOrder({ lines: [{ kind: "collectible", collectibleId: counted.id, quantity: 5 }], ...paid });
+    expect((await prisma.collectible.findUniqueOrThrow({ where: { id: counted.id } })).stock).toBe(0);
+
+    await addOrder({ lines: [{ kind: "collectible", collectibleId: uncounted.id, quantity: 1 }], ...paid });
+    expect((await prisma.collectible.findUniqueOrThrow({ where: { id: uncounted.id } })).stock).toBeNull();
+    // An order that isn't paid takes nothing.
+    await addOrder({ lines: [{ kind: "collectible", collectibleId: counted.id, quantity: 1 }] });
+    expect((await prisma.collectible.findUniqueOrThrow({ where: { id: counted.id } })).stock).toBe(0);
+  });
+
+  it("starts a stock order without customer or price, and adds its copies to the stock once it's finished", async () => {
+    const { id } = await newCollectible({ stock: 1 });
+    const { orderId } = await addOrder({
+      stockOrder: true,
+      lines: [{ kind: "collectible", collectibleId: id, quantity: 4, unitCents: 1500 }],
+      payment: { type: "paid", method: "cash" },
+    });
+    const order = await loadOrder(orderId);
+    expect(order).toMatchObject({ stockOrder: true, status: "PAID", email: null, totalCents: 0, lastName: "Voorraad" });
+    expect(order.shipment?.deliveryType).toBe("HANDOVER");
+    expect(order.payments[0].method).toBe("stock");
+    // Paying a stock order doesn't empty the stock it is meant to fill.
+    expect((await prisma.collectible.findUniqueOrThrow({ where: { id } })).stock).toBe(1);
+
+    await setItemCheckIn(orderId, order.items[0].id, true, ADMIN);
+    await updateOrderStatus(orderId, { status: "SHIPPED" }, ADMIN);
+    expect((await prisma.collectible.findUniqueOrThrow({ where: { id } })).stock).toBe(5);
+  });
+
+  it("only takes collectibles on a stock order", () => {
+    expect(manualOrderSchema.safeParse({ ...manualOrder(), stockOrder: true }).success).toBe(false);
   });
 });
 

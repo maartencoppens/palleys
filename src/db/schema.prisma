@@ -217,7 +217,8 @@ model CartLine {
   createdAt     DateTime     @default(now())
 
   @@unique([cartId, previewId])
-  @@unique([cartId, collectibleId])
+  // Een collectible kan meermaals in een mandje staan, één lijn per uitvoering (figuurtje, klemmetje, sleutelring).
+  @@index([cartId, collectibleId])
   @@index([previewId])
   @@index([collectibleId])
 }
@@ -246,6 +247,9 @@ model Collectible {
   sourcePreview   Preview?    @relation(fields: [sourcePreviewId], references: [id], onDelete: SetNull)
   published       Boolean     @default(false) // zichtbaar op de website
   soldOut         Boolean     @default(false)
+  // Afgewerkte exemplaren op de plank. Null = niet bijgehouden (alles wordt op bestelling geprint). Een betaalde order
+  // haalt eraf, een afgeronde voorraadorder (Order.stockOrder) zet erbij.
+  stock           Int?
   sortOrder       Int         @default(0)
   archivedAt      DateTime?
   updatedBy       String?
@@ -318,6 +322,9 @@ model Order {
   photoMarketingConsentAt DateTime?
   statusTokenHash         String // sha256 van het token in de return-URL; het token zelf bewaren we niet
   attentionReason         String? // iets klopte niet (bedrag, preview al betaald, ...): opvolgen in de backoffice
+  // Een voorraadorder: collectibles die we op voorhand laten maken, zonder klant en zonder betaling. Afgerond
+  // (SHIPPED) = de exemplaren liggen klaar en tellen bij Collectible.stock.
+  stockOrder              Boolean             @default(false)
   // Vrij notitieblok van het team (bv. de Instagram-naam van wie komt ophalen). Nooit zichtbaar voor de klant.
   adminNotes              String?
   adminNotesUpdatedAt     DateTime?

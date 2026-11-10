@@ -226,7 +226,7 @@ export default function CartMenu({ pinned, onOpenChange, onReveal }: CartMenuPro
             <div className="flex flex-col items-center gap-4 px-5 py-6 text-center">
               <div className="relative size-24 overflow-hidden rounded-full bg-light-yellow">
                 <Image
-                  src="/images/products/golden-retriever.png"
+                  src="/images/products/golden-retriever.webp"
                   alt=""
                   fill
                   sizes="96px"
@@ -253,7 +253,7 @@ export default function CartMenu({ pinned, onOpenChange, onReveal }: CartMenuPro
                     key={line.id}
                     className={`flex items-start gap-3 border-b border-off-white-dark py-3 last:border-b-0 ${busyLine === line.id ? "opacity-50" : ""}`}
                   >
-                    <CartLinePhoto photoUrl={line.photoUrl} size={56} className="size-14 shrink-0 rounded-2xl" />
+                    <CartLinePhoto photoUrl={line.photoUrl} kind={line.kind} size={56} className="size-14 shrink-0 rounded-2xl" />
                     <div className="flex min-w-0 flex-1 flex-col">
                       <div className="flex items-baseline justify-between gap-3">
                         <p className="min-w-0 truncate font-label text-base font-bold">{miniTitle(line)}</p>

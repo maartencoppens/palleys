@@ -16,7 +16,7 @@ import { getShopSettings } from "@/core/modules/settings/service";
 import { teamMailCc } from "@/core/modules/settings/types";
 import { findAnimal } from "@/core/modules/animals/utils";
 import type { AnimalOption } from "@/core/modules/animals/types";
-import { MANUAL_PAYMENT_PROVIDER, type ManualPaymentMethod } from "@/data/payment-methods";
+import { MANUAL_PAYMENT_PROVIDER, STOCK_PAYMENT_METHOD, type ManualPaymentMethod } from "@/data/payment-methods";
 import { CURRENCY } from "@/data/pricing";
 import { PAYMENT_SYNC_MIN_INTERVAL_MS, PENDING_ORDER_MAX_AGE_MS } from "@/data/checkout";
 import { paymentProvider } from "./providers";
@@ -217,17 +217,49 @@ export async function processPayment(payment: ProviderPayment, source: ProcessSo
 
 /** Conditional status change with a log row. Returns false when the order wasn't in a status that allows it. */
 export async function moveOrder(orderId: string, to: OrderStatus, source: ProcessSource, note?: string) {
-  const from = await prisma.order.findUnique({ where: { id: orderId }, select: { status: true } });
+  const from = await prisma.order.findUnique({ where: { id: orderId }, select: { status: true, stockOrder: true } });
   if (!from || !canTransitionOrder(from.status, to)) return false;
   const moved = await prisma.$transaction(async (tx) => {
     const { count } = await tx.order.updateMany({ where: { id: orderId, status: from.status }, data: { status: to } });
     if (count === 0) return false;
     await tx.orderStatusChange.create({ data: { orderId, fromStatus: from.status, toStatus: to, source, note } });
+    // A finished stock order: its copies are on the shelf now. Only the move to SHIPPED gets here, so never twice.
+    if (to === "SHIPPED" && from.stockOrder) await addToStock(tx, orderId);
     return true;
   });
   // Its batch follows: a refund leaves an open batch, the last order out completes one.
   if (moved) await syncBatchAfterOrderMove(orderId, to);
   return moved;
+}
+
+type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+
+/** The collectibles on an order with how many copies are really made (cancelled ones not). */
+async function collectibleCopies(tx: Tx, orderId: string) {
+  const items = await tx.orderItem.findMany({
+    where: { orderId, collectibleId: { not: null } },
+    select: { collectibleId: true, quantity: true, cancelledQuantity: true },
+  });
+  const copies = new Map<string, number>();
+  for (const item of items) {
+    const count = item.quantity - item.cancelledQuantity;
+    if (count > 0) copies.set(item.collectibleId!, (copies.get(item.collectibleId!) ?? 0) + count);
+  }
+  return copies;
+}
+
+/** A finished stock order adds its copies to the stock; a collectible without stock tracking starts counting from 0. */
+async function addToStock(tx: Tx, orderId: string) {
+  for (const [collectibleId, count] of await collectibleCopies(tx, orderId)) {
+    await tx.$executeRaw`UPDATE "Collectible" SET "stock" = COALESCE("stock", 0) + ${count} WHERE "id" = ${collectibleId}`;
+  }
+}
+
+/** A paid order takes its copies off the stock, never below 0 (the rest is printed to order). Untracked stock stays untracked. */
+async function takeFromStock(tx: Tx, orderId: string) {
+  for (const [collectibleId, count] of await collectibleCopies(tx, orderId)) {
+    await tx.$executeRaw`UPDATE "Collectible" SET "stock" = GREATEST("stock" - ${count}, 0) WHERE "id" = ${collectibleId} AND "stock" IS NOT NULL`;
+  }
 }
 
 async function closeUnpaidOrder(orderId: string, paymentId: string, to: OrderStatus, source: ProcessSource) {
@@ -257,6 +289,7 @@ async function markOrderPaid(orderId: string, orderNumber: string, source: Proce
         status: true,
         email: true,
         cartId: true,
+        stockOrder: true,
         items: { select: { previewId: true, collectibleId: true, quantity: true, animal: true } },
       },
     });
@@ -274,6 +307,9 @@ async function markOrderPaid(orderId: string, orderNumber: string, source: Proce
     });
 
     await tx.orderStatusChange.create({ data: { orderId, fromStatus: order.status, toStatus: "PAID", source } });
+
+    // A stock order is what fills the stock, not what empties it.
+    if (!order.stockOrder) await takeFromStock(tx, orderId);
 
     // A paid preview drops out of the cart by itself, a collectible can be bought again: take the bought ones out here.
     const boughtCollectibles = order.items.flatMap((item) => item.collectibleId ?? []);
@@ -423,7 +459,7 @@ async function sendConfirmationOnce(orderId: string, idempotencySuffix = "") {
  */
 export async function recordManualPayment(
   orderId: string,
-  method: ManualPaymentMethod,
+  method: ManualPaymentMethod | typeof STOCK_PAYMENT_METHOD,
   adminName: string,
   { sendConfirmation }: { sendConfirmation: boolean },
 ) {

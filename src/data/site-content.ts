@@ -36,7 +36,7 @@ const nl = {
     {
       question: "Hoe groot is een Palley en hoe stevig is hij?",
       answer:
-        "Ongeveer 3,7 cm op zijn langste zijde. Hij is stevig, maar kan vervormen boven 50°C. Laat hem dus niet achter in de auto, op het dashboard of in de volle zon.",
+        "Ongeveer 3,7 cm lang, gemeten over de basis van kop tot staart. Hij is stevig, maar kan vervormen boven 50°C. Laat hem dus niet achter in de auto, op het dashboard of in de volle zon.",
     },
     {
       question: "Kan ik mijn bestelling terugsturen?",
@@ -90,7 +90,7 @@ const en: typeof nl = {
     {
       question: "How big is a Palley, and how sturdy is it?",
       answer:
-        "About 3.7 cm on its longest side. It is sturdy, but it can deform above 50°C. So don’t leave it in the car, on the dashboard or in direct sunlight.",
+        "About 3.7 cm long, measured along the base from head to tail. It is sturdy, but it can deform above 50°C. So don’t leave it in the car, on the dashboard or in direct sunlight.",
     },
     {
       question: "Can I return my order?",

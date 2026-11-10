@@ -97,6 +97,9 @@ function CollectibleTable({ collectibles }: { collectibles: AdminCollectible[] }
                     <Badge tone="waiting">Verborgen</Badge>
                   )}
                   {collectible.soldOut && !collectible.archivedAt && <Badge tone="danger">Uitverkocht</Badge>}
+                  {collectible.stock !== null && !collectible.archivedAt && (
+                    <Badge tone={collectible.stock > 0 ? "success" : "waiting"}>Voorraad: {collectible.stock}</Badge>
+                  )}
                   {!collectible.modelKey && !collectible.archivedAt && (
                     <Badge tone="waiting">{collectible.sourcePreviewId ? "Model wordt gegenereerd" : "Geen 3D-model"}</Badge>
                   )}

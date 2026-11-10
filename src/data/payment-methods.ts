@@ -7,6 +7,8 @@ export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 export const MANUAL_PAYMENT_PROVIDER = "manual";
 export const MANUAL_PAYMENT_METHODS = ["cash", "transfer", "gift", "other"] as const;
 export type ManualPaymentMethod = (typeof MANUAL_PAYMENT_METHODS)[number];
+// A stock order has nothing to pay; this marks it as settled so it can go into production.
+export const STOCK_PAYMENT_METHOD = "stock";
 
 export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   bancontact: "Bancontact",
@@ -15,4 +17,5 @@ export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   gift: "Geschenk (geen betaling)",
   other: "Anders",
   discount: "Gratis met kortingscode",
+  stock: "Voorraadorder (geen betaling)",
 };

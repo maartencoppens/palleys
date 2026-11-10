@@ -2,35 +2,81 @@ import type { Messages } from "./nl";
 
 export const en: Messages = {
   meta: {
+    siteName: "Palleys",
+    keywords: [
+      "Palleys",
+      "pet keychain",
+      "keychain of your pet",
+      "3D-printed keychain",
+      "personalised keychain",
+      "gift for pet lovers",
+      "handmade in Ghent",
+    ],
     site: {
-      title: "Palleys | A pal for your keys",
+      title: "Palleys | Your pet as a 3D-printed keychain",
       description:
-        "Meet your Palley: your pet as a 3D-printed keychain, made from your favourite photo and finished by hand in Ghent. Your best friend, small enough to go anywhere with you.",
+        "Turn your pet into a 3D-printed keychain or figurine, in full colour from your own photo and finished by hand in Ghent, Belgium. The perfect gift.",
+      keywords: ["dog keychain", "cat keychain", "pet gift", "3D print of your pet"],
     },
     about: {
-      title: "About us | Palleys",
+      title: "About us: the student team behind Palleys | Palleys",
       description:
-        "Palleys is a student business from Ghent that turns your favourite photo of your pet into a 3D-printed keychain, finished by hand. Meet the team.",
+        "Palleys is a student business from Ghent. We turn photos of pets into 3D-printed keychains, finished by hand. 50% of our profit goes to Dierenasiel Gent.",
+      keywords: ["student business Ghent", "Arteveldehogeschool", "Dierenasiel Gent", "Palleys team"],
     },
     create: {
-      title: "Create your Palley | Palleys",
+      title: "Create your own pet keychain | Palleys",
       description:
-        "Your pet, your pal, your Palley. Upload your photos and we turn your pet into a 3D-printed keychain, finished by hand in Ghent. Ready in three steps.",
+        "Upload 1 to 4 photos of your dog, cat or other pet and we turn it into a 3D-printed keychain or figurine, in full colour and finished by hand.",
+      keywords: ["custom keychain", "photo of your pet", "3D model of your pet", "figurine of your pet"],
     },
     shop: {
-      title: "Collection | Palleys",
-      description: "Ready-made Palleys, 3D-printed and finished by hand in Ghent.",
+      title: "Collection: ready-made animal keychains | Palleys",
+      description:
+        "No photo needed: pick a ready-made Palley from our collection. 3D-printed animal keychains and figurines, finished by hand in Ghent.",
+      keywords: ["buy animal keychain", "animal figurine", "dog keychain", "cat keychain"],
+    },
+    product: {
+      title: "{name}: 3D-printed keychain | Palleys",
+      description:
+        "{name} from the Palleys collection: a 3D-printed keychain or figurine in full colour, finished by hand in Ghent. {price}.",
+    },
+    privacy: {
+      title: "Privacy policy | Palleys",
+      description: "How Palleys handles your data and the photos of your pet: what we keep, why, for how long and which rights you have.",
+    },
+    terms: {
+      title: "Terms and conditions | Palleys",
+      description: "The terms and conditions of Palleys: ordering, prices, delivery, right of withdrawal, guarantee and complaints.",
+    },
+    returns: {
+      title: "Returns | Palleys",
+      description: "Cancel an order, withdraw or report a problem: this is how you arrange it online with Palleys.",
+    },
+    returnPolicy: {
+      title: "Return and refund policy | Palleys",
+      description: "When you can return or cancel a Palley, how refunds work and what applies to a custom Palley.",
+    },
+    shippingPolicy: {
+      title: "Shipping policy | Palleys",
+      description: "Delivery times, shipping costs and delivery options of Palleys: home delivery with PostNL or pick-up in Ghent.",
+    },
+    contactDetails: {
+      title: "Contact details | Palleys",
+      description: "The company details of Palleys and how to reach us: e-mail, phone and address in Ghent.",
     },
     cart: "Cart | Palleys",
     checkout: "Checkout | Palleys",
     order: "Order | Palleys",
-    privacy: "Privacy policy | Palleys",
-    terms: "Terms and conditions | Palleys",
-    returns: "Returns | Palleys",
-    returnPolicy: "Return and refund policy | Palleys",
-    shippingPolicy: "Shipping policy | Palleys",
-    contactDetails: "Contact details | Palleys",
     notFound: "Page not found | Palleys",
+    og: {
+      tagline: "Your pet as a 3D-printed keychain",
+      badge: "Finished by hand in Ghent",
+      imageAlt: "Palleys: a 3D-printed keychain of a cat next to the Palleys logo",
+      productBadge: "From the Palleys collection",
+      productLine: "3D-printed in full colour, finished by hand in Ghent",
+      productAlt: "{name}, a 3D-printed keychain by Palleys",
+    },
   },
 
   notFound: {
@@ -89,8 +135,8 @@ export const en: Messages = {
   },
 
   hero: {
-    titleAccent: "Palleys,",
-    titleRest: "a pal for your keys.",
+    titleAccent: "Palleys",
+    titleRest: "A pal for your keys",
     text: "Meet your Palley: your pet as a 3D-printed keychain, made from your favourite photo and finished by hand. Your best friend, small enough to go anywhere with you.",
     collection: "View the collection",
     flow: {
@@ -125,7 +171,12 @@ export const en: Messages = {
     shop: "Shop",
     soldOut: "Sold out",
     imageAlt: "{name} keychain",
-    availability: { label: "Made to order", explanation: "Delivered within 2-3 weeks" },
+    availability: {
+      label: "Made to order",
+      explanation: "Delivered within 2-3 weeks",
+      inStock: "{count} in stock",
+      inStockExplanation: "Already finished and waiting in Ghent",
+    },
   },
 
   madeInGent: {
@@ -171,7 +222,6 @@ export const en: Messages = {
   },
 
   contact: {
-    tag: "Just ask",
     title: "Another question?",
     subtitle: "We’re happy to help you on your way to your perfect Palley",
     name: "Your name",
@@ -199,12 +249,12 @@ export const en: Messages = {
 
   about: {
     eyebrow: "About us",
-    title: "Made by animal people",
+    title: "A team of animal lovers",
     intro: "We are a student team from Ghent that turns your favourite photo of your pet into a small 3D pal for your keys.",
     ctaLabel: "Create your own Palley",
     story: {
       tag: "Our story",
-      title: "It all started with a photo",
+      title: "Team Palleys",
       photoAlt: "A golden retriever, a fluffy puppy and a ginger cat lying together in the grass",
       paragraphs: [
         "We are a group of Graphic and Digital Media students at Artevelde University of Applied Sciences in Ghent. While scrolling through our phones, we noticed one thing we all had in common: hundreds of photos of our pets.",
@@ -273,7 +323,7 @@ export const en: Messages = {
       animalError: "Choose your type of pet.",
       edition: "Keychain or figurine?",
       attachment: "How do you want to attach it to your keys?",
-      size: "About {size}: a little bigger than a €2 coin.",
+      size: "About {size} long, measured along the base from head to tail.",
       sizeTitle: "This is how big a Palley is",
       keychainHint: "The keychain comes with a chain and a clip or key ring, your choice.",
     },
@@ -345,6 +395,7 @@ export const en: Messages = {
       palley: "Palley",
       attachment: "Attachment",
       size: "Size",
+      sizeValue: "{size} long",
       photos: "Photos",
       photosCount: "{count} photos",
       total: "Total",
@@ -380,6 +431,14 @@ export const en: Messages = {
     remove: "Remove",
     removing: "Removing…",
     removeLabel: "Remove {title}",
+    edit: {
+      open: "Edit",
+      label: "Edit {title}",
+      save: "Save",
+      saving: "Saving…",
+      cancel: "Cancel",
+      error: "That didn’t work. Please try again.",
+    },
     photoAlt: "Your photo",
     quantity: { label: "Quantity of {name}", less: "One less", more: "One more" },
     next: {
@@ -511,6 +570,7 @@ export const en: Messages = {
     error: "We couldn’t load the delivery options. Check your postal code or try again.",
     none: "For now we don’t deliver to this address.",
     free: "Free",
+    friendsLocked: "Only with a friends and family code",
     options: {
       "be-postnl-home": { label: "Home delivery with PostNL", eta: "1–2 working days after shipping" },
       "be-pickup-kantienberg": { label: "Pick up at campus Kantienberg", eta: "We’ll let you know when your order is ready." },

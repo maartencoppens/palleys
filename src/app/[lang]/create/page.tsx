@@ -1,17 +1,24 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { getLocale, getMessages, localeAlternates, metadataLocale } from "@/core/locale/server";
+import { getLocale, getMessages, metadataLocale } from "@/core/locale/server";
 import { getSiteSettings } from "@/core/modules/settings/service";
 import Configurator from "@/components/functional/create/Configurator";
 import Footer from "@/components/functional/shop/layout/Footer";
 import InfoBanner from "@/components/functional/shop/home/InfoBanner";
 import Navbar from "@/components/functional/shop/layout/Navbar";
 import SiteAnimations from "@/components/functional/SiteAnimations";
+import { pageMetadata } from "@/core/seo/metadata";
+import JsonLd from "@/components/functional/seo/JsonLd";
+import { MESSAGES } from "@/core/locale/messages";
+import { editionPriceCents } from "@/core/modules/catalog/utils";
+import { productData } from "@/core/seo/structured-data";
+import { editions } from "@/data/options";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/create">): Promise<Metadata> {
   const { locale, messages } = await metadataLocale(params);
-  return { ...messages.meta.create, alternates: localeAlternates(locale, "/create") };
+  const m = messages.meta.create;
+  return pageMetadata({ locale, path: "/create", title: m.title, description: m.description, keywords: m.keywords });
 }
 
 /*
@@ -22,8 +29,28 @@ async function LiveConfigurator() {
   await connection();
   const [{ catalog, content: allContent }, locale] = await Promise.all([getSiteSettings(), getLocale()]);
   const content = allContent[locale];
+  const { meta, cart } = MESSAGES[locale];
+  // From the cheapest to the dearest edition on sale.
+  const prices = editions
+    .filter((edition) => !catalog.disabledEditions.includes(edition.value))
+    .map((edition) => editionPriceCents(edition.value, catalog.prices));
+  const low = Math.min(...prices);
+  const high = Math.max(...prices);
   return (
     <>
+      {/* The Palley op maat as a product for search engines: its price, and that it's made for you (no returns). */}
+      <JsonLd
+        data={productData({
+          locale,
+          name: cart.personalized,
+          description: meta.create.description,
+          path: "/create",
+          image: "/images/cta/golden-retriever.jpg",
+          priceCents: low === high ? low : { low, high },
+          availability: "InStock",
+          returnable: false,
+        })}
+      />
       <Configurator catalog={catalog} deliveryTime={content.deliveryTime} returnNote={content.returnNote} />
       <SiteAnimations />
     </>

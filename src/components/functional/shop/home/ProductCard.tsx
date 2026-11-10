@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Button from "@/components/design/Button";
+import { Link } from "@/core/locale/client";
 import Availability from "@/components/functional/shop/collection/Availability";
 import { fill } from "@/core/locale/fill";
 import { getLocale, getMessages } from "@/core/locale/server";
@@ -14,9 +15,16 @@ export type Product = {
   image: string;
   tag?: string;
   soldOut?: boolean;
+  /** Finished copies on the shelf; null = printed to order. */
+  stock?: number | null;
 };
 
-/* Figma: featured-product-card, 313×382. */
+/*
+ * Figma: featured-product-card, 313×382. The whole card opens the product: a second link covers the card, hidden from
+ * screen readers and the keyboard (the "Shop" button is the real one). It's its own element rather than an ::after of
+ * the button, because the button shrinks while pressed and an overlay inside it would shrink along, losing the click.
+ * The button and the availability tooltip sit above it.
+ */
 export default async function ProductCard({
   slug,
   brand,
@@ -25,11 +33,13 @@ export default async function ProductCard({
   image,
   tag,
   soldOut = false,
+  stock = null,
 }: Product) {
   const [{ collection: m }, locale] = await Promise.all([getMessages(), getLocale()]);
   return (
     // `relative` keeps the absolutely positioned sr-only text inside the card (and inside the scroll row on phones).
-    <article className="relative flex h-full flex-col overflow-hidden rounded-2xl bg-card transition-transform duration-300 hover:-translate-y-1.5 hover:-rotate-1">
+    <article className="group/card relative flex h-full flex-col overflow-hidden rounded-2xl bg-card transition-transform duration-300 hover:-translate-y-1.5 hover:-rotate-1 has-[a:focus-visible]:-translate-y-1.5">
+      <Link href={`/shop/${slug}`} aria-hidden tabIndex={-1} className="absolute inset-0 z-10 rounded-2xl" />
       <div className="relative isolate flex h-[220px] flex-col items-start gap-2 overflow-hidden rounded-2xl bg-light-green p-s">
         {/* Cream wave behind the product, rotated exactly as in Figma. */}
         <div
@@ -71,12 +81,16 @@ export default async function ProductCard({
         </div>
 
         <div className="flex flex-col gap-s">
-          {!soldOut && <Availability />}
+          {!soldOut && <Availability stock={stock} />}
           <div className="flex items-center justify-between gap-s">
             <p className="text-xl leading-[27px] font-semibold text-text-primary">
               {formatPrice(price, locale)}
             </p>
-            <Button href={`/shop/${slug}`} variant="arrow">
+            <Button
+              href={`/shop/${slug}`}
+              variant="arrow"
+              className="relative z-20 group-hover/card:bg-medium-green-hover"
+            >
               {m.shop}<span className="sr-only"> {name}</span>
             </Button>
           </div>

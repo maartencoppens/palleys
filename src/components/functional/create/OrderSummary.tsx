@@ -7,7 +7,7 @@ type OrderSummaryProps = {
   edition: string | null;
   /** Null for a figurine: nothing to attach. */
   attachment: string | null;
-  /** Longest side, e.g. "3.7 cm". */
+  /** The length of the base (its longest side), e.g. "3,7 cm lang". */
   size: string;
   /** File name for one photo, "3 photos" for several. */
   photos: string | null;

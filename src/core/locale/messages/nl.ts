@@ -3,36 +3,83 @@
 // The backoffice stays Dutch and keeps its texts in its own components.
 export const nl = {
   meta: {
+    // Shared by every page: what Palleys is, in the words people search with. Each page adds its own.
+    siteName: "Palleys",
+    keywords: [
+      "Palleys",
+      "huisdier sleutelhanger",
+      "sleutelhanger van je huisdier",
+      "3D-geprinte sleutelhanger",
+      "gepersonaliseerde sleutelhanger",
+      "cadeau voor dierenliefhebbers",
+      "handgemaakt in Gent",
+    ],
     site: {
-      title: "Palleys | A pal for your keys",
+      title: "Palleys | Je huisdier als 3D-geprinte sleutelhanger",
       description:
-        "Maak kennis met je Palley: je huisdier als 3D-geprinte sleutelhanger, gemaakt van je favoriete foto en met de hand afgewerkt in Gent. Je beste vriend, klein genoeg om overal mee te gaan.",
+        "Maak van je huisdier een 3D-geprinte sleutelhanger of figuurtje, in volle kleur gemaakt naar je eigen foto en met de hand afgewerkt in Gent. Het perfecte cadeau.",
+      keywords: ["hond sleutelhanger", "kat sleutelhanger", "huisdier cadeau", "3D print van je huisdier"],
     },
     about: {
-      title: "Over ons | Palleys",
+      title: "Over ons: het studententeam achter Palleys | Palleys",
       description:
-        "Palleys is een studentenonderneming uit Gent die je favoriete foto van je huisdier omtovert tot een 3D-geprinte sleutelhanger, met de hand afgewerkt. Leer het team kennen.",
+        "Palleys is een studentenonderneming uit Gent. We maken van foto’s van huisdieren 3D-geprinte sleutelhangers, met de hand afgewerkt. 50% van onze winst gaat naar Dierenasiel Gent.",
+      keywords: ["studentenonderneming Gent", "Arteveldehogeschool", "Dierenasiel Gent", "team Palleys"],
     },
     create: {
-      title: "Maak je eigen Palley | Palleys",
+      title: "Maak je eigen huisdier-sleutelhanger | Palleys",
       description:
-        "Your pet, your pal, your Palley. Upload je foto’s en wij maken van je huisdier een 3D-geprinte sleutelhanger, met de hand afgewerkt in Gent. Klaar in drie stappen.",
+        "Upload 1 tot 4 foto’s van je hond, kat of ander huisdier en wij maken er een 3D-geprinte sleutelhanger of figuurtje van, in volle kleur en met de hand afgewerkt.",
+      keywords: ["sleutelhanger op maat", "foto van je huisdier", "3D-model van je huisdier", "figuurtje van je huisdier"],
     },
     shop: {
-      title: "Collectie | Palleys",
+      title: "Collectie: kant-en-klare dierensleutelhangers | Palleys",
       description:
-        "Kant-en-klare Palleys, 3D-geprint en met de hand afgewerkt in Gent.",
+        "Geen foto nodig: kies een kant-en-klare Palley uit onze collectie. 3D-geprinte dierensleutelhangers en figuurtjes, met de hand afgewerkt in Gent.",
+      keywords: ["dierensleutelhanger kopen", "dieren figuurtje", "sleutelhanger hond", "sleutelhanger kat"],
+    },
+    product: {
+      title: "{name}: 3D-geprinte sleutelhanger | Palleys",
+      description:
+        "{name} uit de Palleys-collectie: een 3D-geprinte sleutelhanger of figuurtje in volle kleur, met de hand afgewerkt in Gent. {price}.",
+    },
+    privacy: {
+      title: "Privacybeleid | Palleys",
+      description: "Hoe Palleys omgaat met je gegevens en de foto’s van je huisdier: wat we bewaren, waarom, hoe lang en welke rechten je hebt.",
+    },
+    terms: {
+      title: "Algemene voorwaarden | Palleys",
+      description: "De algemene voorwaarden van Palleys: bestellen, prijzen, levering, herroepingsrecht, garantie en klachten.",
+    },
+    returns: {
+      title: "Retourneren | Palleys",
+      description: "Een bestelling annuleren, herroepen of een probleem melden: zo regel je het online bij Palleys.",
+    },
+    returnPolicy: {
+      title: "Retour- en terugbetalingsbeleid | Palleys",
+      description: "Wanneer je een Palley kunt terugsturen of annuleren, hoe de terugbetaling verloopt en wat er geldt voor een Palley op maat.",
+    },
+    shippingPolicy: {
+      title: "Verzendbeleid | Palleys",
+      description: "Levertijden, verzendkosten en leveropties van Palleys: thuislevering met PostNL of ophalen in Gent.",
+    },
+    contactDetails: {
+      title: "Contactgegevens | Palleys",
+      description: "De bedrijfsgegevens van Palleys en hoe je ons bereikt: e-mail, telefoon en adres in Gent.",
     },
     cart: "Winkelmandje | Palleys",
     checkout: "Afrekenen | Palleys",
     order: "Bestelling | Palleys",
-    privacy: "Privacybeleid | Palleys",
-    terms: "Algemene voorwaarden | Palleys",
-    returns: "Retourneren | Palleys",
-    returnPolicy: "Retour- en terugbetalingsbeleid | Palleys",
-    shippingPolicy: "Verzendbeleid | Palleys",
-    contactDetails: "Contactgegevens | Palleys",
     notFound: "Pagina niet gevonden | Palleys",
+    // The preview image when a link is shared (WhatsApp, Instagram, Facebook...).
+    og: {
+      tagline: "Je huisdier als 3D-geprinte sleutelhanger",
+      badge: "Met de hand afgewerkt in Gent",
+      imageAlt: "Palleys: een 3D-geprinte sleutelhanger van een kat naast het Palleys-logo",
+      productBadge: "Uit de Palleys-collectie",
+      productLine: "3D-geprint in volle kleur, met de hand afgewerkt in Gent",
+      productAlt: "{name}, een 3D-geprinte sleutelhanger van Palleys",
+    },
   },
 
   notFound: {
@@ -93,8 +140,8 @@ export const nl = {
   },
 
   hero: {
-    titleAccent: "Palleys,",
-    titleRest: "a pal for your keys.",
+    titleAccent: "Palleys",
+    titleRest: "A pal for your keys",
     text: "Maak kennis met je Palley: je huisdier als 3D-geprinte sleutelhanger, gemaakt van je favoriete foto en met de hand afgewerkt. Je beste vriend, klein genoeg om overal mee te gaan.",
     collection: "Bekijk de collectie",
     flow: {
@@ -147,6 +194,8 @@ export const nl = {
     availability: {
       label: "Op bestelling",
       explanation: "Geleverd binnen 2-3 weken",
+      inStock: "Nog {count} op voorraad",
+      inStockExplanation: "Ligt al afgewerkt klaar in Gent",
     },
   },
 
@@ -217,7 +266,6 @@ export const nl = {
   },
 
   contact: {
-    tag: "Zeg het maar",
     title: "Nog een vraag?",
     subtitle: "We helpen je graag op weg naar jouw perfecte Palley",
     name: "Je naam",
@@ -327,7 +375,7 @@ export const nl = {
       animalError: "Kies je soort huisdier.",
       edition: "Sleutelhanger of figuurtje?",
       attachment: "Hoe wil je hem aan je sleutels hangen?",
-      size: "Ongeveer {size}: iets groter dan een 2-euromunt.",
+      size: "Ongeveer {size} lang, gemeten over de basis van kop tot staart.",
       sizeTitle: "Zo groot is een Palley",
       keychainHint:
         "De sleutelhanger komt met een ketting en een klemmetje of sleutelring, naar keuze.",
@@ -413,6 +461,7 @@ export const nl = {
       palley: "Palley",
       attachment: "Bevestiging",
       size: "Formaat",
+      sizeValue: "{size} lang",
       photos: "Foto’s",
       photosCount: "{count} foto’s",
       total: "Totaal",
@@ -456,6 +505,14 @@ export const nl = {
     remove: "Verwijder",
     removing: "Verwijderen…",
     removeLabel: "{title} verwijderen",
+    edit: {
+      open: "Aanpassen",
+      label: "{title} aanpassen",
+      save: "Opslaan",
+      saving: "Opslaan…",
+      cancel: "Annuleren",
+      error: "Dat lukte niet. Probeer het nog eens.",
+    },
     photoAlt: "Je foto",
     quantity: { label: "Aantal {name}", less: "Eén minder", more: "Eén meer" },
     next: {
@@ -611,6 +668,7 @@ export const nl = {
       "We konden de leveropties niet laden. Controleer je postcode of probeer het opnieuw.",
     none: "We leveren voorlopig niet naar dit adres.",
     free: "Gratis",
+    friendsLocked: "Alleen met een vrienden-en-familiecode",
     // By option id. An option that isn't listed (a carrier's own) shows the label the server sends.
     options: {
       "be-postnl-home": {

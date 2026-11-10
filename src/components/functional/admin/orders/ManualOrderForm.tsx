@@ -42,7 +42,16 @@ type PersonalizedLine = {
   notes: string;
   photos: File[];
 };
-type CollectibleLine = { key: number; kind: "collectible"; collectibleId: string; attachment: Attachment; quantity: number; price: string | null; notes: string };
+type CollectibleLine = {
+  key: number;
+  kind: "collectible";
+  collectibleId: string;
+  edition: Edition;
+  attachment: Attachment;
+  quantity: number;
+  price: string | null;
+  notes: string;
+};
 type Line = PersonalizedLine | CollectibleLine;
 
 type PaymentChoice = "bancontact" | "paid" | "later";
@@ -57,9 +66,13 @@ const cardTitleClassName = "font-display text-2xl font-medium text-medium-green"
  * Adds an order for someone who doesn't go through the website, e.g. a friend. Everything is sent to the server, which
  * recomputes the totals; the sums here are only a preview. Photos go up after the order exists, using the same upload as
  * the preview page, so a failed upload loses nothing: the order stands and the photo can be added from there.
+ *
+ * A stock order is the other kind: collectibles we have printed ahead, for nobody yet. It needs no customer, delivery
+ * or payment (the server fills those in); finishing it adds the copies to the collectible's stock.
  */
 export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymentsAvailable }: ManualOrderFormProps) {
   const router = useRouter();
+  const [stockOrder, setStockOrder] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -105,9 +118,21 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
     setLines((current) => current.map((line) => (line.key === key ? ({ ...line, ...patch } as Line) : line)));
   }
 
+  /** Switching to a stock order keeps only the collectibles, and starts with one when there were none. */
+  function chooseStockOrder(value: boolean) {
+    setStockOrder(value);
+    if (!value) return;
+    setLines((current) => {
+      const kept = current.filter((line) => line.kind === "collectible");
+      return kept.length > 0 || collectibles.length === 0 ? kept : [newCollectibleLine(nextKey, collectibles)];
+    });
+    setNextKey((key) => key + 1);
+  }
+
   function validate() {
-    if (!firstName.trim() || !lastName.trim()) return "Vul de naam van de klant in";
+    if (!stockOrder && (!firstName.trim() || !lastName.trim())) return "Vul de naam van de klant in";
     if (lines.length === 0) return "Voeg minstens één product toe";
+    if (stockOrder && lines.some((line) => line.kind !== "collectible")) return "Een voorraadorder bevat alleen collectibles";
     if (lines.some((line) => unitCents(line) === null)) return "Een van de prijzen klopt niet (bv. 27,99)";
     if (lines.some((line) => line.kind === "collectible" && !line.collectibleId)) return "Kies een collectible";
     for (const line of lines) {
@@ -115,13 +140,13 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
       if (line.photos.length > MAX_PHOTOS_PER_PREVIEW) return `Maximaal ${MAX_PHOTOS_PER_PREVIEW} foto's per Palley`;
       if (line.photos.some((photo) => photo.size > MAX_UPLOAD_BYTES)) return "Een van de foto's is groter dan 10 MB";
     }
-    if (deliveryType === "ship") {
+    if (!stockOrder && deliveryType === "ship") {
       if (!option) return "Er is geen verzendoptie beschikbaar";
       if (shippingCents === null) return "De verzendprijs klopt niet (bv. 4,95)";
       if (!street.trim() || !houseNumber.trim() || !city.trim()) return "Vul het volledige leveradres in";
       if (!/^[1-9]\d{3}$/.test(postalCode.trim())) return "Vul een Belgische postcode in";
     }
-    if (payment === "bancontact" && totalCents <= 0) return "Een gratis order kan niet met Bancontact: kies “Al betaald” en “Geschenk”";
+    if (!stockOrder && payment === "bancontact" && totalCents <= 0) return "Een gratis order kan niet met Bancontact: kies “Al betaald” en “Geschenk”";
     return null;
   }
 
@@ -132,7 +157,9 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
     if (problem) return setError(problem);
 
     const request: ManualOrderRequest = {
-      customer: { firstName, lastName, email: email.trim(), phone: phone.trim() },
+      stockOrder,
+      // A stock order's customer, delivery and payment are filled in by the server.
+      customer: stockOrder ? { firstName: "Palleys", lastName: "Voorraad" } : { firstName, lastName, email: email.trim(), phone: phone.trim() },
       lines: lines.map((line) => {
         const shared = {
           quantity: line.quantity,
@@ -141,10 +168,10 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
         };
         return line.kind === "personalized"
           ? { kind: line.kind, animal: line.animal, edition: line.edition, attachment: line.attachment, ...shared }
-          : { kind: line.kind, collectibleId: line.collectibleId, attachment: line.attachment, ...shared };
+          : { kind: line.kind, collectibleId: line.collectibleId, edition: line.edition, attachment: line.attachment, ...shared };
       }),
       delivery:
-        deliveryType === "handover"
+        stockOrder || deliveryType === "handover"
           ? { type: "handover" }
           : {
               type: "ship",
@@ -155,8 +182,8 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
               postalCode: postalCode.trim(),
               city,
             },
-      payment: payment === "paid" ? { type: "paid", method } : { type: payment },
-      sendConfirmation: payment === "paid" && sendConfirmation && Boolean(email.trim()),
+      payment: stockOrder ? { type: "later" } : payment === "paid" ? { type: "paid", method } : { type: payment },
+      sendConfirmation: !stockOrder && payment === "paid" && sendConfirmation && Boolean(email.trim()),
       note,
     };
 
@@ -211,22 +238,40 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
     <form onSubmit={submit} className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8">
       <div className="flex min-w-0 flex-col gap-6">
         <section className={cardClassName}>
-          <h2 className={cardTitleClassName}>Klant</h2>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <Field label="Voornaam" id="first-name">
-              <Input id="first-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} className={compactFieldClassName} />
-            </Field>
-            <Field label="Achternaam" id="last-name">
-              <Input id="last-name" value={lastName} onChange={(e) => setLastName(e.target.value)} className={compactFieldClassName} />
-            </Field>
-            <Field label="E-mail (optioneel)" id="email">
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={compactFieldClassName} />
-            </Field>
-            <Field label="Telefoon (optioneel)" id="phone">
-              <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} className={compactFieldClassName} />
-            </Field>
+          <h2 className={cardTitleClassName}>Soort order</h2>
+          <div className="mt-4 flex flex-col gap-3">
+            <Radio name="order-kind" checked={!stockOrder} onChange={() => chooseStockOrder(false)}>
+              Voor een klant
+            </Radio>
+            <Radio name="order-kind" checked={stockOrder} disabled={collectibles.length === 0} onChange={() => chooseStockOrder(true)}>
+              Voorraadorder: collectibles op voorhand laten maken
+              <span className="block text-sm font-normal text-text-muted">
+                Zonder klant en zonder betaling. Hij gaat meteen naar productie; rond je hem af, dan komen de exemplaren bij de
+                voorraad van de collectible.
+              </span>
+            </Radio>
           </div>
         </section>
+
+        {!stockOrder && (
+          <section className={cardClassName}>
+            <h2 className={cardTitleClassName}>Klant</h2>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <Field label="Voornaam" id="first-name">
+                <Input id="first-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} className={compactFieldClassName} />
+              </Field>
+              <Field label="Achternaam" id="last-name">
+                <Input id="last-name" value={lastName} onChange={(e) => setLastName(e.target.value)} className={compactFieldClassName} />
+              </Field>
+              <Field label="E-mail (optioneel)" id="email">
+                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={compactFieldClassName} />
+              </Field>
+              <Field label="Telefoon (optioneel)" id="phone">
+                <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} className={compactFieldClassName} />
+              </Field>
+            </div>
+          </section>
+        )}
 
         <section className={cardClassName}>
           <h2 className={cardTitleClassName}>Producten</h2>
@@ -310,20 +355,36 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
                         ))}
                       </select>
                     </Field>
-                    <Field label="Bevestiging" id={`attachment-${index}`}>
+                    <Field label="Uitvoering" id={`edition-${index}`}>
                       <select
-                        id={`attachment-${index}`}
-                        value={line.attachment}
-                        onChange={(e) => updateLine(line.key, { attachment: e.target.value as Attachment })}
+                        id={`edition-${index}`}
+                        value={line.edition}
+                        onChange={(e) => updateLine(line.key, { edition: e.target.value as Edition })}
                         className={selectClassName}
                       >
-                        {attachments.map((option) => (
+                        {editions.map((option) => (
                           <option key={option.value} value={option.value}>
                             {option.label}
                           </option>
                         ))}
                       </select>
                     </Field>
+                    {line.edition === "keychain" && (
+                      <Field label="Bevestiging" id={`attachment-${index}`}>
+                        <select
+                          id={`attachment-${index}`}
+                          value={line.attachment}
+                          onChange={(e) => updateLine(line.key, { attachment: e.target.value as Attachment })}
+                          className={selectClassName}
+                        >
+                          {attachments.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                    )}
                   </div>
                 )}
 
@@ -343,15 +404,17 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
                       className={compactFieldClassName}
                     />
                   </Field>
-                  <Field label="Prijs per stuk (€)" id={`price-${index}`}>
-                    <Input
-                      id={`price-${index}`}
-                      inputMode="decimal"
-                      value={line.price ?? toEuroInput(listPrice(line))}
-                      onChange={(e) => updateLine(line.key, { price: e.target.value })}
-                      className={compactFieldClassName}
-                    />
-                  </Field>
+                  {!stockOrder && (
+                      <Field label="Prijs per stuk (€)" id={`price-${index}`}>
+                        <Input
+                          id={`price-${index}`}
+                          inputMode="decimal"
+                          value={line.price ?? toEuroInput(listPrice(line))}
+                          onChange={(e) => updateLine(line.key, { price: e.target.value })}
+                          className={compactFieldClassName}
+                        />
+                      </Field>
+                  )}
                 </div>
 
                 {line.kind === "personalized" && (
@@ -380,21 +443,21 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
             ))}
           </ul>
           <div className="mt-4 flex flex-wrap gap-3">
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={lines.length >= MAX_ORDER_LINES}
-              onClick={() => addLine(newPersonalizedLine(nextKey, catalog.animals))}
-            >
-              Gepersonaliseerde Palley
-            </Button>
+            {!stockOrder && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={lines.length >= MAX_ORDER_LINES}
+                  onClick={() => addLine(newPersonalizedLine(nextKey, catalog.animals))}
+                >
+                  Gepersonaliseerde Palley
+                </Button>
+            )}
             <Button
               type="button"
               variant="secondary"
               disabled={lines.length >= MAX_ORDER_LINES || collectibles.length === 0}
-              onClick={() =>
-                addLine({ key: nextKey, kind: "collectible", collectibleId: collectibles[0].id, attachment: attachments[0].value, quantity: 1, price: null, notes: "" })
-              }
+              onClick={() => addLine(newCollectibleLine(nextKey, collectibles))}
             >
               Collectible
             </Button>
@@ -410,96 +473,100 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
           )}
         </section>
 
-        <section className={cardClassName}>
-          <h2 className={cardTitleClassName}>Levering</h2>
-          <div className="mt-4 flex flex-col gap-3">
-            <Radio name="delivery" checked={deliveryType === "handover"} onChange={() => setDeliveryType("handover")}>
-              Zelf overhandigen (geen adres, geen verzendkosten)
-            </Radio>
-            <Radio name="delivery" checked={deliveryType === "ship"} onChange={() => setDeliveryType("ship")}>
-              Opsturen
-            </Radio>
-          </div>
-          {deliveryType === "ship" && (
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <Field label="Verzendoptie" id="delivery-option">
-                <select
-                  id="delivery-option"
-                  value={optionId}
-                  onChange={(e) => {
-                    setOptionId(e.target.value);
-                    setShippingPrice(null);
-                  }}
-                  className={selectClassName}
-                >
-                  {deliveryOptions.map((row) => (
-                    <option key={row.id} value={row.id}>
-                      {row.label}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Verzendprijs (€)" id="shipping-price">
-                <Input
-                  id="shipping-price"
-                  inputMode="decimal"
-                  value={shippingPrice ?? toEuroInput(option?.priceCents ?? 0)}
-                  onChange={(e) => setShippingPrice(e.target.value)}
-                  className={compactFieldClassName}
-                />
-              </Field>
-              <Field label="Straat" id="street">
-                <Input id="street" value={street} onChange={(e) => setStreet(e.target.value)} className={compactFieldClassName} />
-              </Field>
-              <Field label="Nummer" id="house-number">
-                <Input id="house-number" value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} className={compactFieldClassName} />
-              </Field>
-              <Field label="Postcode" id="postal-code">
-                <Input id="postal-code" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} className={compactFieldClassName} />
-              </Field>
-              <Field label="Gemeente" id="city">
-                <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} className={compactFieldClassName} />
-              </Field>
-            </div>
-          )}
-        </section>
-
-        <section className={cardClassName}>
-          <h2 className={cardTitleClassName}>Betaling</h2>
-          <div className="mt-4 flex flex-col gap-3">
-            <Radio name="payment" checked={payment === "bancontact"} disabled={!paymentsAvailable} onChange={() => setPayment("bancontact")}>
-              Bancontact: de klant betaalt met de app via een betaallink
-              {!paymentsAvailable && <span className="block text-sm font-normal text-text-muted">Nog niet gekoppeld: we wachten op de goedkeuring van Bancontact Pro.</span>}
-            </Radio>
-            <Radio name="payment" checked={payment === "later"} onChange={() => setPayment("later")}>
-              Later betalen: de order blijft open tot je ze als betaald markeert of een betaallink maakt
-            </Radio>
-            <Radio name="payment" checked={payment === "paid"} onChange={() => setPayment("paid")}>
-              Al betaald
-            </Radio>
-            {payment === "paid" && (
-              <div className="ml-8 sm:max-w-xs">
-                <Field label="Hoe?" id="payment-method">
-                  <select
-                    id="payment-method"
-                    value={method}
-                    onChange={(e) => setMethod(e.target.value as ManualPaymentMethod)}
-                    className={selectClassName}
-                  >
-                    {MANUAL_PAYMENT_METHODS.map((value) => (
-                      <option key={value} value={value}>
-                        {PAYMENT_METHOD_LABELS[value]}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
+        {!stockOrder && (
+          <>
+            <section className={cardClassName}>
+              <h2 className={cardTitleClassName}>Levering</h2>
+              <div className="mt-4 flex flex-col gap-3">
+                <Radio name="delivery" checked={deliveryType === "handover"} onChange={() => setDeliveryType("handover")}>
+                  Zelf overhandigen (geen adres, geen verzendkosten)
+                </Radio>
+                <Radio name="delivery" checked={deliveryType === "ship"} onChange={() => setDeliveryType("ship")}>
+                  Opsturen
+                </Radio>
               </div>
-            )}
-          </div>
-          <p className="mt-4 text-sm text-text-muted">
-            Gepersonaliseerde Palleys verschijnen in “Te reviewen” zodra de order betaald is.
-          </p>
-        </section>
+              {deliveryType === "ship" && (
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <Field label="Verzendoptie" id="delivery-option">
+                    <select
+                      id="delivery-option"
+                      value={optionId}
+                      onChange={(e) => {
+                        setOptionId(e.target.value);
+                        setShippingPrice(null);
+                      }}
+                      className={selectClassName}
+                    >
+                      {deliveryOptions.map((row) => (
+                        <option key={row.id} value={row.id}>
+                          {row.label}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Verzendprijs (€)" id="shipping-price">
+                    <Input
+                      id="shipping-price"
+                      inputMode="decimal"
+                      value={shippingPrice ?? toEuroInput(option?.priceCents ?? 0)}
+                      onChange={(e) => setShippingPrice(e.target.value)}
+                      className={compactFieldClassName}
+                    />
+                  </Field>
+                  <Field label="Straat" id="street">
+                    <Input id="street" value={street} onChange={(e) => setStreet(e.target.value)} className={compactFieldClassName} />
+                  </Field>
+                  <Field label="Nummer" id="house-number">
+                    <Input id="house-number" value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} className={compactFieldClassName} />
+                  </Field>
+                  <Field label="Postcode" id="postal-code">
+                    <Input id="postal-code" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} className={compactFieldClassName} />
+                  </Field>
+                  <Field label="Gemeente" id="city">
+                    <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} className={compactFieldClassName} />
+                  </Field>
+                </div>
+              )}
+            </section>
+
+            <section className={cardClassName}>
+              <h2 className={cardTitleClassName}>Betaling</h2>
+              <div className="mt-4 flex flex-col gap-3">
+                <Radio name="payment" checked={payment === "bancontact"} disabled={!paymentsAvailable} onChange={() => setPayment("bancontact")}>
+                  Bancontact: de klant betaalt met de app via een betaallink
+                  {!paymentsAvailable && <span className="block text-sm font-normal text-text-muted">Nog niet gekoppeld: we wachten op de goedkeuring van Bancontact Pro.</span>}
+                </Radio>
+                <Radio name="payment" checked={payment === "later"} onChange={() => setPayment("later")}>
+                  Later betalen: de order blijft open tot je ze als betaald markeert of een betaallink maakt
+                </Radio>
+                <Radio name="payment" checked={payment === "paid"} onChange={() => setPayment("paid")}>
+                  Al betaald
+                </Radio>
+                {payment === "paid" && (
+                  <div className="ml-8 sm:max-w-xs">
+                    <Field label="Hoe?" id="payment-method">
+                      <select
+                        id="payment-method"
+                        value={method}
+                        onChange={(e) => setMethod(e.target.value as ManualPaymentMethod)}
+                        className={selectClassName}
+                      >
+                        {MANUAL_PAYMENT_METHODS.map((value) => (
+                          <option key={value} value={value}>
+                            {PAYMENT_METHOD_LABELS[value]}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                  </div>
+                )}
+              </div>
+              <p className="mt-4 text-sm text-text-muted">
+                Gepersonaliseerde Palleys verschijnen in “Te reviewen” zodra de order betaald is.
+              </p>
+            </section>
+          </>
+        )}
       </div>
 
       <aside className={`${cardClassName} flex h-fit flex-col gap-4 lg:sticky lg:top-6`}>
@@ -510,41 +577,52 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
               <span className="min-w-0 truncate">
                 {line.quantity} × {lineName(line, collectibles, catalog.animals)}
               </span>
-              <span className="tabular-nums">{formatPrice(((unitCents(line) ?? 0) * line.quantity) / 100)}</span>
+              {!stockOrder && <span className="tabular-nums">{formatPrice(((unitCents(line) ?? 0) * line.quantity) / 100)}</span>}
             </li>
           ))}
-          <li className="flex justify-between gap-3">
-            <span>Verzending</span>
-            <span className="tabular-nums">{formatPrice((shippingCents ?? 0) / 100)}</span>
-          </li>
+          {!stockOrder && (
+              <li className="flex justify-between gap-3">
+                <span>Verzending</span>
+                <span className="tabular-nums">{formatPrice((shippingCents ?? 0) / 100)}</span>
+              </li>
+          )}
         </ul>
-        <p className="flex items-baseline justify-between border-t border-off-white-dark pt-3 font-label text-medium-green">
-          <span className="font-display text-xl font-medium">Totaal</span>
-          <span className="text-2xl font-extrabold tabular-nums">{formatPrice(totalCents / 100)}</span>
-        </p>
-
-        {payment === "paid" ? (
-          <label className="flex cursor-pointer items-start gap-3 text-sm">
-            <input
-              type="checkbox"
-              checked={sendConfirmation && Boolean(email.trim())}
-              disabled={!email.trim()}
-              onChange={(e) => setSendConfirmation(e.target.checked)}
-              className="mt-0.5 size-4 accent-medium-green"
-            />
-            <span>
-              Bevestigingsmail sturen
-              {!email.trim() && <span className="block text-xs text-text-muted">Vul een e-mailadres in om dit te gebruiken.</span>}
-            </span>
-          </label>
-        ) : (
-          <p className="text-sm text-text-muted">
-            {email.trim()
-              ? payment === "bancontact"
-                ? "De klant krijgt een bevestigingsmail zodra de betaling binnen is."
-                : "Je kiest of er een bevestigingsmail vertrekt wanneer je de order als betaald markeert."
-              : "Zonder e-mailadres krijgt de klant geen bevestigingsmail."}
+        {stockOrder ? (
+          <p className="border-t border-off-white-dark pt-3 text-sm text-text-muted">
+            Voorraadorder: geen prijs en geen betaling. Hij komt meteen in de printwachtrij; rond je hem af, dan staan de
+            exemplaren bij de voorraad.
           </p>
+        ) : (
+          <>
+            <p className="flex items-baseline justify-between border-t border-off-white-dark pt-3 font-label text-medium-green">
+              <span className="font-display text-xl font-medium">Totaal</span>
+              <span className="text-2xl font-extrabold tabular-nums">{formatPrice(totalCents / 100)}</span>
+            </p>
+
+            {payment === "paid" ? (
+              <label className="flex cursor-pointer items-start gap-3 text-sm">
+                <input
+                  type="checkbox"
+                  checked={sendConfirmation && Boolean(email.trim())}
+                  disabled={!email.trim()}
+                  onChange={(e) => setSendConfirmation(e.target.checked)}
+                  className="mt-0.5 size-4 accent-medium-green"
+                />
+                <span>
+                  Bevestigingsmail sturen
+                  {!email.trim() && <span className="block text-xs text-text-muted">Vul een e-mailadres in om dit te gebruiken.</span>}
+                </span>
+              </label>
+            ) : (
+              <p className="text-sm text-text-muted">
+                {email.trim()
+                  ? payment === "bancontact"
+                    ? "De klant krijgt een bevestigingsmail zodra de betaling binnen is."
+                    : "Je kiest of er een bevestigingsmail vertrekt wanneer je de order als betaald markeert."
+                  : "Zonder e-mailadres krijgt de klant geen bevestigingsmail."}
+              </p>
+            )}
+          </>
         )}
 
         <div>
@@ -563,7 +641,7 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
         </div>
 
         <Button type="submit" variant="primary" className="w-full" loading={busy} loadingText={status ?? "Bezig…"}>
-          Order toevoegen
+          {stockOrder ? "Voorraadorder starten" : "Order toevoegen"}
         </Button>
         {error && (
           <p role="alert" className="text-sm text-[#a3341a]">
@@ -579,8 +657,15 @@ function newPersonalizedLine(key: number, animals: AnimalOption[]): Personalized
   return { key, kind: "personalized", animal: animals[0].value, edition: "keychain", attachment: attachments[0].value, quantity: 1, price: null, notes: "", photos: [] };
 }
 
+function newCollectibleLine(key: number, collectibles: CollectibleView[]): CollectibleLine {
+  return { key, kind: "collectible", collectibleId: collectibles[0].id, edition: "keychain", attachment: attachments[0].value, quantity: 1, price: null, notes: "" };
+}
+
 function lineName(line: Line, collectibles: CollectibleView[], animals: AnimalOption[]) {
-  if (line.kind === "collectible") return collectibles.find((row) => row.id === line.collectibleId)?.name ?? "Collectible";
+  if (line.kind === "collectible") {
+    const name = collectibles.find((row) => row.id === line.collectibleId)?.name ?? "Collectible";
+    return line.edition === "figure" ? `${name} (figuurtje)` : name;
+  }
   return `Palley ${animals.find((animal) => animal.value === line.animal)?.labels.nl ?? ""}`;
 }
 

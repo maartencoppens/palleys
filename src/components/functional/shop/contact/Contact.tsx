@@ -11,7 +11,7 @@ import ContactForm from "./ContactForm";
  * - Calmer form spacing: labels sit 12px above their field instead of 29px, the header is closer to the
  *   form, and field text is 22px instead of 32px so typed text and placeholders fit comfortably.
  * - Name and email share the row equally (Figma: 469px and 436px).
- * - The orange tag sits on an off-white pill: orange text straight on the light green was hard to read.
+ * - No small tag above the title: the title says enough.
  * - The empty band at the bottom of the Figma frame is left out; it's where the CTA card overlaps the
  *   footer, which isn't built yet.
  */
@@ -23,13 +23,7 @@ export default async function Contact() {
       className="flex min-h-svh flex-col items-center justify-center stack rounded-tr-section bg-light-green section-x section-y"
       aria-labelledby="contact-title"
     >
-      <SectionHeader
-        tag={m.tag}
-        title={m.title}
-        subtitle={m.subtitle}
-        titleId="contact-title"
-        tagClassName="rounded-pill bg-off-white px-4 py-2 text-orange"
-      />
+      <SectionHeader title={m.title} subtitle={m.subtitle} titleId="contact-title" />
       <ContactForm />
     </section>
   );

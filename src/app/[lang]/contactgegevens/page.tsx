@@ -4,17 +4,19 @@ import { Suspense, type ReactNode } from "react";
 import LegalPage from "@/components/functional/shop/legal/LegalPage";
 import { Link } from "@/core/locale/client";
 import { fillNodes } from "@/core/locale/fill";
-import { getMessages, localeAlternates, metadataLocale } from "@/core/locale/server";
+import { getMessages, metadataLocale } from "@/core/locale/server";
 import { getSiteSettings } from "@/core/modules/settings/service";
 import { PRIVACY_URL, TERMS_URL } from "@/data/checkout";
 import { COMPANY, CONTACT_DETAILS_URL } from "@/data/company";
 import { RETURN_POLICY_URL } from "@/data/returns";
 import { SHIPPING_POLICY_URL } from "@/data/shipping";
 import type { CompanySettings } from "@/core/modules/settings/types";
+import { pageMetadata } from "@/core/seo/metadata";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/contactgegevens">): Promise<Metadata> {
   const { locale, messages } = await metadataLocale(params);
-  return { title: messages.meta.contactDetails, alternates: localeAlternates(locale, CONTACT_DETAILS_URL) };
+  const m = messages.meta.contactDetails;
+  return pageMetadata({ locale, path: CONTACT_DETAILS_URL, title: m.title, description: m.description });
 }
 
 const linkClassName = "font-semibold text-medium-green underline underline-offset-2";

@@ -3,6 +3,7 @@
 import { useLocale, useMessages } from "@/core/locale/client";
 import type { DeliveryOptionView } from "@/core/modules/checkout/types";
 import { formatPrice } from "@/core/utils/format";
+import { FRIENDS_DELIVERY } from "@/data/shipping";
 
 type DeliveryOptionsPickerProps = {
   options: DeliveryOptionView[];
@@ -14,7 +15,8 @@ type DeliveryOptionsPickerProps = {
 
 /*
  * Radio list of delivery options, grouped by type. Prices come from our server; what's picked here is re-checked
- * at checkout.
+ * at checkout. Delivery in person for friends and family is always listed, so people know it exists, but greyed out
+ * until a code that unlocks it is applied (the server then sends it as a real option).
  */
 export default function DeliveryOptionsPicker({ options, value, onChange, status, error }: DeliveryOptionsPickerProps) {
   const { shipping: m } = useMessages();
@@ -42,9 +44,10 @@ export default function DeliveryOptionsPicker({ options, value, onChange, status
     );
   }
 
+  const friendsLocked = !options.some((option) => option.id === FRIENDS_DELIVERY.id);
   const groups = (["HOME", "SERVICE_POINT", "PICKUP", "HANDOVER"] as const)
     .map((type) => ({ type, options: options.filter((option) => option.deliveryType === type) }))
-    .filter((group) => group.options.length > 0);
+    .filter((group) => group.options.length > 0 || (group.type === "HANDOVER" && friendsLocked));
 
   return (
     <div className="flex flex-col gap-5">
@@ -78,6 +81,22 @@ export default function DeliveryOptionsPicker({ options, value, onChange, status
               </label>
             );
           })}
+          {group.type === "HANDOVER" && friendsLocked && (
+            <label
+              aria-disabled
+              className="flex cursor-not-allowed items-center gap-4 rounded-2xl border-[1.5px] border-dashed border-off-white-dark bg-off-white/60 px-4 py-3.5 opacity-70"
+            >
+              <input type="radio" name="deliveryOption" disabled className="size-5 shrink-0 accent-medium-green" />
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="font-label text-base font-bold text-text-primary">{m.options[FRIENDS_DELIVERY.id]?.label ?? FRIENDS_DELIVERY.label}</span>
+                <span className="flex items-center gap-1.5 text-sm text-text-muted">
+                  <LockIcon />
+                  {m.friendsLocked}
+                </span>
+              </span>
+              <span className="font-label text-base font-extrabold text-text-muted">{m.free}</span>
+            </label>
+          )}
         </fieldset>
       ))}
       {error && (
@@ -86,5 +105,14 @@ export default function DeliveryOptionsPicker({ options, value, onChange, status
         </p>
       )}
     </div>
+  );
+}
+
+function LockIcon() {
+  return (
+    <svg className="size-3.5 shrink-0" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <rect x="3" y="7" width="10" height="7" rx="2" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M5.5 7V5a2.5 2.5 0 015 0v2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
   );
 }
