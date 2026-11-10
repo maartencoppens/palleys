@@ -21,6 +21,8 @@ export type UploadedPhoto = {
   /** Object URL for previews; null when the browser can't display the file. */
   previewUrl: string | null;
   quality: PhotoQuality;
+  /** Width × height in pixels; null when the browser can't decode the file. */
+  pixels: { width: number; height: number } | null;
 };
 
 type PhotoUploadProps = {
@@ -35,7 +37,10 @@ const isAccepted = (file: File) =>
     file.name.toLowerCase().endsWith(extension),
   );
 
-/** Reads the image's pixel size to judge sharpness; formats the browser can't decode come back "unknown". */
+/**
+ * Reads the image's pixel size to judge sharpness; formats the browser can't decode come back "unknown".
+ * Pixels, not kilobytes: a heavily compressed photo can be small on disk and still have plenty of detail.
+ */
 const inspectPhoto = (file: File): Promise<UploadedPhoto> => {
   const id = crypto.randomUUID();
   const previewUrl = URL.createObjectURL(file);
@@ -47,10 +52,11 @@ const inspectPhoto = (file: File): Promise<UploadedPhoto> => {
         file,
         previewUrl,
         quality: qualityFromSize(image.naturalWidth, image.naturalHeight),
+        pixels: { width: image.naturalWidth, height: image.naturalHeight },
       });
     image.onerror = () => {
       URL.revokeObjectURL(previewUrl);
-      resolve({ id, file, previewUrl: null, quality: "unknown" });
+      resolve({ id, file, previewUrl: null, quality: "unknown", pixels: null });
     };
     image.src = previewUrl;
   });
@@ -257,8 +263,10 @@ export default function PhotoUpload({
                         aria-hidden
                       />
                     )}
+                    {/* The pixel size, not the file size: the check is about resolution, and "200 KB · quite small" read as a contradiction. */}
                     <span>
-                      {formatFileSize(photo.file.size, locale)} · {m.quality[photo.quality]}
+                      {photo.pixels ? `${photo.pixels.width} × ${photo.pixels.height} px` : formatFileSize(photo.file.size, locale)} ·{" "}
+                      {m.quality[photo.quality]}
                     </span>
                   </p>
                 </div>

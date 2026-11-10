@@ -16,13 +16,15 @@ const iconProps = {
 
 /* Minimal line drawings in the attachment chips, so people see what a clip and a key ring are. */
 export const attachmentIcons: Record<Attachment, ReactNode> = {
-  // Lobster clasp: a swivel eye on top, the claw below with its spring gate on the right.
+  // Lobster clasp: the eye on top, a teardrop claw narrowing towards it, the spring gate crossing the opening on the
+  // right and the thumb lever sticking out where you open it.
   clip: (
     <svg {...iconProps}>
-      <circle cx="12" cy="3.8" r="1.8" />
-      <path d="M12 5.6v2" />
-      <path d="M15.6 9.6C14.8 8.3 13.5 7.6 12 7.6c-3.1 0-5 3-5 6.6S9.2 21 12 21s5-3 5-6.8" />
-      <path d="M15.6 9.6 17 14.2" />
+      <circle cx="12" cy="3.2" r="1.9" />
+      <path d="M12 5.1v1.4" />
+      <path d="M12 6.5C9.4 8 7.2 11.4 7.2 15.6a4.8 4.8 0 0 0 9.6 0c0-2.6-.9-4.9-2.3-6.6" />
+      <path d="M12 6.5c1.6.9 3 2.4 3.6 4.4" />
+      <path d="M15.2 9.6l2.6-1.4" />
     </svg>
   ),
   // Split key ring: a ring with the overlapping second turn.

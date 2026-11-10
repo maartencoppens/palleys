@@ -8,12 +8,13 @@ import { getMessages } from "@/core/locale/server";
 const artwork: Pick<Step, "blob" | "icon">[] = [
   {
     blob: { src: "/images/steps/blob-1.svg", width: 273, height: 267 },
+    // The paw pads from the logo's P, tilted like a paw print, so the first step carries the brand mark.
     icon: {
       src: "/images/steps/icon-paw.svg",
-      width: 132.571,
-      height: 131.69,
-      x: 68.2,
-      y: 70.4,
+      width: 122.45,
+      height: 136,
+      x: 73.3,
+      y: 68.2,
     },
   },
   {

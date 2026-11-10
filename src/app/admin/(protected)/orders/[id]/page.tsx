@@ -16,6 +16,7 @@ import { EditOrderDetails } from "@/components/functional/admin/orders/EditOrder
 import { OrderActions } from "@/components/functional/admin/OrderActions";
 import { CollectibleModelButton } from "@/components/functional/admin/orders/CollectibleModelButton";
 import { ItemCheckInButton } from "@/components/functional/admin/orders/ItemCheckInButton";
+import { OrderNotesPanel } from "@/components/functional/admin/orders/OrderNotesPanel";
 import { OrderPaymentPanel } from "@/components/functional/admin/orders/OrderPaymentPanel";
 import { PhotoConsentLine } from "@/components/functional/admin/orders/PhotoConsentLine";
 import { OrderProgressPanel } from "@/components/functional/admin/orders/OrderProgressPanel";
@@ -311,6 +312,8 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
             canResendConfirmation={confirmable && Boolean(order.email)}
             attentionReason={order.attentionReason}
           />
+
+          <OrderNotesPanel orderId={order.id} notes={order.adminNotes} />
 
           <section className="rounded-3xl bg-white p-6 text-sm">
             <h2 className="font-display text-xl font-medium text-medium-green">Klant</h2>

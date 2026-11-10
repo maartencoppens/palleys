@@ -1,6 +1,6 @@
 import { api } from "@/core/networking/api";
 import type { OrderStatusView } from "@/core/modules/checkout/types";
-import type { ManualOrderRequest, ManualOrderResult, OrderStatusActionInput } from "./types";
+import type { AdminOrderDetail, ManualOrderRequest, ManualOrderResult, OrderStatusActionInput } from "./types";
 
 export async function fetchOrderStatus(orderId: string, token: string) {
   const { data } = await api.get<OrderStatusView>(`/orders/${encodeURIComponent(orderId)}/status`, {
@@ -65,5 +65,10 @@ export async function deleteOrderForGood(orderId: string, input: { confirmNumber
 
 export async function deletePhotoConsent(orderId: string) {
   const { data } = await api.delete<{ orderId: string }>(`/admin/orders/${orderId}/photo-consent`);
+  return data;
+}
+
+export async function putOrderNotes(orderId: string, notes: string) {
+  const { data } = await api.put<AdminOrderDetail["adminNotes"]>(`/admin/orders/${orderId}/notes`, { notes });
   return data;
 }

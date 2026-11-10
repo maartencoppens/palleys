@@ -153,23 +153,23 @@ export const nl = {
   madeInGent: {
     tag: "Made in Gent",
     title: "Ontworpen en afgewerkt in Gent",
-    text: "Elke Palley begint als foto en eindigt aan iemands sleutelbos. Daartussen werken wij, een team van studenten uit Gent, elke stap zorgvuldig uit.",
+    text: "Elke Palley begint als foto en eindigt aan iemands sleutelbos. Daartussen zit ons studententeam uit Gent.",
     steps: [
       {
-        title: "Ontworpen naar jouw foto",
-        text: "Vlekjes, kleuren en dat ene flapoortje: we maken een exacte versie van jouw huisdier, geen standaardmodel.",
+        title: "Naar jouw foto",
+        text: "Vlekjes, kleuren, dat ene flapoortje: geen standaardmodel, maar jouw huisdier.",
       },
       {
         title: "In volle kleur geprint",
-        text: "Dankzij full-color resin printing zitten alle kleuren in de print zelf. Geen verf, geen foute tinten.",
+        text: "De kleuren zitten in de resinprint zelf. Geen verf, geen foute tinten.",
       },
       {
         title: "Door mensen gecontroleerd",
-        text: "We gebruiken AI om van je foto’s een 3D-model op maat te maken. Elke stap wordt door ons gecontroleerd. Klopt er iets niet, dan beginnen we opnieuw.",
+        text: "AI maakt het 3D-model, wij keuren elke stap. Klopt iets niet? Dan opnieuw.",
       },
       {
         title: "Met de hand afgewerkt",
-        text: "Ketting eraan, laatste check, zorgvuldig ingepakt en onderweg naar jou.",
+        text: "Ketting eraan, laatste check en zorgvuldig ingepakt.",
       },
     ],
     link: "Lees ons verhaal",
@@ -254,7 +254,7 @@ export const nl = {
     ctaLabel: "Maak je eigen Palley",
     story: {
       tag: "Ons verhaal",
-      title: "Het begon allemaal met een foto",
+      title: "Team Palleys",
       photoAlt:
         "Een golden retriever, een pluizige puppy en een rosse kat liggen samen in het gras",
       paragraphs: [
@@ -327,9 +327,8 @@ export const nl = {
       animalError: "Kies je soort huisdier.",
       edition: "Sleutelhanger of figuurtje?",
       attachment: "Hoe wil je hem aan je sleutels hangen?",
-      size: "Ongeveer {size} aan de langste kant.",
-      sizeTitle: "Hoe groot is een Palley?",
-      sizeCompare: "Iets groter dan een muntstuk van 2 euro.",
+      size: "Ongeveer {size}: iets groter dan een 2-euromunt.",
+      sizeTitle: "Zo groot is een Palley",
       keychainHint:
         "De sleutelhanger komt met een ketting en een klemmetje of sleutelring, naar keuze.",
     },
@@ -363,7 +362,7 @@ export const nl = {
         great: "Top, mooi scherp!",
         ok: "Ziet er goed uit.",
         small:
-          "Deze foto is vrij klein: een scherpere geeft een mooier resultaat.",
+          "Lage resolutie: een foto met meer pixels geeft een scherper resultaat.",
         unknown: "We checken de kwaliteit voor je.",
       },
     },
@@ -937,7 +936,6 @@ export const nl = {
 
   legal: {
     eyebrow: "Juridisch",
-    concept: "Concept: deze tekst wordt nog juridisch nagekeken.",
     // LEGAL-REVIEW: privacy policy of 9 November 2026. Changed from the given text: the database and the website run on a
     // server in the EU (not Aiven), Trustpilot is left out until the checkout asks for it (like the terms' old art. 12), and
     // the carrier is PostNL (not bpost).

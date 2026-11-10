@@ -11,6 +11,7 @@ const COMPANY_FIELDS = [
   { name: "address", label: "Adres (straat, nummer, postcode, gemeente)" },
   { name: "enterpriseNumber", label: "Ondernemingsnummer (leeg als we er geen hebben)" },
   { name: "email", label: "E-mail" },
+  { name: "teamEmail", label: "Team-inbox (krijgt een kopie van contactberichten, nieuwe bestellingen en retours)" },
   { name: "phone", label: "Telefoon" },
   { name: "returnAddress", label: "Retouradres (waar een herroepen Palley naartoe gaat)" },
 ] as const;
@@ -39,7 +40,7 @@ export function CompanySettingsForm({ company }: { company: CompanySettings }) {
       >
         <div className="grid gap-4 sm:grid-cols-2">
           {COMPANY_FIELDS.map((field) => (
-            <div key={field.name} className={field.name === "address" || field.name === "returnAddress" ? "sm:col-span-2" : ""}>
+            <div key={field.name} className={["address", "teamEmail", "returnAddress"].includes(field.name) ? "sm:col-span-2" : ""}>
               <label htmlFor={`company-${field.name}`} className={fieldLabelClassName}>
                 {field.label}
               </label>

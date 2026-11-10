@@ -30,6 +30,8 @@ export function isEmailConfigured() {
 
 export async function sendEmail(input: {
   to: string;
+  /** Extra recipients who get a visible copy, e.g. the team Gmail on team mails. */
+  cc?: string[];
   subject: string;
   html: string;
   text: string;
@@ -45,6 +47,7 @@ export async function sendEmail(input: {
       {
         from: env.EMAIL_FROM,
         to: [input.to],
+        ...(input.cc?.length && { cc: input.cc }),
         subject: input.subject,
         html: input.html,
         text: input.text,

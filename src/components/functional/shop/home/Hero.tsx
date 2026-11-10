@@ -34,35 +34,48 @@ export default async function Hero() {
           {/*
            * Vertically centred in the space under the navbar. The extra top padding reproduces the
            * Figma placement when the area below the banner is 780px tall; on other heights the block stays centred.
+           *
+           * The title is a lockup: the brand name large, the tagline smaller, so the two lines read as one
+           * block instead of a short line over a long one. The copy below is exactly as wide as the title:
+           * from 1024px the title sets the column width, and contain: inline-size keeps the paragraph and the
+           * buttons from widening it. On phones the copy simply uses the full width.
            */}
-          <div className="flex flex-1 flex-col items-start justify-center gap-8 pt-14 pb-20 md:gap-2xl lg:pt-[55px] xl:pb-0 lg:pl-[clamp(0px,3.02vw,58px)]">
-            <h1
-              id="hero-title"
-              className="font-display text-[clamp(2.375rem,1.2rem+4.6vw,4.875rem)] leading-[0.98] font-medium tracking-[-0.045em]"
-            >
-              <span className="block text-title-accent" data-hero-item>
-                {m.titleAccent}
-              </span>{" "}
-              <span className="block" data-hero-item>
-                {m.titleRest}
-              </span>
-            </h1>
+          <div className="flex flex-1 flex-col justify-center pt-14 pb-20 lg:pt-[55px] xl:pb-0 lg:pl-[clamp(0px,3.02vw,58px)]">
+            <div className="grid w-full justify-items-start gap-8 md:gap-2xl lg:w-fit">
+              <h1
+                id="hero-title"
+                className="w-max max-w-full font-display leading-[0.98] font-medium tracking-[-0.04em]"
+              >
+                <span
+                  className="block text-[clamp(3rem,1.6rem+6vw,6.25rem)] leading-[0.9] text-title-accent"
+                  data-hero-item
+                >
+                  {m.titleAccent}
+                </span>{" "}
+                <span
+                  className="block text-[clamp(1.875rem,1.05rem+3.5vw,3.875rem)]"
+                  data-hero-item
+                >
+                  {m.titleRest}
+                </span>
+              </h1>
 
-            <p
-              data-hero-item
-              className="max-w-[570px] text-[clamp(1.0625rem,0.95rem+0.35vw,1.25rem)] leading-[1.485]"
-            >
-              {m.text}
-            </p>
+              <p
+                data-hero-item
+                className="justify-self-stretch text-[clamp(1.0625rem,0.95rem+0.35vw,1.25rem)] leading-[1.485] text-pretty lg:[contain:inline-size]"
+              >
+                {m.text}
+              </p>
 
-            <div
-              data-hero-item
-              className="flex w-full max-w-[400px] flex-col items-stretch gap-s lg:w-auto lg:max-w-none lg:flex-row lg:items-center lg:gap-0"
-            >
-              <Button href="/create">{common.createPalley}</Button>
-              <Button href="/#collectables" variant="bare">
-                {m.collection}
-              </Button>
+              <div
+                data-hero-item
+                className="flex w-full max-w-[400px] flex-col items-stretch gap-s lg:max-w-none lg:flex-row lg:items-center lg:gap-0 lg:[contain:inline-size]"
+              >
+                <Button href="/create">{common.createPalley}</Button>
+                <Button href="/#collectables" variant="bare">
+                  {m.collection}
+                </Button>
+              </div>
             </div>
           </div>
 

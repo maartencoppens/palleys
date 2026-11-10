@@ -39,6 +39,7 @@ export default async function ShopPage() {
         eyebrow={m.eyebrow}
         title={m.title}
         intro={m.intro}
+        backdropClassName="bg-page"
       />
       <main className="bg-page">
         <div className="mx-auto max-w-[1440px] section-x section-pb pt-10 md:pt-14">

@@ -55,7 +55,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
         <Input
           name="q"
           defaultValue={query.q ?? ""}
-          placeholder="Ordernummer, e-mail of achternaam"
+          placeholder="Ordernummer, e-mail, naam of notitie"
           aria-label="Orders zoeken"
           className="h-12 bg-white text-base! sm:max-w-md md:h-14 md:text-lg!"
         />

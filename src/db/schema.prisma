@@ -318,6 +318,10 @@ model Order {
   photoMarketingConsentAt DateTime?
   statusTokenHash         String // sha256 van het token in de return-URL; het token zelf bewaren we niet
   attentionReason         String? // iets klopte niet (bedrag, preview al betaald, ...): opvolgen in de backoffice
+  // Vrij notitieblok van het team (bv. de Instagram-naam van wie komt ophalen). Nooit zichtbaar voor de klant.
+  adminNotes              String?
+  adminNotesUpdatedAt     DateTime?
+  adminNotesUpdatedBy     String?
   confirmationSentAt      DateTime?
   // De eerste pose van een Palley op maat is goedgekeurd: de order is in productie (en de klant kreeg een mail).
   // Vanaf dan kan een Palley op maat niet meer kosteloos geannuleerd worden.

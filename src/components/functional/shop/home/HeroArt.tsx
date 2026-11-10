@@ -29,13 +29,29 @@ const svg = source.replace(
   '<svg width="100%" height="100%" preserveAspectRatio="xMinYMax slice" aria-hidden="true" focusable="false"',
 );
 
-export default function HeroArt() {
+/*
+ * The shorter page hero (about, shop, legal) shows the top of the scene behind its title, where three sprigs from
+ * the middle would sit right behind the text. They move onto the teal shape on the right instead (SVG units; the
+ * sway animation keeps the offset, it only adds rotation and a small lift).
+ */
+const pageMoves: Record<string, [number, number]> = {
+  branch11: [514, 188],
+  branch5_2: [400, 130],
+  flower1: [650, 100],
+};
+
+const pageSvg = Object.entries(pageMoves).reduce(
+  (result, [id, [x, y]]) => result.replace(`<g id="${id}">`, `<g id="${id}" transform="translate(${x} ${y})">`),
+  svg,
+);
+
+export default function HeroArt({ variant = "home" }: { variant?: "home" | "page" }) {
   return (
     <div
       data-hero-art
       data-sway="scene"
       className="pointer-events-none absolute inset-0 z-0 select-none [&>svg]:block"
-      dangerouslySetInnerHTML={{ __html: svg }}
+      dangerouslySetInnerHTML={{ __html: variant === "page" ? pageSvg : svg }}
     />
   );
 }

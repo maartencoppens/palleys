@@ -16,6 +16,7 @@ import { activeQuantity } from "@/core/modules/orders/check-in";
 import { maskEmail } from "@/core/modules/orders/utils";
 import { flagOrder } from "@/core/modules/payments/service";
 import { getShopSettings } from "@/core/modules/settings/service";
+import { teamMailCc } from "@/core/modules/settings/types";
 import { collectibleImageUrl } from "@/core/modules/collectibles/utils";
 import type { AnimalOption } from "@/core/modules/animals/types";
 import { batchRef } from "@/core/utils/naming";
@@ -359,15 +360,21 @@ export async function submitReturnRequest(sessionToken: string | null, input: Re
   const adminUrl = `${env.APP_URL}/admin/orders/${orderId}`;
   await Promise.all([
     order.email && sendReturnMail(orderId, order.email, buildReturnReceiptMail({ ...order, locale }, receipt, { company }), `return-receipt-${receipt.id}`),
-    sendReturnMail(orderId, company.email, buildReturnTeamMail(order, receipt, adminUrl), `return-team-${receipt.id}`),
+    sendReturnMail(orderId, company.email, buildReturnTeamMail(order, receipt, adminUrl), `return-team-${receipt.id}`, teamMailCc(company)),
   ]);
   return receipt;
 }
 
 /** A failed mail never undoes a request: it's logged and the order says so in the backoffice. */
-async function sendReturnMail(orderId: string, to: string, mail: { subject: string; html: string; text: string }, idempotencyKey: string) {
+async function sendReturnMail(
+  orderId: string,
+  to: string,
+  mail: { subject: string; html: string; text: string },
+  idempotencyKey: string,
+  cc?: string[],
+) {
   try {
-    const sent = await sendEmail({ to, ...mail, idempotencyKey });
+    const sent = await sendEmail({ to, cc, ...mail, idempotencyKey });
     if (!sent) console.warn(`[returns] ${idempotencyKey} not sent: e-mail is not configured`);
   } catch (error) {
     console.error(`[returns] ${idempotencyKey} to ${maskEmail(to)} failed:`, error instanceof Error ? error.message : error);

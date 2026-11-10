@@ -2,11 +2,12 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { EmailError, sendEmail } from "@/core/networking/external/email-client";
 import { getShopSettings } from "@/core/modules/settings/service";
+import { teamMailCc } from "@/core/modules/settings/types";
 import { buildContactMail } from "./emails";
 import type { ContactInput } from "./types";
 
 /**
- * Mails a contact form message to the company e-mail from the settings, with the visitor as reply-to. Returns false when
+ * Mails a contact form message to the company e-mail from the settings (team inbox in cc), with the visitor as reply-to. Returns false when
  * it didn't go out (no mail configured, or Resend refused it): the form then says so instead of thanking them.
  */
 export async function deliverContactMessage(input: ContactInput, now: Date = new Date()) {
@@ -14,6 +15,7 @@ export async function deliverContactMessage(input: ContactInput, now: Date = new
   try {
     const sent = await sendEmail({
       to: company.email,
+      cc: teamMailCc(company),
       ...buildContactMail(input, now),
       replyTo: input.email,
       // Every message is new: a visitor may write twice on purpose.

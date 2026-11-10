@@ -288,3 +288,19 @@ export async function withdrawPhotoConsent(orderId: string, adminName: string) {
   ]);
   return { orderId };
 }
+
+/** Saves the team's notepad on an order (who picks it up, their Instagram name, ...). Not part of the order history. */
+export async function updateOrderNotes(orderId: string, notes: string, adminName: string) {
+  const exists = await prisma.order.findUnique({ where: { id: orderId }, select: { id: true } });
+  if (!exists) throw new OrderNotFoundError(orderId);
+  const order = await prisma.order.update({
+    where: { id: orderId },
+    data: { adminNotes: notes || null, adminNotesUpdatedAt: new Date(), adminNotesUpdatedBy: adminName },
+    select: { adminNotes: true, adminNotesUpdatedAt: true, adminNotesUpdatedBy: true },
+  });
+  return {
+    text: order.adminNotes ?? "",
+    updatedAt: order.adminNotesUpdatedAt?.toISOString() ?? null,
+    updatedBy: order.adminNotesUpdatedBy,
+  };
+}

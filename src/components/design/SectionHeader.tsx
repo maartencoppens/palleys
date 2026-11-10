@@ -6,13 +6,15 @@ type SectionHeaderProps = {
   subtitle?: string;
   /** Id for the title, so the section can reference it with `aria-labelledby`. */
   titleId?: string;
+  /** Extra classes for the tag, e.g. to set it on a pill where orange text alone would be too faint. */
+  tagClassName?: string;
 };
 
 /* Shared "section-header" component from Figma: orange tag above a green DynaPuff title, centred. */
-export default function SectionHeader({ tag, title, subtitle, titleId }: SectionHeaderProps) {
+export default function SectionHeader({ tag, title, subtitle, titleId, tagClassName = "text-accent-highlights" }: SectionHeaderProps) {
   return (
     <header data-animate="fade-up" className="flex flex-col items-center gap-s text-center">
-      <p className="font-label text-xl leading-[19.5px] font-semibold text-accent-highlights md:text-2xl">{tag}</p>
+      <p className={`font-label text-xl leading-[19.5px] font-semibold md:text-2xl ${tagClassName}`}>{tag}</p>
       <h2
         id={titleId}
         className="font-display text-[clamp(2rem,1.4rem+1.8vw,3rem)] leading-[1.22] font-medium text-medium-green"

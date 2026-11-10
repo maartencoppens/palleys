@@ -11,6 +11,7 @@ import {
   shippingSettingsSchema,
   siteContentSchema,
   storedShippingOverridesSchema,
+  teamMailCc,
 } from "./types";
 
 const prices = { keychain: 2799, figurine: 2799 };
@@ -104,6 +105,18 @@ describe("company settings", () => {
 
   it("keeps a return address the admin set", () => {
     expect(companySettingsSchema.parse({ ...saved, returnAddress: "Elders 1, 9000 Gent" }).returnAddress).toBe("Elders 1, 9000 Gent");
+  });
+
+  it("gives settings saved before the team inbox existed the Gmail, and lets the admin empty it", () => {
+    expect(companySettingsSchema.parse(saved).teamEmail).toBe("palleys.team@gmail.com");
+    expect(companySettingsSchema.parse({ ...saved, teamEmail: "" }).teamEmail).toBe("");
+    expect(companySettingsSchema.safeParse({ ...saved, teamEmail: "geen-mail" }).success).toBe(false);
+  });
+
+  it("copies team mails to the team inbox, unless it is empty or the company address itself", () => {
+    expect(teamMailCc({ email: "hallo@palleys.be", teamEmail: "palleys.team@gmail.com" })).toEqual(["palleys.team@gmail.com"]);
+    expect(teamMailCc({ email: "hallo@palleys.be", teamEmail: "" })).toEqual([]);
+    expect(teamMailCc({ email: "hallo@palleys.be", teamEmail: "Hallo@palleys.be" })).toEqual([]);
   });
 });
 

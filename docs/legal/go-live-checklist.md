@@ -8,7 +8,7 @@ waar juridische tekst of een juridische keuze zit.
   staat leeg (studentenonderneming onder Unizo Step Up) en wordt dan nergens getoond; vul het in als Unizo zegt dat
   we het nummer van Unizo of de school moeten vermelden.
 - [ ] Engelse vertaling van de voorwaarden en het privacybeleid laten nakijken (`core/locale/messages/en.ts`).
-- [ ] Algemene voorwaarden nagekeken door jurist/Unizo; concept-banner weg uit `LegalPage`.
+- [x] Algemene voorwaarden nagekeken door jurist/Unizo; concept-banner weg uit `LegalPage` (november 2026).
 - [ ] `TERMS_VERSION` in `src/data/checkout.ts` bijgewerkt; oude versies blijven raadpleegbaar.
 - [ ] Privacybeleid nagekeken, klopt met `docs/gdpr/register.md` en `docs/gdpr/subprocessors.md` (nog op te maken).
 - [x] Pagina's `/verzendbeleid`, `/retourbeleid` (ook garantie en klachten) en `/contactgegevens`.

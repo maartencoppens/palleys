@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { BatchStatus, OrderStatus, PaymentStatus, PreviewStatus } from "@/db/generated/enums";
 import { animalSchema, attachmentSchema, editionSchema } from "@/core/modules/cart/types";
 import { phoneSchema, safeText } from "@/core/modules/checkout/types";
-import { FIELD_LIMITS, MAX_NOTES_LENGTH } from "@/data/checkout";
+import { FIELD_LIMITS, MAX_ADMIN_NOTES_LENGTH, MAX_NOTES_LENGTH } from "@/data/checkout";
 import { MANUAL_PAYMENT_METHODS } from "@/data/payment-methods";
 import { MAX_LINE_QUANTITY, MAX_ORDER_LINES, MAX_PRODUCT_PRICE_CENTS } from "@/data/pricing";
 import { MAX_SHIPPING_PRICE_CENTS, POSTAL_CODE_PATTERNS } from "@/data/shipping";
@@ -160,6 +160,14 @@ export const orderStatusActionSchema = z.object({
 
 export const itemCheckInSchema = z.object({ checked: z.boolean() });
 
+/** The team's notepad on an order. Empty clears it. */
+export const orderNotesSchema = z.object({
+  notes: z
+    .string()
+    .max(MAX_ADMIN_NOTES_LENGTH, `Maximaal ${MAX_ADMIN_NOTES_LENGTH} tekens`)
+    .transform((value) => value.trim()),
+});
+
 export type ManualOrderInput = z.infer<typeof manualOrderSchema>;
 // What the form sends, before the schema's transforms fill in the defaults.
 export type ManualOrderRequest = z.input<typeof manualOrderSchema>;
@@ -222,6 +230,8 @@ export type AdminOrderDetail = {
   /** May we use the photo and the Palley for marketing (art. 5.4); null = never given or withdrawn. */
   photoMarketingConsentAt: string | null;
   attentionReason: string | null;
+  /** The team's notepad: never shown to the customer. */
+  adminNotes: { text: string; updatedAt: string | null; updatedBy: string | null };
   confirmationSentAt: string | null;
   paidAt: string | null;
   createdAt: string;

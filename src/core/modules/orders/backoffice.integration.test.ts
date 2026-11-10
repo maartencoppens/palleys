@@ -87,8 +87,8 @@ const {
   updateCollectible,
 } = await import("@/core/modules/collectibles/service");
 const { collectibleInputSchema } = await import("@/core/modules/collectibles/types");
-const { createManualOrder, setItemCheckIn, updateOrderStatus } = await import("./admin");
-const { getOrderForAdmin, listOrdersForCheckIn } = await import("./service");
+const { createManualOrder, setItemCheckIn, updateOrderNotes, updateOrderStatus } = await import("./admin");
+const { getOrderForAdmin, listOrdersForAdmin, listOrdersForCheckIn } = await import("./service");
 const { confirmProcessedUpload, getCollectiblePrintQueue } = await import("@/core/modules/print-prep/service");
 const { approvePreview, setPromptOverride, uploadPose } = await import("@/core/modules/previews/service");
 const { updateSettingsSection, getShopSettings } = await import("@/core/modules/settings/service");
@@ -454,6 +454,21 @@ describe("adding an order by hand", () => {
     await prisma.order.update({ where: { id: orderId }, data: { createdBy: null } });
     await expect(recordManualPayment(orderId, "cash", ADMIN, { sendConfirmation: false })).rejects.toBeInstanceOf(ManualPaymentNotAllowedError);
     await expect(createManualOrderPaymentLink(orderId)).rejects.toBeInstanceOf(ManualPaymentNotAllowedError);
+  });
+});
+
+describe("the team notepad on an order", () => {
+  it("keeps who wrote it, finds the order by it, and an empty text clears it", async () => {
+    const { orderId, number } = await addOrder();
+    const handle = `@palley_fan_${Date.now()}`;
+
+    const saved = await updateOrderNotes(orderId, `Haalt op, DM via Instagram: ${handle}`, ADMIN);
+    expect(saved).toMatchObject({ text: `Haalt op, DM via Instagram: ${handle}`, updatedBy: ADMIN });
+    expect((await getOrderForAdmin(orderId))?.adminNotes.text).toContain(handle);
+    expect((await listOrdersForAdmin({ q: handle })).map((order) => order.number)).toEqual([number]);
+
+    expect((await updateOrderNotes(orderId, "", ADMIN)).text).toBe("");
+    expect((await prisma.order.findUniqueOrThrow({ where: { id: orderId } })).adminNotes).toBeNull();
   });
 });
 

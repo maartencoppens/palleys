@@ -37,6 +37,8 @@ export const CART_COOKIE = "palleys_cart";
 export const CART_TTL_MS = 10 * 24 * 60 * 60 * 1000;
 
 export const MAX_NOTES_LENGTH = 500;
+// The team's own notepad per order in the backoffice (e.g. who picks it up, their Instagram name).
+export const MAX_ADMIN_NOTES_LENGTH = 5000;
 
 // Field limits for customer details.
 export const FIELD_LIMITS = {

@@ -93,6 +93,8 @@ export const companySettingsSchema = z.object({
   address: z.string().trim().min(1).max(200),
   enterpriseNumber: z.string().trim().max(40), // empty: we have none
   email: z.email().max(FIELD_LIMITS.email),
+  // Saved before this field existed: the Gmail from data/company.ts. Empty: team mails only go to `email`.
+  teamEmail: z.union([z.literal(""), z.email().max(FIELD_LIMITS.email)]).default(COMPANY.teamEmail),
   phone: z.string().trim().max(FIELD_LIMITS.phone),
   // Saved before this field existed: the starting address from data/company.ts.
   returnAddress: z.string().trim().max(200).default(COMPANY.returnAddress),
@@ -116,6 +118,11 @@ export const SETTINGS_SECTION_SCHEMAS = {
 
 export type SettingsSection = keyof typeof SETTINGS_SECTION_SCHEMAS;
 export type SettingsSectionInput<S extends SettingsSection> = z.infer<(typeof SETTINGS_SECTION_SCHEMAS)[S]>;
+
+/** The extra inbox that gets a copy (cc) of every team mail, when it differs from the company address. */
+export function teamMailCc(company: Pick<CompanySettings, "email" | "teamEmail">): string[] {
+  return company.teamEmail && company.teamEmail.toLowerCase() !== company.email.toLowerCase() ? [company.teamEmail] : [];
+}
 
 export function isSettingsSection(value: string): value is SettingsSection {
   return Object.hasOwn(SETTINGS_SECTION_SCHEMAS, value);

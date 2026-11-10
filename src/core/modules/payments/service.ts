@@ -13,6 +13,7 @@ import { syncBatchAfterOrderMove } from "@/core/modules/batches/sync";
 import { maskEmail } from "@/core/modules/orders/utils";
 import { localizedPath, toLocale } from "@/core/locale/config";
 import { getShopSettings } from "@/core/modules/settings/service";
+import { teamMailCc } from "@/core/modules/settings/types";
 import { findAnimal } from "@/core/modules/animals/utils";
 import type { AnimalOption } from "@/core/modules/animals/types";
 import { MANUAL_PAYMENT_PROVIDER, type ManualPaymentMethod } from "@/data/payment-methods";
@@ -353,7 +354,7 @@ async function mailTeamAboutNewOrder(orderId: string, problems: string[]) {
   try {
     const { company } = await getShopSettings();
     const mail = buildNewOrderTeamMail(order, `${env.APP_URL}/admin/orders/${orderId}`, problems);
-    const sent = await sendEmail({ to: company.email, ...mail, idempotencyKey: `order-team-${orderId}` });
+    const sent = await sendEmail({ to: company.email, cc: teamMailCc(company), ...mail, idempotencyKey: `order-team-${orderId}` });
     if (!sent) console.warn(`[payments] team mail for ${order.number} not sent: e-mail is not configured`);
   } catch (error) {
     console.error(`[payments] team mail for ${order.number} failed:`, error instanceof Error ? error.message : error);

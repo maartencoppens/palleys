@@ -22,6 +22,29 @@ function ArrowRight() {
   );
 }
 
+/* One line icon per step (photo, colour, check, hand), drawn on a 24px grid with currentColor. */
+const stepIcons = [
+  <>
+    <rect x="3" y="5" width="18" height="15" rx="3" />
+    <circle cx="12" cy="12.5" r="3.5" />
+    <path d="M8 5l1.5-2h5L16 5" />
+  </>,
+  <>
+    <path d="M12 3c3.5 4.2 6 7.6 6 10.5a6 6 0 0 1-12 0C6 10.6 8.5 7.2 12 3z" />
+    <path d="M9.5 14.5a2.5 2.5 0 0 0 2.5 2.5" />
+  </>,
+  <>
+    <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+    <path d="M9.5 12l1.8 1.8L15 10" />
+  </>,
+  <>
+    <path d="M7 12V6.5a1.5 1.5 0 0 1 3 0V11" />
+    <path d="M10 10.5V4.5a1.5 1.5 0 0 1 3 0v6" />
+    <path d="M13 10.5V5.5a1.5 1.5 0 0 1 3 0V12" />
+    <path d="M16 11.5V8.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7h-.5a6.5 6.5 0 0 1-5.2-2.6L3.6 14.8a1.6 1.6 0 0 1 2.4-2.1L7 13.7" />
+  </>,
+];
+
 /*
  * "Made in Gent" (Figma: made-in-gent, 1440×864): workshop photo next to a green panel, with large
  * rounded corners top-right and bottom-left that reveal the page background of the section above.
@@ -29,6 +52,9 @@ function ArrowRight() {
  * photo fills whatever height the panel leaves, at least 4:3; on phones the panel keeps roomy spacing, so the section
  * can run slightly taller than one screen there. Like the other sections it stops at 1440px; on wider screens the page
  * background shows on both sides.
+ *
+ * The four steps are tiles with an icon (two columns from 640px) rather than a run of paragraphs, so the panel
+ * scans at a glance. All text on the green is off-white; the pink from Figma was too faint to read.
  */
 export default async function MadeInGent() {
   const { madeInGent: m } = await getMessages();
@@ -67,21 +93,35 @@ export default async function MadeInGent() {
 
         <p
           data-animate="fade-up"
-          className="max-w-[620px] text-base leading-[1.6] text-pink md:text-lg"
+          className="max-w-[620px] text-base leading-[1.6] text-off-white/85 md:text-lg"
         >
           {m.text}
         </p>
 
-        <ul data-animate="stagger" className="w-full max-w-[620px] text-pink">
-          {m.steps.map((step) => (
+        <ul data-animate="stagger" className="grid w-full max-w-[620px] gap-3 sm:grid-cols-2">
+          {m.steps.map((step, index) => (
             <li
               key={step.title}
-              className="flex flex-col gap-1.5 border-t border-pink py-4 md:py-5"
+              className="flex flex-col gap-2 rounded-2xl bg-off-white/[0.07] p-4 ring-1 ring-off-white/10 md:p-5"
             >
-              <h3 className="font-label text-lg leading-[1.25] font-semibold tracking-[-0.2px] md:text-xl">
+              <span className="grid size-10 place-items-center rounded-full bg-title-accent text-medium-green">
+                <svg
+                  className="size-[22px]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden
+                >
+                  {stepIcons[index]}
+                </svg>
+              </span>
+              <h3 className="font-label text-lg leading-[1.25] font-semibold tracking-[-0.2px] text-off-white">
                 {step.title}
               </h3>
-              <p className="text-base leading-[1.6]">{step.text}</p>
+              <p className="text-[15px] leading-[1.5] text-off-white/75">{step.text}</p>
             </li>
           ))}
         </ul>

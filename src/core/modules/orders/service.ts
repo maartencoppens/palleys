@@ -65,6 +65,8 @@ export async function listOrdersForAdmin(query: OrderListQuery): Promise<AdminOr
       { email: { contains: query.q, mode: "insensitive" } },
       { firstName: { contains: query.q, mode: "insensitive" } },
       { lastName: { contains: query.q, mode: "insensitive" } },
+      // The team notes too: finds the order by the Instagram name someone picked it up with.
+      { adminNotes: { contains: query.q, mode: "insensitive" } },
     ];
   }
 
@@ -256,6 +258,11 @@ export async function getOrderForAdmin(id: string): Promise<AdminOrderDetail | n
     marketingOptIn: order.marketingOptIn,
     photoMarketingConsentAt: order.photoMarketingConsent ? (order.photoMarketingConsentAt?.toISOString() ?? null) : null,
     attentionReason: order.attentionReason,
+    adminNotes: {
+      text: order.adminNotes ?? "",
+      updatedAt: order.adminNotesUpdatedAt?.toISOString() ?? null,
+      updatedBy: order.adminNotesUpdatedBy,
+    },
     confirmationSentAt: order.confirmationSentAt?.toISOString() ?? null,
     paidAt: order.paidAt?.toISOString() ?? null,
     createdAt: order.createdAt.toISOString(),

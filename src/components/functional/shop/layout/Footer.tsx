@@ -230,18 +230,15 @@ export default async function Footer({
                   className="group flex items-center gap-2.5 border-b border-light-green py-s text-xl leading-[19.5px] font-bold transition-colors hover:border-accent-highlights md:text-2xl"
                 >
                   {m.charityLink}
-                  <span
-                    className="grid h-[33.935px] w-[35.969px] place-items-center"
+                  {/* The same straight arrow as the other text links (it stays on the site, so no diagonal "outside" arrow). */}
+                  <Image
+                    className="shrink-0 transition-transform group-hover:translate-x-1"
+                    src="/images/arrow-sm.svg"
+                    width={19.5}
+                    height={15.5}
+                    alt=""
                     aria-hidden
-                  >
-                    <Image
-                      className="max-w-none -rotate-[31.9deg] transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-                      src="/images/arrow-diagonal.svg"
-                      width={30.0476}
-                      height={23.7037}
-                      alt=""
-                    />
-                  </span>
+                  />
                 </Link>
               </div>
             </div>

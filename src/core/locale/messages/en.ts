@@ -131,12 +131,12 @@ export const en: Messages = {
   madeInGent: {
     tag: "Made in Ghent",
     title: "Designed and finished in Ghent",
-    text: "Every Palley begins as a photo and ends up on someone’s keys. In between, we, a team of students from Ghent, carefully work through every step.",
+    text: "Every Palley begins as a photo and ends up on someone’s keys. In between: our student team from Ghent.",
     steps: [
-      { title: "Designed from your photo", text: "Spots, colours and that one floppy ear: we make an exact version of your pet, not a standard model." },
-      { title: "Printed in full colour", text: "Thanks to full-colour resin printing, all the colours are in the print itself. No paint, no wrong shades." },
-      { title: "Checked by humans", text: "We use AI to turn your photos into a custom 3D model. We check every step ourselves, and if something isn’t right, we start over." },
-      { title: "Finished by hand", text: "Chain attached, final check, carefully packed and on its way to you." },
+      { title: "Made from your photo", text: "Spots, colours, that one floppy ear: not a standard model, but your pet." },
+      { title: "Printed in full colour", text: "The colours are in the resin print itself. No paint, no wrong shades." },
+      { title: "Checked by humans", text: "AI builds the 3D model, we check every step. Something off? We start over." },
+      { title: "Finished by hand", text: "Chain attached, final check and carefully packed." },
     ],
     link: "Read our story",
     photoAlt: "A maker finishes a 3D-printed corgi by hand, with a resin printer in the background",
@@ -273,9 +273,8 @@ export const en: Messages = {
       animalError: "Choose your type of pet.",
       edition: "Keychain or figurine?",
       attachment: "How do you want to attach it to your keys?",
-      size: "About {size} on the longest side.",
-      sizeTitle: "How big is a Palley?",
-      sizeCompare: "A little bigger than a €2 coin.",
+      size: "About {size}: a little bigger than a €2 coin.",
+      sizeTitle: "This is how big a Palley is",
       keychainHint: "The keychain comes with a chain and a clip or key ring, your choice.",
     },
     upload: {
@@ -304,7 +303,7 @@ export const en: Messages = {
       quality: {
         great: "Great, nice and sharp!",
         ok: "Looks good.",
-        small: "This photo is quite small: a sharper one gives a better result.",
+        small: "Low resolution: a photo with more pixels gives a sharper result.",
         unknown: "We’ll check the quality for you.",
       },
     },
@@ -752,7 +751,6 @@ export const en: Messages = {
 
   legal: {
     eyebrow: "Legal",
-    concept: "Draft: this text is still being reviewed by a lawyer.",
     // LEGAL-REVIEW: translation of the privacy policy of 9 November 2026; see the Dutch text for what changed.
     privacy: {
       title: "Privacy policy",

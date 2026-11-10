@@ -8,7 +8,11 @@ const FACT_ICONS = {
 } as const;
 const FACTS = ["factGhent", "factSchool", "factCharity"] as const;
 
-/* "A real student company" (Figma: student-company): yellow card with a graduation-cap badge and fact pills. */
+/*
+ * "A real student company" (Figma: student-company): yellow card with a graduation-cap badge and fact pills.
+ * On phones the text column may never be wider than the card (min-w-0): "studentenonderneming" in the display font is
+ * wider than a phone's card, so the title is a size smaller there and long words may hyphenate.
+ */
 export default async function StudentCompany() {
   const { about } = await getMessages();
   const m = about.student;
@@ -22,11 +26,11 @@ export default async function StudentCompany() {
           <Image className="w-[60%] md:w-auto" src="/images/about/cap.svg" width={58.6667} height={43.3333} alt="" />
         </span>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex w-full min-w-0 flex-col gap-4">
           <p className="font-label text-lg font-bold text-orange">{m.tag}</p>
           <h2
             id="student-title"
-            className="font-display text-[26px] leading-[1.2] font-bold text-medium-green md:text-[32px]"
+            className="font-display text-[22px] leading-[1.2] font-bold [overflow-wrap:break-word] text-medium-green hyphens-auto min-[400px]:text-[26px] md:text-[32px]"
           >
             {m.title}
           </h2>

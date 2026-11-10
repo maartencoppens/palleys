@@ -6,6 +6,8 @@ export const COMPANY = {
   address: "Bernheimlaan 26, 9050 Gentbrugge, België",
   enterpriseNumber: "",
   email: "hallo@palleys.be",
+  // Also gets the team mails (contact form, new orders, returns) as cc: a Gmail is easier to follow than the Combell inbox.
+  teamEmail: "palleys.team@gmail.com",
   phone: "+32 476 28 68 13",
   // LEGAL-REVIEW: where a withdrawn Palley goes back to (return policy). Emptied in the settings: /retour shows a placeholder.
   returnAddress: "Bernheimlaan 26, 9050 Gentbrugge",
