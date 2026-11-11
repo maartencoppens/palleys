@@ -1,7 +1,10 @@
+import Link from "next/link";
 import { requireAdminPage } from "@/core/modules/auth/service";
 import { paymentProvider } from "@/core/modules/payments/providers";
-import { BANCONTACT_CALLBACK_PATH } from "@/core/modules/payments/providers/bancontact";
+import { STRIPE_WEBHOOK_PATH } from "@/core/modules/payments/providers/stripe";
+import { STRIPE_WEBHOOK_EVENTS } from "@/core/modules/payments/providers/stripe-session";
 import { isEmailConfigured } from "@/core/networking/external/email-client";
+import { stripeKeyMode } from "@/core/networking/external/stripe-client";
 import { env } from "@/core/utils/env";
 import { TERMS_VERSION } from "@/data/checkout";
 import { Badge } from "@/components/design/Badge";
@@ -9,42 +12,48 @@ import { SettingsHeader } from "@/components/functional/admin/settings/SettingsP
 
 export const instant = false;
 
+// Only whether something is set and in which mode: never a key, secret or configuration id itself.
 export default async function AdminIntegrationsPage() {
   await requireAdminPage();
   const mode = paymentProvider.mode();
   const fake = paymentProvider.name === "fake";
-  const callbackReachable = env.APP_URL.startsWith("https://") && !["localhost", "127.0.0.1"].includes(new URL(env.APP_URL).hostname);
+  const keyMode = stripeKeyMode();
+  const restricted = env.STRIPE_SECRET?.startsWith("rk_") ?? false;
 
   const status = [
     {
-      label: "Bancontact Pro (KBC)",
-      value: fake ? "Testbetalingen, geen echt geld" : mode === "live" ? "Productie" : mode === "test" ? "Preprod (test)" : "Niet gekoppeld",
+      label: "Betalingen (Stripe)",
+      value: fake ? "Testbetalingen, geen echt geld" : mode === "live" ? "Live" : mode === "test" ? "Testmodus" : "Niet gekoppeld",
       tone: mode === "live" && !fake ? "success" : mode === "test" ? "waiting" : "danger",
       hint: fake
         ? "PAYMENT_PROVIDER=fake: alleen lokaal, staat in productie altijd uit"
         : mode
-        ? `BANCONTACT_ENV=${env.BANCONTACT_ENV}`
-        : "Zet BANCONTACT_API_KEY en BANCONTACT_PAYMENT_PROFILE_ID in .env (portal.bancontactpro.com) en herstart",
+          ? "Sleutel, webhook-secret en betaalmethode-configuratie zijn ingesteld"
+          : "Zet STRIPE_SECRET, STRIPE_WEBHOOK_SECRET en STRIPE_PAYMENT_METHOD_CONFIG in .env en herstart",
     },
     {
-      label: "Payment profile",
-      value: env.BANCONTACT_PAYMENT_PROFILE_ID ? "Ingesteld" : "Niet ingesteld",
-      tone: env.BANCONTACT_PAYMENT_PROFILE_ID ? "success" : "danger",
-      hint: "Elke callback moet voor dit profiel ondertekend zijn",
+      label: "STRIPE_SECRET",
+      value: keyMode ? `Ingesteld (${keyMode === "live" ? "live" : "test"}${restricted ? ", restricted key" : ""})` : "Niet ingesteld",
+      tone: keyMode === "live" ? "success" : keyMode === "test" ? "waiting" : "danger",
+      hint: "sk_test_… / sk_live_… (of rk_…), uit Developers → API keys",
     },
     {
-      label: "Callback",
-      value: callbackReachable ? `${env.APP_URL}${BANCONTACT_CALLBACK_PATH}` : "Lokaal: geen callback",
-      tone: callbackReachable ? "success" : "waiting",
-      hint: callbackReachable
-        ? "Bancontact meldt hier elke statuswijziging (ondertekend, wordt gecontroleerd)"
-        : "Bancontact kan localhost niet bereiken; de return-pagina vraagt de status zelf op",
+      label: "STRIPE_WEBHOOK_SECRET",
+      value: env.STRIPE_WEBHOOK_SECRET ? "Ingesteld" : "Niet ingesteld",
+      tone: env.STRIPE_WEBHOOK_SECRET ? "success" : "danger",
+      hint: "whsec_…: lokaal van `stripe listen`, in productie van het webhook-endpoint in het dashboard",
     },
     {
-      label: "Return-URL",
-      value: env.APP_URL.startsWith("https://") ? "https: in orde" : "Geen https",
-      tone: env.APP_URL.startsWith("https://") ? "success" : "danger",
-      hint: "Bancontact aanvaardt enkel https. Lokaal: npm run dev:https met APP_URL=https://localhost:3000",
+      label: "STRIPE_PAYMENT_METHOD_CONFIG",
+      value: env.STRIPE_PAYMENT_METHOD_CONFIG ? "Ingesteld" : "Niet ingesteld",
+      tone: env.STRIPE_PAYMENT_METHOD_CONFIG ? "success" : "danger",
+      hint: "pmc_…: test- en live-modus hebben elk hun eigen configuratie",
+    },
+    {
+      label: "Webhook-endpoint",
+      value: `${env.APP_URL}${STRIPE_WEBHOOK_PATH}`,
+      tone: "neutral",
+      hint: `In het Stripe-dashboard (Developers → Webhooks) met de events: ${STRIPE_WEBHOOK_EVENTS.join(", ")}. Lokaal: stripe listen --forward-to localhost:3000${STRIPE_WEBHOOK_PATH}`,
     },
     {
       label: "Bevestigingsmails",
@@ -64,6 +73,13 @@ export default async function AdminIntegrationsPage() {
   return (
     <>
       <SettingsHeader title="Koppelingen" intro="Alleen-lezen: geheimen staan in de .env van de server." />
+      <p className="text-sm">
+        Welke betaalmethodes klanten zien, stel je in onder{" "}
+        <Link href="/admin/settings/payment-methods" className="font-semibold underline">
+          Betaalmethodes
+        </Link>
+        .
+      </p>
       <section className="rounded-3xl bg-white p-6 md:p-8">
         <dl className="grid gap-6 text-sm md:grid-cols-2">
           {status.map((row) => (

@@ -26,7 +26,7 @@ type ManualOrderFormProps = {
   catalog: CatalogSettings;
   collectibles: CollectibleView[];
   deliveryOptions: ManualOrderDeliveryOption[];
-  /** False until Bancontact Pro is approved and its keys are set. */
+  /** False until Stripe's keys are set. */
   paymentsAvailable: boolean;
 };
 
@@ -54,7 +54,7 @@ type CollectibleLine = {
 };
 type Line = PersonalizedLine | CollectibleLine;
 
-type PaymentChoice = "bancontact" | "paid" | "later";
+type PaymentChoice = "link" | "paid" | "later";
 type UploadFailure = { orderId: string; number: string; failed: number };
 
 const selectClassName =
@@ -86,7 +86,7 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
   const [houseNumber, setHouseNumber] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [city, setCity] = useState("");
-  const [payment, setPayment] = useState<PaymentChoice>(paymentsAvailable ? "bancontact" : "later");
+  const [payment, setPayment] = useState<PaymentChoice>(paymentsAvailable ? "link" : "later");
   const [method, setMethod] = useState<ManualPaymentMethod>("cash");
   const [sendConfirmation, setSendConfirmation] = useState(true);
   const [note, setNote] = useState("");
@@ -146,7 +146,7 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
       if (!street.trim() || !houseNumber.trim() || !city.trim()) return "Vul het volledige leveradres in";
       if (!/^[1-9]\d{3}$/.test(postalCode.trim())) return "Vul een Belgische postcode in";
     }
-    if (!stockOrder && payment === "bancontact" && totalCents <= 0) return "Een gratis order kan niet met Bancontact: kies “Al betaald” en “Geschenk”";
+    if (!stockOrder && payment === "link" && totalCents <= 0) return "Een gratis order kan niet via een betaallink: kies “Al betaald” en “Geschenk”";
     return null;
   }
 
@@ -532,9 +532,9 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
             <section className={cardClassName}>
               <h2 className={cardTitleClassName}>Betaling</h2>
               <div className="mt-4 flex flex-col gap-3">
-                <Radio name="payment" checked={payment === "bancontact"} disabled={!paymentsAvailable} onChange={() => setPayment("bancontact")}>
-                  Bancontact: de klant betaalt met de app via een betaallink
-                  {!paymentsAvailable && <span className="block text-sm font-normal text-text-muted">Nog niet gekoppeld: we wachten op de goedkeuring van Bancontact Pro.</span>}
+                <Radio name="payment" checked={payment === "link"} disabled={!paymentsAvailable} onChange={() => setPayment("link")}>
+                  Betaallink: de klant betaalt met Bancontact of iDEAL | Wero
+                  {!paymentsAvailable && <span className="block text-sm font-normal text-text-muted">Nog niet gekoppeld: Stripe is nog niet ingesteld (zie Koppelingen).</span>}
                 </Radio>
                 <Radio name="payment" checked={payment === "later"} onChange={() => setPayment("later")}>
                   Later betalen: de order blijft open tot je ze als betaald markeert of een betaallink maakt
@@ -616,7 +616,7 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
             ) : (
               <p className="text-sm text-text-muted">
                 {email.trim()
-                  ? payment === "bancontact"
+                  ? payment === "link"
                     ? "De klant krijgt een bevestigingsmail zodra de betaling binnen is."
                     : "Je kiest of er een bevestigingsmail vertrekt wanneer je de order als betaald markeert."
                   : "Zonder e-mailadres krijgt de klant geen bevestigingsmail."}

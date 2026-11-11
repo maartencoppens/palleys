@@ -1,6 +1,6 @@
 # Juridische go-live-checklist
 
-Live gaan (`BANCONTACT_ENV=production`) pas als alles afgevinkt is. Zoek in de code op `LEGAL-REVIEW` voor elke plek
+Live gaan (live Stripe-sleutels) pas als alles afgevinkt is. Zoek in de code op `LEGAL-REVIEW` voor elke plek
 waar juridische tekst of een juridische keuze zit.
 
 ## Bedrijf en voorwaarden
@@ -31,15 +31,17 @@ waar juridische tekst of een juridische keuze zit.
 - [x] Bevestigingsmail met ordernummer, overzicht, totaal, btw-vrijstelling, bedrijfsgegevens, link naar de geversioneerde voorwaarden.
 - [ ] Resend ingesteld in de EU-regio, domein `palleys.be` geverifieerd (DNS-records uit het Resend-dashboard, nu ontbreken ze: elke bevestigingsmail faalt) en `EMAIL_FROM` op dat domein.
 
-## Bancontact Pro (KBC)
-- [ ] Handelaarscontract getekend; toegang tot portal.bancontactpro.com; preprod- en productiesleutel ontvangen.
-- [ ] In het portaal: payment profile voor online verkoop, callback-URL `https://palleys.be/api/webhooks/bancontact`.
-- [ ] Testbetaling in preprod op de VPS: order wordt PAID, mail komt, preview staat in "Te reviewen".
-- [ ] Callback bereikbaar en handtekening klopt: in de logs `[webhook:bancontact] <id>: processed`, niet `rejected`.
-- [ ] Ongeldige callback geweigerd: `curl -i -X POST https://palleys.be/api/webhooks/bancontact -d '{}'` → 401.
+## Stripe
+- [ ] Stripe-account geactiveerd (bedrijfsgegevens, bankrekening); Bancontact en iDEAL | Wero (en Wero) geactiveerd onder Settings → Payment methods, in test én live.
+- [ ] Live payment method configuration (pmc_…) met Bancontact en iDEAL | Wero aan, kaarten/Apple Pay/Google Pay/Link uit; de id in `STRIPE_PAYMENT_METHOD_CONFIG` op de VPS.
+- [ ] Live keys op de VPS (`STRIPE_SECRET=sk_live_…` of een restricted key met de rechten uit de README).
+- [ ] Webhook-endpoint `https://palleys.be/api/webhooks/stripe` met de events `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired`, `charge.refunded`, `charge.dispute.created`; de signing secret in `STRIPE_WEBHOOK_SECRET`.
+- [ ] Testbetaling in testmodus op de VPS: order wordt PAID, mail komt, preview staat in "Te reviewen".
+- [ ] Webhook komt aan en handtekening klopt: in de logs `[webhook:stripe] cs_…: processed`, niet `rejected`; in het dashboard 200.
+- [ ] Ongeldige webhook geweigerd: `curl -i -X POST https://palleys.be/api/webhooks/stripe -d '{}'` → 400.
 - [ ] Cron ingesteld (`CRON_SECRET`, elke 10 minuten).
-- [ ] Eén echte betaling met `BANCONTACT_ENV=production`, daarna terugstorten (portaal of overschrijving).
-- [ ] Werkwijze voor terugbetalingen afgesproken (portaal; de refund-API vraagt eigen ondertekende requests, later).
+- [ ] Eén echte betaling met live keys, daarna terugbetalen in het Stripe-dashboard; de order gaat vanzelf naar REFUNDED.
+- [ ] `/admin/settings/integrations` toont "Live" en alle drie de Stripe-variabelen als ingesteld.
 
 ## Beveiliging
 - [ ] VPS: de app is alleen bereikbaar via een reverse proxy die `x-forwarded-for` aanvult (anders zijn de rate limits te omzeilen).
@@ -48,7 +50,7 @@ waar juridische tekst of een juridische keuze zit.
 - [ ] Geen makkelijk te raden kortingscodes zonder limiet in aantal of tijd.
 
 ## AVG / GDPR
-- [ ] DPA's met Bancontact/KBC, Resend, Cloudflare, Aiven, Google (betaalde Gemini API), Meshy (open punt).
+- [ ] DPA's met Stripe (Stripe-DPA, aanvaard via de Stripe Services Agreement; doorgifte buiten de EER nakijken), Resend, Cloudflare, Aiven, Google (betaalde Gemini API), Meshy (open punt).
 - [ ] EXIF/GPS uit uploads strippen (nu nog niet: uploads gaan rechtstreeks naar R2).
 - [ ] Bewaartermijnen en cleanup-job (foto's, verlopen previews, orders 7 jaar daarna anonimiseren). De FAQ belooft nu dat foto's 14 dagen na ontvangst verwijderd worden: dat gebeurt nog niet automatisch.
 - [ ] Datalekprocedure `docs/gdpr/datalek.md`.

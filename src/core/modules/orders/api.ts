@@ -2,9 +2,9 @@ import { api } from "@/core/networking/api";
 import type { OrderStatusView } from "@/core/modules/checkout/types";
 import type { AdminOrderDetail, ManualOrderRequest, ManualOrderResult, OrderStatusActionInput } from "./types";
 
-export async function fetchOrderStatus(orderId: string, token: string) {
+export async function fetchOrderStatus(orderId: string, token: string, cancelled = false) {
   const { data } = await api.get<OrderStatusView>(`/orders/${encodeURIComponent(orderId)}/status`, {
-    params: { t: token },
+    params: { t: token, ...(cancelled && { cancelled: "1" }) },
   });
   return data;
 }
@@ -49,7 +49,7 @@ export async function postManualPayment(orderId: string, method: string, sendCon
 }
 
 export async function postPaymentLink(orderId: string) {
-  const { data } = await api.post<{ checkoutUrl: string }>(`/admin/orders/${orderId}/payment`, { type: "bancontact" });
+  const { data } = await api.post<{ checkoutUrl: string }>(`/admin/orders/${orderId}/payment`, { type: "link" });
   return data;
 }
 

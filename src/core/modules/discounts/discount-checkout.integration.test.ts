@@ -2,21 +2,21 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProviderPayment } from "@/core/modules/payments/providers/types";
 
-/* Discount codes through the real checkout and database, with Bancontact, R2 and Resend mocked. */
+/* Discount codes through the real checkout and database, with Stripe, R2 and Resend mocked. */
 
 const created = vi.hoisted(() => ({ amounts: [] as number[], payments: new Map<string, ProviderPayment>() }));
 
 vi.mock("@/core/modules/payments/providers", () => ({
   paymentProvider: {
-    name: "bancontact",
+    name: "stripe",
     isConfigured: () => true,
     mode: () => "test",
-    isCheckoutUrl: (url: string) => url.startsWith("https://pay.bancontact.net/"),
+    isCheckoutUrl: (url: string) => url.startsWith("https://checkout.stripe.com/"),
     isPaymentId: () => true,
     parseCallback: async () => ({ ok: false, reason: "not used here" }),
     async createPayment(input: { amountCents: number; reference: string }) {
       created.amounts.push(input.amountCents);
-      const id = randomUUID().replaceAll("-", "").slice(0, 24);
+      const id = `cs_test_${randomUUID().replaceAll("-", "")}`;
       const payment: ProviderPayment = {
         id,
         status: "OPEN",
@@ -27,7 +27,7 @@ vi.mock("@/core/modules/payments/providers", () => ({
         refundedCents: 0,
         chargedBackCents: 0,
         reference: input.reference,
-        checkoutUrl: `https://pay.bancontact.net/?id=${id}`,
+        checkoutUrl: `https://checkout.stripe.com/c/pay/${id}`,
         snapshot: { id },
       };
       created.payments.set(id, payment);
@@ -179,7 +179,7 @@ describe("a discount at checkout", () => {
     expect(created.amounts.at(-1)).toBe((await shipping()).priceCents);
   });
 
-  it("pays an order with nothing left to pay without going to Bancontact", async () => {
+  it("pays an order with nothing left to pay without going to Stripe", async () => {
     const code = await newCode({ value: 100 });
     const option = await shipping();
     await prisma.shopSettings.create({ data: { id: 1, shippingOverrides: { [option.id]: { priceCents: 0, enabled: true } } } });

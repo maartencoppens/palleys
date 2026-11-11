@@ -24,10 +24,10 @@ import { CURRENCY } from "@/data/pricing";
 import type { CheckoutConfig, CheckoutInput, CheckoutResult, DeliveryOptionView } from "./types";
 
 /*
- * Checkout: cart → order (PENDING_PAYMENT) → Bancontact Pro payment → hosted checkout URL.
+ * Checkout: cart → order (PENDING_PAYMENT) → Stripe Checkout Session → hosted checkout URL.
  * Everything that costs money is decided here, from the cart cookie and src/data: the client only supplies the
  * customer's details, a delivery option id and the terms checkbox. The order is only ever marked paid by
- * payments/service.ts after asking Bancontact itself (callback or return page), never because of the redirect.
+ * payments/service.ts after asking Stripe itself (webhook or return page), never because of the redirect.
  */
 
 export type CheckoutErrorCode =
@@ -203,11 +203,11 @@ export async function startCheckout(cartToken: string | null, input: CheckoutInp
         },
         statusChanges: { create: { fromStatus: null, toStatus: "PENDING_PAYMENT", source: "checkout" } },
       },
-      select: { id: true, number: true, totalCents: true, locale: true },
+      select: { id: true, number: true, totalCents: true, locale: true, email: true },
     });
   });
 
-  // Nothing to pay (a 100% code with free delivery): Bancontact can't charge € 0, so there's no payment to wait for.
+  // Nothing to pay (a 100% code with free delivery): Stripe can't charge € 0, so there's no payment to wait for.
   if (order.totalCents === 0) {
     await completeFreeOrder(order.id, order.number);
     return { checkoutUrl: orderReturnUrl(order.id, statusToken, order.locale) };

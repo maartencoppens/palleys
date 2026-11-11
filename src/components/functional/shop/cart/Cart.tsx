@@ -321,7 +321,7 @@ export default function Cart({ deliveryTime, returnNote, animals, editions }: Ca
           <p className="text-sm leading-[1.5] text-text-primary">{m.summary.exclShipping}</p>
         </div>
 
-        {/* Leads to our checkout (address, delivery, then Bancontact). On phones the sticky bar below takes over. */}
+        {/* Leads to our checkout (address, delivery, then Stripe). On phones the sticky bar below takes over. */}
         <div className="hidden flex-col gap-3 lg:flex">
           {checkout}
           <p className="flex items-center justify-center gap-2 text-sm text-text-primary">

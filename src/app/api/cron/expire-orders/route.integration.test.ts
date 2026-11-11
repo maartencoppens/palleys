@@ -3,7 +3,7 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 
 /*
  * The cron route as the VPS calls it: the bearer secret, and every job in one run (unpaid orders, carts, rate limits,
- * /retour links, retention), against the local database with R2 and Bancontact mocked.
+ * /retour links, retention), against the local database with R2 and Stripe mocked.
  */
 
 const SECRET = "test-cron-secret-0123456789abcdef0123456789";
@@ -16,7 +16,7 @@ vi.mock("@/core/networking/external/storage-client", () => ({
   objectExists: async () => true,
 }));
 vi.mock("@/core/modules/payments/providers", () => ({
-  paymentProvider: { name: "bancontact", getPayment: async () => { throw new Error("not called in this test"); } },
+  paymentProvider: { name: "stripe", getPayment: async () => { throw new Error("not called in this test"); } },
 }));
 
 const { prisma } = await import("@/db/client");

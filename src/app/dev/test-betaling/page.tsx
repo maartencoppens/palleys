@@ -16,7 +16,7 @@ const searchSchema = z.object({
   return: z.url({ protocol: /^https?$/ }),
 });
 
-/* Stands in for Bancontact's hosted page when PAYMENT_PROVIDER=fake. Not there at all otherwise. */
+/* Stands in for Stripe's hosted payment page when PAYMENT_PROVIDER=fake. Not there at all otherwise. */
 export default async function FakePaymentPage({ searchParams }: PageProps<"/dev/test-betaling">) {
   if (!fakePaymentsEnabled) notFound();
   const parsed = searchSchema.safeParse(await searchParams);
@@ -27,7 +27,7 @@ export default async function FakePaymentPage({ searchParams }: PageProps<"/dev/
     <main className="flex min-h-screen items-center justify-center bg-medium-green px-5 py-10 font-body text-text-primary">
       <div className="flex w-full max-w-md flex-col gap-5 rounded-3xl bg-off-white p-6 md:p-10">
         <p className="rounded-2xl bg-light-yellow px-4 py-3 font-label text-sm font-bold text-medium-green">
-          Testbetaling: dit is niet Bancontact en er gaat geen echt geld om.
+          Testbetaling: dit is niet Stripe en er gaat geen echt geld om.
         </p>
         <div>
           <p className="font-label text-sm font-semibold text-text-muted">Te betalen voor {reference}</p>

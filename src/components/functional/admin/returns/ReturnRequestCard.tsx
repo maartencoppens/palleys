@@ -28,9 +28,9 @@ function nextStep(request: AdminReturnRequest) {
     return "Herprint gaat mee in een volgende batch. Afronden zodra hij verstuurd is.";
   }
   if (request.type === "WITHDRAWAL" && request.itemsReceived) {
-    return "Wacht op het pakje of het verzendbewijs, betaal dan terug via het Bancontact Pro-portaal (incl. standaardverzendkosten) en rond af.";
+    return "Wacht op het pakje of het verzendbewijs, betaal dan terug in het Stripe-dashboard (incl. standaardverzendkosten) en rond af.";
   }
-  return "Betaal terug via het Bancontact Pro-portaal en rond af.";
+  return "Betaal terug in het Stripe-dashboard en rond af.";
 }
 
 /* One return request in the backoffice: what the customer asked, their photos, and the team's three steps. */

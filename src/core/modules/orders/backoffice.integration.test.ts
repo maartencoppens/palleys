@@ -4,21 +4,21 @@ import type { ProviderPayment } from "@/core/modules/payments/providers/types";
 import { parseInvoiceNumber, parseOrderRef } from "@/core/utils/naming";
 
 /*
- * The backoffice over our own code, against the local database, with Bancontact, R2 and Resend mocked: collectibles from
+ * The backoffice over our own code, against the local database, with Stripe, R2 and Resend mocked: collectibles from
  * the shop's cart to a paid order, orders added by hand, and the check-in that gets an order out of the door.
  */
 
-const bancontact = vi.hoisted(() => ({ payments: new Map<string, ProviderPayment>(), configured: true }));
+const stripe = vi.hoisted(() => ({ payments: new Map<string, ProviderPayment>(), configured: true }));
 
 vi.mock("@/core/modules/payments/providers", () => ({
   paymentProvider: {
-    name: "bancontact",
-    isConfigured: () => bancontact.configured,
+    name: "stripe",
+    isConfigured: () => stripe.configured,
     mode: () => "test",
-    isCheckoutUrl: (url: string) => url.startsWith("https://pay.bancontact.net/"),
-    isPaymentId: (id: string) => /^[A-Za-z0-9]{16,40}$/.test(id),
+    isCheckoutUrl: (url: string) => url.startsWith("https://checkout.stripe.com/"),
+    isPaymentId: (id: string) => /^cs_(test|live)_[A-Za-z0-9]+$/.test(id),
     async createPayment(input: { amountCents: number; reference: string }) {
-      const id = randomUUID().replaceAll("-", "").slice(0, 24);
+      const id = `cs_test_${randomUUID().replaceAll("-", "")}`;
       const payment: ProviderPayment = {
         id,
         status: "OPEN",
@@ -29,14 +29,14 @@ vi.mock("@/core/modules/payments/providers", () => ({
         refundedCents: 0,
         chargedBackCents: 0,
         reference: input.reference,
-        checkoutUrl: `https://pay.bancontact.net/?checkoutApi=${id}`,
+        checkoutUrl: `https://checkout.stripe.com/c/pay/${id}`,
         snapshot: { id },
       };
-      bancontact.payments.set(id, payment);
+      stripe.payments.set(id, payment);
       return payment;
     },
     async getPayment(id: string) {
-      const payment = bancontact.payments.get(id);
+      const payment = stripe.payments.get(id);
       if (!payment) throw new Error("not found");
       return payment;
     },
@@ -149,7 +149,7 @@ const loadOrder = (id: string) =>
   });
 
 beforeEach(async () => {
-  bancontact.configured = true;
+  stripe.configured = true;
   mail.sent.length = 0;
   await prisma.shopSettings.deleteMany({ where: { id: 1 } });
 });
@@ -252,7 +252,7 @@ describe("collectibles", () => {
     const payment = await prisma.payment.findFirstOrThrow({ where: { checkoutUrl } });
     createdOrders.add(payment.orderId);
 
-    bancontact.payments.set(payment.providerPaymentId, { ...bancontact.payments.get(payment.providerPaymentId)!, status: "PAID" });
+    stripe.payments.set(payment.providerPaymentId, { ...stripe.payments.get(payment.providerPaymentId)!, status: "PAID" });
     expect(await handlePaymentWebhook(payment.providerPaymentId)).toMatchObject({ outcome: "processed", orderStatus: "PAID" });
 
     const order = await loadOrder(payment.orderId);
@@ -388,9 +388,9 @@ describe("the order page", () => {
   });
 
   it("offers the open payment link, and only that", async () => {
-    const { orderId } = await addOrder({ payment: { type: "bancontact" } });
+    const { orderId } = await addOrder({ payment: { type: "link" } });
     const order = await getOrderForAdmin(orderId);
-    expect(order?.payments[0].checkoutUrl).toMatch(/^https:\/\/pay\.bancontact\.net\//);
+    expect(order?.payments[0].checkoutUrl).toMatch(/^https:\/\/checkout\.stripe\.com\//);
     await prisma.payment.updateMany({ where: { orderId }, data: { status: "EXPIRED" } });
     expect((await getOrderForAdmin(orderId))?.payments[0].checkoutUrl).toBeNull();
   });
@@ -457,13 +457,13 @@ describe("adding an order by hand", () => {
     });
   });
 
-  it("refuses a Bancontact order until Bancontact Pro is connected, and a free one", async () => {
-    bancontact.configured = false;
-    await expect(createManualOrder(manualOrder({ payment: { type: "bancontact" } }), ADMIN)).rejects.toThrow("nog niet gekoppeld");
+  it("refuses a payment-link order until Stripe is connected, and a free one", async () => {
+    stripe.configured = false;
+    await expect(createManualOrder(manualOrder({ payment: { type: "link" } }), ADMIN)).rejects.toThrow("nog niet gekoppeld");
 
-    bancontact.configured = true;
+    stripe.configured = true;
     const free = manualOrder({
-      payment: { type: "bancontact" },
+      payment: { type: "link" },
       lines: [{ kind: "personalized", animal: "cat", edition: "figure", quantity: 1, unitCents: 0 }],
     });
     await expect(createManualOrder(free, ADMIN)).rejects.toThrow("gratis");
@@ -493,19 +493,19 @@ describe("adding an order by hand", () => {
     expect(mail.sent).toHaveLength(0);
   });
 
-  it("pays through a Bancontact link, and the order stays open when a link lapses", async () => {
-    const { orderId, paymentLinkFailed } = await addOrder({ payment: { type: "bancontact" } });
+  it("pays through a payment link, and the order stays open when a link lapses", async () => {
+    const { orderId, paymentLinkFailed } = await addOrder({ payment: { type: "link" } });
     expect(paymentLinkFailed).toBe(false);
     const first = (await loadOrder(orderId)).payments[0];
-    expect(first.checkoutUrl).toMatch(/^https:\/\/pay\.bancontact\.net\//);
+    expect(first.checkoutUrl).toMatch(/^https:\/\/checkout\.stripe\.com\//);
 
-    bancontact.payments.set(first.providerPaymentId, { ...bancontact.payments.get(first.providerPaymentId)!, status: "EXPIRED" });
+    stripe.payments.set(first.providerPaymentId, { ...stripe.payments.get(first.providerPaymentId)!, status: "EXPIRED" });
     await handlePaymentWebhook(first.providerPaymentId);
     expect((await loadOrder(orderId)).status).toBe("PENDING_PAYMENT");
 
     const link = await createManualOrderPaymentLink(orderId);
     const second = (await loadOrder(orderId)).payments.find((payment) => payment.checkoutUrl === link?.checkoutUrl)!;
-    bancontact.payments.set(second.providerPaymentId, { ...bancontact.payments.get(second.providerPaymentId)!, status: "PAID" });
+    stripe.payments.set(second.providerPaymentId, { ...stripe.payments.get(second.providerPaymentId)!, status: "PAID" });
     await handlePaymentWebhook(second.providerPaymentId);
     expect((await loadOrder(orderId)).status).toBe("PAID");
   });
@@ -582,7 +582,7 @@ describe("check-in per order", () => {
 
   it("can cancel an unpaid order, and refund only money we recorded ourselves", async () => {
     const unpaid = await addOrder();
-    await expect(updateOrderStatus(unpaid.orderId, { status: "REFUNDED" }, ADMIN)).rejects.toThrow("Bancontact Pro-portaal");
+    await expect(updateOrderStatus(unpaid.orderId, { status: "REFUNDED" }, ADMIN)).rejects.toThrow("Stripe-dashboard");
     await updateOrderStatus(unpaid.orderId, { status: "CANCELLED" }, ADMIN);
     expect((await loadOrder(unpaid.orderId)).status).toBe("CANCELLED");
 

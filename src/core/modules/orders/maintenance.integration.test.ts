@@ -72,7 +72,7 @@ async function testOrder({
         items: { create: [{ position: 1, previewId, productCode: "P-CLP-KAT", size: "M", edition: "keychain", attachment: "clip", animal: "cat", title: "Palley Kat", unitCents: 100 }] },
         shipment: { create: { provider: "static", deliveryOptionId: "x", deliveryType: delivery, carrier: "bpost", label: delivery, priceCents: 0 } },
         payments: payment
-          ? { create: [{ provider: payment.provider ?? "bancontact", providerPaymentId: randomUUID().replaceAll("-", ""), mode: payment.mode, status: payment.status, amountCents: 100 }] }
+          ? { create: [{ provider: payment.provider ?? "stripe", providerPaymentId: `cs_test_${randomUUID().replaceAll("-", "")}`, mode: payment.mode, status: payment.status, amountCents: 100 }] }
           : undefined,
       },
       include: { items: true },
@@ -93,9 +93,9 @@ describe("deleting an order", () => {
     expect(await prisma.order.findUnique({ where: { id: order.id } })).not.toBeNull();
   });
 
-  it("waits while a Bancontact payment can still be paid", async () => {
+  it("waits while a Stripe payment can still be paid", async () => {
     const { order } = await testOrder({ payment: { status: "OPEN", mode: "live" } });
-    await expect(deleteOrder(order.id, confirm(order.number), ADMIN)).rejects.toThrow("loopt nog een Bancontact-betaling");
+    await expect(deleteOrder(order.id, confirm(order.number), ADMIN)).rejects.toThrow("loopt nog een betaling via Stripe");
   });
 
   it("asks one more confirmation for real money, not for a test payment", async () => {
@@ -120,7 +120,7 @@ describe("deleting an order", () => {
     );
 
     const note = await prisma.deletedOrder.findFirstOrThrow({ where: { number: order.number } });
-    expect(note).toMatchObject({ orderId: order.id, reason: "Testorder", deletedBy: ADMIN, totalCents: 100, paymentSummary: "bancontact test PAID 100" });
+    expect(note).toMatchObject({ orderId: order.id, reason: "Testorder", deletedBy: ADMIN, totalCents: 100, paymentSummary: "stripe test PAID 100" });
     expect(JSON.stringify(note)).not.toContain("klant@example.com");
     expect(JSON.stringify(note)).not.toContain("Teststraat");
 

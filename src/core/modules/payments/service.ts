@@ -20,12 +20,11 @@ import { MANUAL_PAYMENT_PROVIDER, STOCK_PAYMENT_METHOD, type ManualPaymentMethod
 import { CURRENCY } from "@/data/pricing";
 import { PAYMENT_SYNC_MIN_INTERVAL_MS, PENDING_ORDER_MAX_AGE_MS } from "@/data/checkout";
 import { paymentProvider } from "./providers";
-import { BANCONTACT_CALLBACK_PATH } from "./providers/bancontact";
 import type { ProviderPayment } from "./providers/types";
 
 /*
- * The only place where an order becomes PAID. Every path (signed Bancontact callback, return page, admin button, cron)
- * ends in processPayment with a payment fetched from Bancontact's API just now, never with data from a request body.
+ * The only place where an order becomes PAID. Every path (signed Stripe webhook, return page, admin button, cron)
+ * ends in processPayment with a payment fetched from the provider's API just now, never with data from a request body.
  * Idempotent: the conditional updates only move an order or preview when its current status allows it, so the same
  * webhook twice (or webhook + return page at once) changes nothing the second time.
  *
@@ -48,17 +47,6 @@ const FAILED_PAYMENT_TO_ORDER: Partial<Record<PaymentStatus, OrderStatus>> = {
   EXPIRED: "EXPIRED",
 };
 
-function isPublicHttps(url: string) {
-  const { hostname, protocol } = new URL(url);
-  const local = hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".local") || hostname.endsWith(".localhost");
-  return protocol === "https:" && !local;
-}
-
-// Bancontact can't reach localhost: no callback there, the return page asks Bancontact instead.
-function callbackUrl() {
-  return isPublicHttps(env.APP_URL) ? `${env.APP_URL}${BANCONTACT_CALLBACK_PATH}` : null;
-}
-
 export class InvalidProviderPaymentError extends Error {
   constructor(public readonly paymentId: string, message: string) {
     super(message);
@@ -66,22 +54,28 @@ export class InvalidProviderPaymentError extends Error {
 }
 
 /** Where a customer lands after paying. The status token is the key to reading the order's status. */
-export function orderReturnUrl(orderId: string, statusToken: string, locale: string) {
+export function orderReturnUrl(orderId: string, statusToken: string, locale: string, { cancelled = false } = {}) {
   const returnUrl = new URL(localizedPath("/checkout/return", toLocale(locale)), env.APP_URL);
   returnUrl.searchParams.set("order", orderId);
   returnUrl.searchParams.set("t", statusToken);
+  if (cancelled) returnUrl.searchParams.set("cancelled", "1");
   return returnUrl.toString();
 }
 
-/** Creates a Bancontact payment for an order and stores it. The status token ends up in the return URL. */
-export async function createOrderPayment(order: { id: string; number: string; totalCents: number; locale: string }, statusToken: string) {
+/** Creates a payment (a Stripe Checkout Session) for an order and stores it. The status token ends up in the return URL. */
+export async function createOrderPayment(
+  order: { id: string; number: string; totalCents: number; locale: string; email: string | null },
+  statusToken: string,
+) {
   const payment = await paymentProvider.createPayment({
     amountCents: order.totalCents,
     reference: order.number,
     description: `Palleys bestelling ${order.number}`,
-    // Bancontact only accepts https here; locally that means `npm run dev:https`.
     returnUrl: orderReturnUrl(order.id, statusToken, order.locale),
-    callbackUrl: callbackUrl(),
+    cancelUrl: orderReturnUrl(order.id, statusToken, order.locale, { cancelled: true }),
+    locale: toLocale(order.locale),
+    // Already typed in our checkout, so the payment page shows it filled in instead of asking again.
+    customerEmail: order.email,
   });
   if (!payment.checkoutUrl || !paymentProvider.isCheckoutUrl(payment.checkoutUrl)) {
     throw new InvalidProviderPaymentError(payment.id, `Unexpected checkout URL for ${payment.id}`);
@@ -101,7 +95,7 @@ export async function createOrderPayment(order: { id: string; number: string; to
       amountCents: payment.amountCents,
       checkoutUrl: payment.checkoutUrl,
       rawLastStatus: payment.snapshot as object,
-      // Not synced yet: the return page's first poll asks Bancontact straight away.
+      // Not synced yet: the return page's first poll asks the provider straight away.
     },
   });
   return { id: payment.id, mode: payment.mode, checkoutUrl: payment.checkoutUrl };
@@ -110,7 +104,7 @@ export async function createOrderPayment(order: { id: string; number: string; to
 /** Callback entry point, after the signature was checked. Only the id is used; unknown ids are ignored. */
 export async function handlePaymentWebhook(paymentId: string): Promise<ProcessResult> {
   if (!paymentProvider.isPaymentId(paymentId)) return { outcome: "unknown_payment" };
-  // Cheap check first: ids we never created aren't looked up at Bancontact at all.
+  // Cheap check first: ids we never created aren't looked up at the provider at all.
   const known = await prisma.payment.findUnique({ where: { providerPaymentId: paymentId }, select: { id: true } });
   if (!known) {
     console.warn(`[payments] webhook for unknown payment ${paymentId}`);
@@ -120,8 +114,8 @@ export async function handlePaymentWebhook(paymentId: string): Promise<ProcessRe
 }
 
 /**
- * Asks Bancontact about an order's latest payment and processes the answer. Used by the return page (where webhooks
- * can't reach localhost), the admin and the cron job. Skips the call when the last check was very recent.
+ * Asks the provider about an order's latest payment and processes the answer. Used by the return page (when no webhook
+ * reaches us, e.g. locally without `stripe listen`), the admin and the cron job. Skips the call when the last check was very recent.
  */
 export async function syncOrderPayment(
   orderId: string,
@@ -135,7 +129,7 @@ export async function syncOrderPayment(
   });
   if (!payment) return null;
 
-  // Claim the sync slot atomically, so ten polling tabs make one Bancontact call, not ten.
+  // Claim the sync slot atomically, so ten polling tabs make one call to the provider, not ten.
   const threshold = new Date(Date.now() - minIntervalMs);
   const { count } = await prisma.payment.updateMany({
     where: { id: payment.id, OR: [{ lastSyncedAt: null }, { lastSyncedAt: { lt: threshold } }] },
@@ -144,6 +138,22 @@ export async function syncOrderPayment(
   if (count === 0) return null;
 
   return processPayment(await paymentProvider.getPayment(payment.providerPaymentId), source);
+}
+
+/**
+ * The customer came back from the payment page through "back"/cancel. Closes their still-open payment at the provider
+ * (so it can't be paid later next to a new attempt) and processes the provider's answer like any other sync: the
+ * order only closes because the provider now reports the payment as expired, never because of the URL.
+ */
+export async function cancelOpenOrderPayment(orderId: string): Promise<ProcessResult | null> {
+  const payment = await prisma.payment.findFirst({
+    where: { orderId, provider: paymentProvider.name },
+    orderBy: { createdAt: "desc" },
+    select: { providerPaymentId: true, status: true },
+  });
+  if (!payment || payment.status !== "OPEN" || !paymentProvider.cancelPayment) return null;
+  await paymentProvider.cancelPayment(payment.providerPaymentId);
+  return processPayment(await paymentProvider.getPayment(payment.providerPaymentId), "return-page");
 }
 
 /** Puts an order on "aandacht nodig" in the backoffice. Earlier reasons stay; the same reason twice is added once. */
@@ -454,7 +464,7 @@ async function sendConfirmationOnce(orderId: string, idempotencySuffix = "") {
 
 /**
  * Admin records money that reached us outside the checkout (cash, a transfer, a gift). Only on orders an admin added
- * themself: a website order is only ever paid through Bancontact. Goes through the same markOrderPaid as a real payment,
+ * themself: a website order is only ever paid through Stripe. Goes through the same markOrderPaid as a real payment,
  * so previews land in "Te reviewen" the same way.
  */
 export async function recordManualPayment(
@@ -502,13 +512,13 @@ export async function completeFreeOrder(orderId: string, orderNumber: string) {
 }
 
 /**
- * A (new) Bancontact payment link for an order an admin added. Links lapse after 20 minutes, so this can be repeated.
+ * A (new) payment link (Stripe Checkout) for an order an admin added. Links lapse after 30 minutes, so this can be repeated.
  * The status token in the return URL is replaced each time; only its hash is stored, so the old one can't be reused.
  */
 export async function createManualOrderPaymentLink(orderId: string) {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
-    select: { id: true, number: true, status: true, totalCents: true, createdBy: true, locale: true },
+    select: { id: true, number: true, status: true, totalCents: true, createdBy: true, locale: true, email: true },
   });
   if (!order) return null;
   if (!order.createdBy || order.status !== "PENDING_PAYMENT" || order.totalCents <= 0) {
@@ -534,7 +544,7 @@ export async function resendConfirmation(orderId: string) {
 }
 
 /**
- * Cron: unpaid orders older than PENDING_ORDER_MAX_AGE_MS are checked at Bancontact. Final statuses close them through
+ * Cron: unpaid orders older than PENDING_ORDER_MAX_AGE_MS are checked at Stripe. Final statuses close them through
  * processPayment. Payments still reported as open after a day are closed locally; a late payment would
  * still move the order to PAID (EXPIRED → PAID is allowed).
  */

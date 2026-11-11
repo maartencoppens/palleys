@@ -15,7 +15,7 @@ export async function GET() {
   }
 }
 
-// Customer details + delivery option + terms → order + Bancontact payment → { checkoutUrl } (hosted payment page).
+// Customer details + delivery option + terms → order + Stripe Checkout Session → { checkoutUrl } (hosted payment page).
 export async function POST(request: Request) {
   try {
     assertSameOrigin(request);

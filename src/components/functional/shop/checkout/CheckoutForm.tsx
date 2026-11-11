@@ -19,7 +19,7 @@ import type { AppliedDiscount } from "@/core/modules/discounts/types";
 import { formatPrice } from "@/core/utils/format";
 import { FIELD_LIMITS, PRIVACY_URL, TERMS_URL } from "@/data/checkout";
 import { DISCOUNT_CODE_MAX_LENGTH } from "@/data/discounts";
-import { PAYMENT_METHOD_LABELS, PAYMENT_METHODS } from "@/data/payment-methods";
+import { PAYMENT_METHOD_LABELS } from "@/data/payment-methods";
 import { attachments, type Attachment } from "@/data/options";
 import { FRIENDS_DELIVERY, needsShippingAddress, POSTAL_CODE_PATTERNS, type ShippingCountry } from "@/data/shipping";
 import DeliveryOptionsPicker from "./DeliveryOptionsPicker";
@@ -73,17 +73,32 @@ function clientErrors(fields: Fields, deliveryOptionId: string | null, acceptTer
   return errors;
 }
 
+/** "A", "A of B", "A, B of C". */
+function joinMethods(labels: string[], lastJoin: string) {
+  return labels.length <= 1 ? (labels[0] ?? "") : `${labels.slice(0, -1).join(", ")}${lastJoin}${labels.at(-1)}`;
+}
+
 /*
- * Checkout: details, delivery and a clear "order with obligation to pay" step, then Bancontact's hosted page.
+ * Checkout: details, delivery and a clear "order with obligation to pay" step, then Stripe's hosted payment page.
+ * `paymentMethods` are the methods switched on in Stripe right now (server-side, cached a minute), only for the texts.
  * Only details and choices are sent; the server computes every amount again and refuses anything stale.
  */
-export default function CheckoutForm({ deliveryTime, instagramUrl }: { deliveryTime: string; instagramUrl: string }) {
+export default function CheckoutForm({
+  deliveryTime,
+  instagramUrl,
+  paymentMethods,
+}: {
+  deliveryTime: string;
+  instagramUrl: string;
+  paymentMethods: string[];
+}) {
   const messages = useMessages();
   const locale = useLocale();
   const { checkout: m, common } = messages;
   const fieldErrors: Record<FieldName, string> = m.fieldErrors;
   const submitErrors: Record<string, string> = m.submitErrors;
   const price = (cents: number) => formatPrice(cents / 100, locale);
+  const methodLabels = paymentMethods.map((method) => (method === "card" ? m.cardMethod : (PAYMENT_METHOD_LABELS[method] ?? method)));
 
   const discountErrorMessage = (error: unknown) => {
     if (!axios.isAxiosError<{ error?: string; minSubtotalCents?: number }>(error)) return common.genericError;
@@ -121,7 +136,7 @@ export default function CheckoutForm({ deliveryTime, instagramUrl }: { deliveryT
       .catch(() => setConfig({ enabled: true, closedMessage: null, paymentsAvailable: true }));
   }, []);
 
-  // Coming back from Bancontact with the back button restores the page: re-enable the button.
+  // Coming back from Stripe's payment page with the back button restores the page: re-enable the button.
   useEffect(() => {
     const onPageShow = () => setSubmitting(false);
     window.addEventListener("pageshow", onPageShow);
@@ -405,7 +420,7 @@ export default function CheckoutForm({ deliveryTime, instagramUrl }: { deliveryT
             })}
             {field("city", m.city, { autoComplete: "address-level2", maxLength: FIELD_LIMITS.city })}
           </div>
-          {/* Belgium only for now (Bancontact). More countries: SHIPPING_COUNTRIES plus a select here. */}
+          {/* Belgium only for now. More countries: SHIPPING_COUNTRIES plus a select here. */}
           <p className="text-base text-text-primary">
             <span className={`${labelClassName} font-label font-extrabold text-medium-green`}>{m.country}</span>
             <br />
@@ -622,9 +637,17 @@ export default function CheckoutForm({ deliveryTime, instagramUrl }: { deliveryT
             {submitError}
           </p>
         )}
+        {/* The methods switched on in Stripe right now, as plain labels (no brand logos until we have the official files). */}
+        <ul aria-label={m.methodsLabel} className="flex flex-wrap justify-center gap-2">
+          {methodLabels.map((label) => (
+            <li key={label} className="rounded-full border-[1.5px] border-off-white-dark bg-white px-3 py-1 font-label text-xs font-bold text-text-primary">
+              {label}
+            </li>
+          ))}
+        </ul>
         <p className="text-center text-sm text-text-muted">
           {fillNodes(m.payNote, {
-            methods: PAYMENT_METHODS.map((method) => PAYMENT_METHOD_LABELS[method]).join(m.methodsJoin),
+            methods: joinMethods(methodLabels, m.methodsJoin),
             privacy: (
               <Link href={PRIVACY_URL} className="underline underline-offset-2">
                 {m.privacy}

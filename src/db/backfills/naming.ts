@@ -16,7 +16,7 @@ import { NamingError, parseOrderRef, productCode } from "@/core/utils/naming";
  *   2. Keychain and collectible lines without an attachment get the standard one (clip), as the cart does.
  *   3. Every line's product code is recomputed (P-CLP-KAT, COL-CLP-001).
  *   4. With renumberOrders only: orders with an old number (PAL-2026-00042) get a PLY number, oldest first. Their
- *      Bancontact payments keep the old reference, so only do this where the orders are test data.
+ *      Their payments keep the old reference at the provider, so only do this where the orders are test data.
  */
 
 // Collectibles made by hand before they had an animal.

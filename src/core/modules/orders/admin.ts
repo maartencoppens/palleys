@@ -133,9 +133,9 @@ export async function createManualOrder(request: ManualOrderInput, adminName: st
   const totals = computeTotals(lines, delivery.priceCents);
   const address = input.delivery.type === "ship" ? input.delivery : null;
 
-  if (input.payment.type === "bancontact") {
-    if (!paymentProvider.isConfigured()) throw new OrderActionError("Bancontact Pro is nog niet gekoppeld");
-    if (totals.totalCents <= 0) throw new OrderActionError("Een gratis order kan niet met Bancontact betaald worden");
+  if (input.payment.type === "link") {
+    if (!paymentProvider.isConfigured()) throw new OrderActionError("Stripe is nog niet gekoppeld");
+    if (totals.totalCents <= 0) throw new OrderActionError("Een gratis order kan niet via een betaallink betaald worden");
   }
 
   const order = await prisma.$transaction(async (tx) => {
@@ -194,7 +194,7 @@ export async function createManualOrder(request: ManualOrderInput, adminName: st
     await recordManualPayment(order.id, STOCK_PAYMENT_METHOD, adminName, { sendConfirmation: false });
   } else if (input.payment.type === "paid") {
     await recordManualPayment(order.id, input.payment.method, adminName, { sendConfirmation: input.sendConfirmation });
-  } else if (input.payment.type === "bancontact") {
+  } else if (input.payment.type === "link") {
     // The order is in the database by now. A failed link doesn't undo it: the order page can make a new one.
     try {
       await createManualOrderPaymentLink(order.id);
@@ -272,9 +272,9 @@ export async function updateOrderStatus(orderId: string, input: OrderStatusActio
     if (!allItemsCheckedIn(items)) throw new OrderActionError("Vink eerst alle items af");
   }
   if (input.status === "REFUNDED") {
-    // Bancontact refunds go through its portal and come back by themselves when the payment is checked.
+    // Stripe refunds are made in the Stripe dashboard and come back by themselves (webhook or "Betaalstatus ophalen").
     const paidManually = order.payments.some((payment) => payment.provider === MANUAL_PAYMENT_PROVIDER && payment.status === "PAID");
-    if (!paidManually) throw new OrderActionError("Terugbetalen gebeurt via het Bancontact Pro-portaal");
+    if (!paidManually) throw new OrderActionError("Terugbetalen gebeurt in het Stripe-dashboard; de order volgt vanzelf");
   }
 
   const moved = await moveOrder(orderId, input.status, `admin:${adminName}`, input.note);

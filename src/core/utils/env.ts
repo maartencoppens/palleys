@@ -18,13 +18,16 @@ const schema = z.object({
   MESHY_WEBHOOK_SECRET: z.string().min(32),
   // Publieke basis-URL van de app, voor webhooks. Bewust los van BETTER_AUTH_URL.
   APP_URL: z.url().transform((url) => url.replace(/\/+$/, "")),
-  // Bancontact Pro (via KBC). One API key per payment profile, from portal.bancontactpro.com.
-  // Unset = checkout shows "betalen niet beschikbaar". BANCONTACT_ENV: preprod for testing, production for real money.
-  BANCONTACT_API_KEY: optional(z.string().min(16)),
-  BANCONTACT_PAYMENT_PROFILE_ID: optional(z.string().min(8)), // checked against the `sub` of every signed callback
-  BANCONTACT_ENV: z.enum(["preprod", "production"]).default("preprod"),
-  // "fake" = fake payments to test the order flow locally without Bancontact. Ignored in production (see providers/fake.ts).
-  PAYMENT_PROVIDER: optional(z.enum(["bancontact", "fake"])),
+  // Stripe (hosted Checkout). Unset = checkout shows "betalen niet beschikbaar". Test- and live-mode each have their own
+  // keys and their own payment method configuration (pmc_…). Restricted keys (rk_…) work too, with the rights in the README.
+  STRIPE_SECRET: optional(z.string().regex(/^(sk|rk)_(test|live)_[A-Za-z0-9]+$/, "expected sk_test_…, sk_live_…, rk_test_… or rk_live_…")),
+  // Signs the webhooks to /api/webhooks/stripe: from `stripe listen` locally, from the dashboard endpoint in production.
+  STRIPE_WEBHOOK_SECRET: optional(z.string().regex(/^whsec_[A-Za-z0-9]+$/, "expected whsec_…")),
+  // Which payment methods Checkout offers (Bancontact, iDEAL | Wero, …), managed under /admin/settings/payment-methods.
+  STRIPE_PAYMENT_METHOD_CONFIG: optional(z.string().regex(/^pmc_[A-Za-z0-9]+$/, "expected pmc_…")),
+  // STRIPE_PUBLIC (pk_…) is deliberately not read: hosted Checkout doesn't need it.
+  // "fake" = fake payments to test the order flow locally without Stripe. Ignored in production (see providers/fake.ts).
+  PAYMENT_PROVIDER: optional(z.enum(["stripe", "fake"])),
   // Resend for order mails. Unset = mails are skipped (and logged without personal data).
   RESEND_API_KEY: optional(z.string().min(1)),
   EMAIL_FROM: optional(z.string().min(3)), // e.g. "Palleys <bestellingen@palleys.be>", domain verified in Resend

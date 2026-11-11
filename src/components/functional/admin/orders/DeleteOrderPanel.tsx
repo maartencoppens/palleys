@@ -11,9 +11,9 @@ type DeleteOrderPanelProps = {
   orderId: string;
   number: string;
   invoiceNumber: string | null;
-  /** Paid with real money (not Bancontact's test mode): one more confirmation. */
+  /** Paid with real money (not Stripe's test mode): one more confirmation. */
   paidWithRealMoney: boolean;
-  /** A Bancontact payment that can still be paid: the server refuses until it's settled. */
+  /** A Stripe payment that can still be paid: the server refuses until it's settled. */
   paymentStillOpen: boolean;
 };
 
@@ -55,7 +55,7 @@ export function DeleteOrderPanel({ orderId, number, invoiceNumber, paidWithRealM
         </p>
         {paymentStillOpen && (
           <p role="alert" className="rounded-2xl bg-pink p-3 text-[#a3341a]">
-            Er loopt nog een Bancontact-betaling. Haal eerst de betaalstatus op, of wacht tot ze verlopen is.
+            Er loopt nog een betaling via Stripe. Haal eerst de betaalstatus op, of wacht tot ze verlopen is (30 minuten).
           </p>
         )}
         {invoiceNumber && (

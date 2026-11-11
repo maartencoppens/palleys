@@ -14,7 +14,7 @@ type OrderActionsProps = {
   attentionReason: string | null;
 };
 
-/* Order actions in the backoffice: ask Bancontact for the latest status, resend the mail, close a flagged problem. */
+/* Order actions in the backoffice: ask Stripe for the latest status, resend the mail, close a flagged problem. */
 export function OrderActions({ orderId, canSyncPayment, canResendConfirmation, attentionReason }: OrderActionsProps) {
   const router = useRouter();
   const [busy, setBusy] = useState<"sync" | "mail" | "resolve" | null>(null);
@@ -47,10 +47,10 @@ export function OrderActions({ orderId, canSyncPayment, canResendConfirmation, a
             variant="secondary"
             className="w-full px-4! whitespace-normal!"
             loading={busy === "sync"}
-            loadingText="Ophalen bij Bancontact…"
+            loadingText="Ophalen bij Stripe…"
             onClick={() => run("sync", async () => `Status: ${(await postSyncOrderPayment(orderId)).status}`)}
           >
-            Betaalstatus ophalen bij Bancontact
+            Betaalstatus ophalen bij Stripe
           </Button>
         )}
         {canResendConfirmation && (
@@ -82,7 +82,7 @@ export function OrderActions({ orderId, canSyncPayment, canResendConfirmation, a
             rows={3}
             value={note}
             onChange={(event) => setNote(event.target.value)}
-            placeholder="bv. Terugbetaald via het Bancontact Pro-portaal"
+            placeholder="bv. Terugbetaald via het Stripe-dashboard"
             className="min-h-24 text-base!"
           />
           <Button

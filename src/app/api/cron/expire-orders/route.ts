@@ -9,7 +9,7 @@ import { applyRetention } from "@/core/modules/retention/service";
 
 // Run every ~15 minutes from the VPS, e.g.:
 //   curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" https://palleys.be/api/cron/expire-orders
-// Checks unpaid orders at Bancontact and closes them, clears expired carts, rate-limit rows and /retour links, and deletes
+// Checks unpaid orders at Stripe and closes them, clears expired carts, rate-limit rows and /retour links, and deletes
 // photos and models whose retention period (privacy policy, art. 6) is over.
 export const maxDuration = 60;
 

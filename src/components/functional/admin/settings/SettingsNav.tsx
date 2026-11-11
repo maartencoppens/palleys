@@ -12,6 +12,7 @@ const GROUPS = [
       { href: "/admin/settings/collectibles", label: "Collectibles" },
       { href: "/admin/settings/discounts", label: "Kortingscodes" },
       { href: "/admin/settings/shipping", label: "Verzending" },
+      { href: "/admin/settings/payment-methods", label: "Betaalmethodes" },
     ],
   },
   {

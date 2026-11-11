@@ -6,7 +6,7 @@ export const SHIPPING_POLICY_URL = "/verzendbeleid";
 // starting values that an admin can change in /admin/settings.
 import type { KeychainSize } from "./sizes";
 
-// Countries we ship to: Belgium only, where customers pay with Bancontact (data/payment-methods.ts).
+// Countries we ship to: Belgium only for now (payment methods: data/payment-methods.ts).
 export const SHIPPING_COUNTRIES = [{ code: "BE" }] as const;
 export type ShippingCountry = (typeof SHIPPING_COUNTRIES)[number]["code"];
 export const SHIPPING_COUNTRY_CODES = SHIPPING_COUNTRIES.map((c) => c.code) as [ShippingCountry, ...ShippingCountry[]];

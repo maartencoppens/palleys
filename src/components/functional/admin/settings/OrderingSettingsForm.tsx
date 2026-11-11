@@ -37,7 +37,7 @@ export function OrderingSettingsForm({ settings, paymentsAvailable }: { settings
         </p>
         {checkoutEnabled && !paymentsAvailable && (
           <p role="status" className="mt-4 rounded-2xl bg-light-yellow p-4 text-sm text-text-primary">
-            <strong>Klanten kunnen nog niet afrekenen:</strong> Bancontact Pro is nog niet gekoppeld, dus de checkout toont
+            <strong>Klanten kunnen nog niet afrekenen:</strong> Stripe is nog niet gekoppeld, dus de checkout toont
             &ldquo;Betalen is tijdelijk niet mogelijk&rdquo;. Bekijk de <Link href="/admin/settings/integrations" className="font-semibold underline">koppelingen</Link>.
           </p>
         )}

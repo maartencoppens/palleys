@@ -6,11 +6,14 @@ export const TERMS_VERSION = "2026-11-09-concept";
 export const TERMS_URL = "/algemene-voorwaarden";
 export const PRIVACY_URL = "/privacy";
 
-// Orders still waiting for payment after this long are checked at Bancontact and closed (cron).
-// Bancontact Pro payments expire after 20 minutes.
-export const PENDING_ORDER_MAX_AGE_MS = 30 * 60 * 1000;
+// A Stripe Checkout Session (the payment page) stays open this long: Stripe's minimum.
+export const CHECKOUT_SESSION_MINUTES = 30;
 
-// The return page asks Bancontact directly at most this often per order (covers callbacks that can't reach us, e.g. localhost).
+// Orders still waiting for payment after this long are checked at Stripe and closed (cron). A little longer than
+// the session, so the cron finds it expired rather than about to.
+export const PENDING_ORDER_MAX_AGE_MS = (CHECKOUT_SESSION_MINUTES + 5) * 60 * 1000;
+
+// The return page asks Stripe directly at most this often per order (covers callbacks that can't reach us, e.g. localhost).
 export const PAYMENT_SYNC_MIN_INTERVAL_MS = 5_000;
 export const RETURN_POLL_INTERVAL_MS = 2_500;
 export const RETURN_POLL_MAX_MS = 3 * 60 * 1000;

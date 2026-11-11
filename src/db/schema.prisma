@@ -37,7 +37,7 @@ model Preview {
   email           String?
   poseAttempts    Int                   @default(0)
   error           String?
-  paidAt          DateTime? // orderdatum, gezet bij betaling (Bancontact-callback of statuscheck)
+  paidAt          DateTime? // orderdatum, gezet bij betaling (Stripe-webhook of statuscheck)
   animalType      String? // code uit src/data/animals.ts, gekozen door de admin
   quantity        Int                   @default(1) // aantal exemplaren van deze Palley in de order, gezet bij betaling
   createdAt       DateTime              @default(now())
@@ -164,7 +164,7 @@ model PreviewStatusChange {
   @@index([previewId])
 }
 
-// ---------- Shop: cart, orders, payments (eigen checkout met Bancontact Pro) ----------
+// ---------- Shop: cart, orders, payments (eigen checkout, betalen via Stripe Checkout) ----------
 
 enum OrderStatus {
   PENDING_PAYMENT
@@ -394,16 +394,16 @@ model Payment {
   id                String        @id @default(uuid())
   orderId           String
   order             Order         @relation(fields: [orderId], references: [id], onDelete: Restrict)
-  provider          String        @default("bancontact")
-  providerPaymentId String        @unique // Bancontact paymentId (24 tekens)
-  mode              String? // test (preprod) | live (production)
-  method            String? // bancontact
+  provider          String        @default("stripe") // oudere rijen: "bancontact"; met de hand: "manual"
+  providerPaymentId String        @unique // Stripe Checkout Session-id (cs_test_… / cs_live_…)
+  mode              String? // test | live
+  method            String? // bancontact | ideal | wero | … (wat de klant echt gebruikte), of cash, transfer, …
   status            PaymentStatus @default(OPEN)
   amountCents       Int
   refundedCents     Int           @default(0)
   chargedBackCents  Int           @default(0)
   checkoutUrl       String?
-  rawLastStatus     Json? // veilige selectie uit het laatste payment-object (zonder naam/IBAN van de betaler)
+  rawLastStatus     Json? // veilige selectie uit de laatste Checkout Session (zonder naam, e-mail of rekening van de betaler)
   lastSyncedAt      DateTime?
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
@@ -493,6 +493,20 @@ model OrderStatusChange {
   @@index([orderId])
 }
 
+// Wat een admin in de backoffice wijzigde buiten de orders om (bv. een betaalmethode aan of uit in Stripe): wie, wat,
+// oud → nieuw. Alleen toevoegen, nooit aanpassen. Geen klantgegevens.
+model AdminAuditLog {
+  id        String   @id @default(uuid())
+  actor     String // naam van de admin
+  action    String // bv. payment_method.toggle
+  subject   String // bv. ideal
+  fromValue String?
+  toValue   String?
+  createdAt DateTime @default(now())
+
+  @@index([action, createdAt])
+}
+
 // Winkelinstellingen die een admin in /admin/settings aanpast. Altijd één rij (id = 1).
 model ShopSettings {
   id                    Int      @id @default(1)
@@ -535,7 +549,7 @@ model DeletedOrder {
   invoiceNumber  String?
   status         String // de status op het moment van verwijderen
   totalCents     Int
-  paymentSummary String // bv. "bancontact live PAID 100" per betaling, of "geen"
+  paymentSummary String // bv. "stripe live PAID 100" per betaling, of "geen"
   orderCreatedAt DateTime
   reason         String
   deletedBy      String
@@ -565,7 +579,7 @@ enum ReturnStatus {
 }
 
 // Een aanvraag van de klant via /retour. Overgangen in core/modules/returns/status.ts; elke stap komt ook in de
-// statuslog van de order. Terugbetalen gebeurt met de hand in het Bancontact Pro-portaal.
+// statuslog van de order. Terugbetalen gebeurt met de hand in het Stripe-dashboard.
 model ReturnRequest {
   id             String              @id @default(uuid())
   orderId        String

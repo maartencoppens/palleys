@@ -15,7 +15,7 @@ type OrderProgressPanelProps = {
   summary: CheckInSummary;
   nextStep: string;
   handover: boolean;
-  /** Money we recorded ourselves can be marked as returned here; Bancontact refunds go through its portal. */
+  /** Money we recorded ourselves can be marked as returned here; Stripe refunds go through the Stripe dashboard. */
   canMarkRefunded: boolean;
 };
 

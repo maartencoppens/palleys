@@ -17,8 +17,8 @@ const PAID: OrderStatusView["status"][] = ["PAID", "IN_PRODUCTION", "SHIPPED"];
 const CLOSED: OrderStatusView["status"][] = ["CANCELLED", "EXPIRED"];
 
 /*
- * Where Bancontact sends the customer back. Arriving here proves nothing: the page asks our server, which asks
- * Bancontact, until the order is paid or closed. The link carries a token so nobody else can read the status.
+ * Where Stripe sends the customer back (after paying or cancelling). Arriving here proves nothing: the page asks our server, which asks
+ * Stripe, until the order is paid or closed. The link carries a token so nobody else can read the status.
  */
 export default function CheckoutReturn() {
   const messages = useMessages();
@@ -27,10 +27,12 @@ export default function CheckoutReturn() {
   const params = useSearchParams();
   const orderId = params.get("order");
   const token = params.get("t");
+  // Set by the payment page's cancel link: the server closes the open payment, then reports the order as closed.
+  const cancelled = params.get("cancelled") === "1";
 
   const fetcher = useMemo(
-    () => (orderId && token ? () => fetchOrderStatus(orderId, token) : null),
-    [orderId, token],
+    () => (orderId && token ? () => fetchOrderStatus(orderId, token, cancelled) : null),
+    [orderId, token, cancelled],
   );
   const isDone = useCallback(
     (data: OrderStatusView) => PAID.includes(data.status) || CLOSED.includes(data.status) || data.status === "REFUNDED",

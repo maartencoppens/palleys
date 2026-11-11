@@ -293,7 +293,7 @@ export default function CartMenu({ pinned, onOpenChange, onReveal }: CartMenuPro
                   <p className="font-label text-2xl font-extrabold">{formatPrice(cart!.subtotal.amount, locale)}</p>
                 </div>
                 <p className="-mt-2 text-sm">{m.summary.exclShipping}</p>
-                {/* Our checkout: address and delivery, then Bancontact for the payment. */}
+                {/* Our checkout: address and delivery, then Stripe for the payment. */}
                 <Link
                   href="/checkout"
                   onClick={closeForNavigation}

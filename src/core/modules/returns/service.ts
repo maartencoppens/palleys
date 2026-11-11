@@ -60,7 +60,7 @@ import type {
  * their order number and e-mail address, which only ever sends a one-time link to the order's own address; the link
  * opens a short session (cookie). What is allowed comes from utils.ts (the return policy), checked again here inside a
  * transaction that locks the order, so two tabs can't claim the same Palley twice. Refunds are done by hand in the
- * Bancontact Pro portal; nothing here moves money.
+ * Stripe dashboard; nothing here moves money.
  */
 
 /** The link or session doesn't (or no longer) work. Same answer for every reason. */
@@ -461,7 +461,7 @@ const DECISION_STATUS: Record<ReturnDecisionInput["action"], ReturnStatus> = {
  * Approve, reject or complete a request. Approving a cancellation or an early withdrawal takes those copies out of
  * production (OrderItem.cancelledQuantity); approving a reprint makes a € 0 order for the next batch. Every step goes in
  * the order's status log; the attention flag goes once the request is closed. The customer gets a mail on approve and
- * reject. Refunding stays a manual step in the Bancontact Pro portal.
+ * reject. Refunding stays a manual step in the Stripe dashboard.
  */
 export async function decideReturnRequest(id: string, input: ReturnDecisionInput, adminName: string) {
   const request = await prisma.returnRequest.findUnique({
@@ -540,9 +540,9 @@ async function cancelItems(tx: Prisma.TransactionClient, orderId: string, lines:
   const nothingLeft = order.items.every((item) => activeQuantity(item) <= 0);
   if (nothingLeft && order.batch?.status === "OPEN") {
     await tx.order.update({ where: { id: orderId }, data: { batchId: null } });
-    return `alles geannuleerd, uit ${batchRef(order.batch.number)} gehaald: terugbetalen via Bancontact Pro`;
+    return `alles geannuleerd, uit ${batchRef(order.batch.number)} gehaald: terugbetalen in het Stripe-dashboard`;
   }
-  return nothingLeft ? "alles geannuleerd: terugbetalen via Bancontact Pro" : "niet meer maken";
+  return nothingLeft ? "alles geannuleerd: terugbetalen in het Stripe-dashboard" : "niet meer maken";
 }
 
 /**

@@ -6,9 +6,9 @@ import { CURRENCY } from "@/data/pricing";
 import type { PaymentProvider, ProviderPayment } from "./types";
 
 /*
- * A stand-in for Bancontact, to walk through the whole order flow locally without a contract: PAYMENT_PROVIDER=fake.
+ * A stand-in for Stripe, to walk through the whole order flow locally without keys: PAYMENT_PROVIDER=fake.
  * The rest of the app can't tell the difference. Its "hosted page" is /dev/test-betaling, and the payment's row in our
- * own database plays the part of Bancontact's records. It can never run in production: `next build` and `next start`
+ * own database plays the part of Stripe's records. It can never run in production: `next build` and `next start`
  * set NODE_ENV=production, and then this is off whatever the .env says.
  */
 

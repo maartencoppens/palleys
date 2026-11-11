@@ -10,36 +10,49 @@ npm run db:up          # Postgres in Docker (docker-compose.dev.yml)
 npm run db:migrate     # prisma migrate dev, ALLEEN lokaal
 npx prisma generate    # na elke schemawijziging (Prisma 7 doet dit niet automatisch); herstart daarna `npm run dev`
 npm test               # unit tests
-npm run test:integration   # checkout → betaling → order, tegen de lokale DB, met Bancontact/R2/Resend gemockt
+npm run test:integration   # checkout → betaling → order, tegen de lokale DB, met Stripe/R2/Resend gemockt
 ```
 
 Productie start met `npm run start:prod` (`prisma migrate deploy && next start`). Het image moet dus de Prisma CLI
 (staat in `dependencies`), `prisma.config.ts` en `src/db/migrations` bevatten. Nooit `migrate dev` of `reset` op prod.
 
-## Checkout en betalingen (Bancontact Pro via KBC)
+## Checkout en betalingen (Stripe Checkout)
 
-Enkel België, enkel Bancontact. Flow: `/create` uploadt foto's naar R2 (`/api/uploads`) → `/api/cart` zet de
-preview in ons eigen winkelmandje (DB, token in een httpOnly-cookie) → `/checkout` vraagt gegevens en levering →
-`/api/checkout` maakt een order (`PENDING_PAYMENT`, bedragen server-side uit `src/data/pricing.ts` en de
-verzendopties) en een Bancontact-betaling (`reference` = ordernummer) → klant betaalt op de gehoste Bancontact-pagina
-(QR-code op desktop, bankapp op gsm) → Bancontact post een **ondertekende** callback naar `/api/webhooks/bancontact`
-→ we controleren de JWS-handtekening (ES256, sleutels van `jwks.bancontact.net`), halen de betaling opnieuw op bij
-Bancontact en zetten order én preview op `PAID`. De preview verschijnt dan in **Te reviewen** in de backoffice.
-De return-pagina (`/checkout/return`) vraagt de status ook zelf op, dus lokaal werkt het zonder callback.
+Enkel België. Flow: `/create` uploadt foto's naar R2 (`/api/uploads`) → `/api/cart` zet de preview in ons eigen
+winkelmandje (DB, token in een httpOnly-cookie) → `/checkout` vraagt gegevens en levering → `/api/checkout` maakt een order
+(`PENDING_PAYMENT`, bedragen server-side uit `src/data/pricing.ts` en de verzendopties) en een Stripe Checkout Session
+(`client_reference_id` = ordernummer, 30 minuten geldig) → klant betaalt op de gehoste Stripe-pagina met de methodes uit de
+payment method configuration (Bancontact, iDEAL | Wero) → Stripe stuurt een **ondertekende** webhook naar
+`/api/webhooks/stripe` → we controleren de handtekening (`stripe-signature`, `STRIPE_WEBHOOK_SECRET`), halen de session
+opnieuw op bij Stripe en zetten order én preview op `PAID`. De preview verschijnt dan in **Te reviewen** in de backoffice.
+De return-pagina (`/checkout/return`) vraagt de status ook zelf op, dus lokaal werkt het ook zonder webhook. Komt de klant
+via "terug" van Stripe (`cancelled=1`), dan sluit de server de nog open session, zodat er geen tweede betaling naast een
+nieuwe poging kan gebeuren.
 
-Env vars (zie `.env.example`): `BANCONTACT_API_KEY`, `BANCONTACT_PAYMENT_PROFILE_ID`, `BANCONTACT_ENV`
-(`preprod` / `production`), `RESEND_API_KEY` + `EMAIL_FROM` (bevestigingsmails), `CRON_SECRET`.
+Env vars (zie `.env.example`): `STRIPE_SECRET`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PAYMENT_METHOD_CONFIG` (test en live
+hebben elk eigen waarden), `RESEND_API_KEY` + `EMAIL_FROM` (bevestigingsmails), `CRON_SECRET`. `STRIPE_PUBLIC` wordt niet
+gebruikt. De Stripe-API-versie staat vast in `src/core/networking/external/stripe-client.ts`.
 
-Bancontact aanvaardt enkel een **https**-return-URL. Lokaal testen: `npm run dev:https` en
-`APP_URL=https://localhost:3000` in `.env`. Een betaling verloopt na 20 minuten.
+Lokaal testen met echte testbetalingen (http://localhost volstaat):
 
-**Testen zonder Bancontact:** zet `PAYMENT_PROVIDER=fake` in `.env` en herstart. De checkout stuurt dan naar
+```bash
+stripe listen --forward-to localhost:3000/api/webhooks/stripe   # geeft de whsec_ voor STRIPE_WEBHOOK_SECRET
+```
+
+**Betaalmethodes** beheer je onder **Website-instellingen → Betaalmethodes**: dat leest en wijzigt de configuratie in Stripe
+zelf (niets in onze DB), met een auditlog (`AdminAuditLog`). Alleen methodes uit de allowlist in
+`src/data/payment-methods.ts` kunnen aan; kaarten (card, Apple Pay, Google Pay, Link) enkel na een bevestiging. Een
+restricted key (`rk_…`) heeft minstens nodig: Checkout Sessions *Write*, Payment Intents *Read*, Charges *Read*
+(refunds/disputes op de session), Payment Method Configurations *Read* (en *Write* om ze in de admin te wijzigen).
+
+**Testen zonder Stripe:** zet `PAYMENT_PROVIDER=fake` in `.env` en herstart. De checkout stuurt dan naar
 `/dev/test-betaling`, waar je kiest hoe de betaling afloopt (gelukt, mislukt, geannuleerd, verlopen). De rest van de flow is de
 echte. In productie staat dit altijd uit: `next build` en `next start` negeren de instelling en de pagina geeft een 404.
-Zonder Bancontact-sleutels en zonder `fake` blijft afrekenen dicht, ook als bestellen aan staat in de instellingen ("Betalen is
+Zonder Stripe-sleutels en zonder `fake` blijft afrekenen dicht, ook als bestellen aan staat in de instellingen ("Betalen is
 tijdelijk niet mogelijk"). De instellingenpagina meldt dat.
 
-Terugbetalen gebeurt voorlopig via het Bancontact Pro-portaal; markeer het daarna in de backoffice als afgehandeld.
+Terugbetalen gebeurt in het Stripe-dashboard. Het bedrag komt vanzelf binnen (webhook `charge.refunded` of "Betaalstatus
+ophalen"); een volledige terugbetaling zet de order op `REFUNDED`. Een dispute zet de order op "aandacht nodig".
 
 De app moet achter een reverse proxy draaien die `x-forwarded-for` aanvult. De rate limits lezen de laatste waarde daarin;
 zonder proxy kan een bezoeker die waarde zelf kiezen en de limieten omzeilen.
@@ -59,7 +72,7 @@ nergens anders worden ze met de hand samengesteld. De database bewaart de onderd
 
 | Wat | Voorbeeld |
 | --- | --- |
-| Order (`Order.number`, Bancontact-referentie) | `PLY1042` (één doorlopende teller, start bij 1001) |
+| Order (`Order.number`, Stripe `client_reference_id`) | `PLY1042` (één doorlopende teller, start bij 1001) |
 | Factuur (`Order.invoiceNumber`, pas bij betaling) | `F2026-0001` |
 | Preview zonder betaalde order | `PRV-A3F9C2E1` |
 | Collectible | `COL-007-HOND` |
@@ -109,7 +122,8 @@ item af zodra het gecontroleerd en klaar is, en pas als alles afgevinkt is, kan 
 | Verzending | prijs en aan/uit per optie | `ShopSettings.shippingOverrides` |
 | Teksten | infobanner, levertijd, retourtekst, FAQ | `ShopSettings.siteContent` |
 | Bedrijf & sociale media | wettelijke gegevens, profiel-URL's | `ShopSettings.company` |
-| Koppelingen | status van Bancontact, mail, cron (alleen-lezen) | `.env` |
+| Betaalmethodes | aan/uit per methode in Stripe | Stripe payment method configuration |
+| Koppelingen | status van Stripe, mail, cron (alleen-lezen) | `.env` |
 
 `src/data` bevat de startwaarden; die gelden tot de eerste keer opslaan, en als opgeslagen JSON niet meer klopt. Een instelling
 toevoegen: schema in `core/modules/settings/types.ts`, startwaarde in `settings/service.ts`, veld in het formulier van de sectie.
@@ -126,13 +140,13 @@ oude orders verwijzen er nog naar en terugzetten kan. Ze zijn niet op maat gemaa
 **Kortingscodes** gelden bij het afrekenen op de producten, nooit op de verzending. Hoe vaak een code gebruikt is, wordt niet
 bijgehouden maar geteld: de orders met die code die niet geannuleerd of verlopen zijn. Een onbetaalde order houdt de code dus
 bezet tot ze sluit (de cron), en de laatste keer kan niet aan twee klanten tegelijk gaan (rijvergrendeling bij het aanmaken van
-de order). Is er niets meer te betalen, dan is de order meteen betaald, zonder Bancontact. Een gebruikte code kan niet
+de order). Is er niets meer te betalen, dan is de order meteen betaald, zonder Stripe. Een gebruikte code kan niet
 verwijderd worden, alleen uitgezet.
 
 **Levering zonder verzending.** "Ophalen op campus Kantienberg" is een gewone leveroptie (aan/uit en prijs onder **Verzending**). "Vrienden en familie" verschijnt alleen met een kortingscode waarop "gratis persoonlijk overhandigen" aanstaat; de korting zelf mag dan leeg zijn. Beide vragen geen adres, gaan niet naar een vervoerder en staan in de check-in op "overhandigen". De klant op de hoogte brengen dat het klaarligt gebeurt voorlopig met de hand.
 
 **Order toevoegen** (`/admin/orders/new`), bv. voor een vriend: gewoon ordernummer, zelfde tabellen en zelfde verdere stappen,
 gemarkeerd met `Order.createdBy`. E-mail en adres zijn optioneel (overhandigen), de prijs per lijn kan aangepast worden en de
-voorwaarden blijven leeg omdat de klant ze niet online aanvaardde. Betalen kan op drie manieren: Bancontact-betaallink (de klant
-scant de QR met de app; kan zodra Bancontact Pro gekoppeld is), al betaald (contant, overschrijving, geschenk) of later. Zo'n
+voorwaarden blijven leeg omdat de klant ze niet online aanvaardde. Betalen kan op drie manieren: betaallink (Stripe Checkout,
+30 minuten geldig; kan zodra Stripe gekoppeld is), al betaald (contant, overschrijving, geschenk) of later. Zo'n
 order blijft open tot ze betaald of geannuleerd is: de cron sluit ze niet, en een verlopen betaallink kan opnieuw gemaakt worden.

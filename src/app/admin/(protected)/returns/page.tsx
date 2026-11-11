@@ -22,7 +22,7 @@ export default async function AdminReturnsPage({ searchParams }: PageProps<"/adm
       <p className="mt-1 text-sm text-text-muted">
         {all
           ? "De laatste 100 aanvragen, nieuwste eerst."
-          : "Nog af te handelen, oudste eerst. Terugbetalen gebeurt in het Bancontact Pro-portaal; zet de aanvraag daarna op afgerond."}
+          : "Nog af te handelen, oudste eerst. Terugbetalen gebeurt in het Stripe-dashboard (de order volgt vanzelf); zet de aanvraag daarna op afgerond."}
       </p>
       {requests.length === 0 ? (
         <p className="mt-8 rounded-3xl bg-white p-6">Geen {all ? "" : "openstaande "}aanvragen.</p>

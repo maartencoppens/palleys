@@ -89,7 +89,7 @@ export const manualOrderSchema = z.object({
   ]),
   payment: z.discriminatedUnion("type", [
     z.object({ type: z.literal("paid"), method: z.enum(MANUAL_PAYMENT_METHODS) }),
-    z.object({ type: z.literal("bancontact") }),
+    z.object({ type: z.literal("link") }),
     z.object({ type: z.literal("later") }),
   ]),
   sendConfirmation: z.boolean(),
@@ -106,7 +106,7 @@ export const manualOrderSchema = z.object({
 
 export const manualPaymentSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("paid"), method: z.enum(MANUAL_PAYMENT_METHODS), sendConfirmation: z.boolean() }),
-  z.object({ type: z.literal("bancontact") }),
+  z.object({ type: z.literal("link") }),
 ]);
 
 /** Deleting an order: the admin types its number and says why. Paid with real money: they confirm that too. */

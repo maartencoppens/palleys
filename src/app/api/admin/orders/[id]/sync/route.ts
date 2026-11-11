@@ -5,7 +5,7 @@ import { syncOrderPayment } from "@/core/modules/payments/service";
 
 const paramsSchema = z.object({ id: z.uuid() });
 
-// "Betaalstatus ophalen": asks Bancontact right now and processes the answer like a webhook would.
+// "Betaalstatus ophalen": asks Stripe right now and processes the answer like a webhook would.
 export async function POST(_request: Request, ctx: RouteContext<"/api/admin/orders/[id]/sync">) {
   try {
     const session = await requireAdmin();
@@ -17,6 +17,6 @@ export async function POST(_request: Request, ctx: RouteContext<"/api/admin/orde
     if (error instanceof UnauthorizedError) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     if (error instanceof z.ZodError) return NextResponse.json({ error: "Not found" }, { status: 404 });
     console.error("Admin payment sync failed:", error instanceof Error ? error.message : error);
-    return NextResponse.json({ error: "Bancontact kon niet bereikt worden" }, { status: 502 });
+    return NextResponse.json({ error: "Stripe kon niet bereikt worden" }, { status: 502 });
   }
 }

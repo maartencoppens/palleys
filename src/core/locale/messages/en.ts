@@ -479,7 +479,7 @@ export const en: Messages = {
 
   checkout: {
     title: "Checkout",
-    subtitle: "One more step: enter your details and pay securely with Bancontact.",
+    subtitle: "One more step: enter your details and pay securely.",
     emptyTitle: "Your cart is empty",
     emptyText: "Create your Palley first, then you can check out here.",
     closedPaused: "Ordering is paused for a moment",
@@ -527,8 +527,10 @@ export const en: Messages = {
     photoMarketing: "Palleys may use the photo of my pet and my Palley on the website and social media (optional, you can withdraw this at any time by emailing us).",
     submit: "Order with obligation to pay",
     submitting: "Going to payment…",
-    payNote: "You pay securely with {methods}: scan the QR code or pay in your banking app. Please also read our {privacy}.",
+    payNote: "You pay securely with {methods}, on Stripe’s secure payment page. Please also read our {privacy}.",
     methodsJoin: " or ",
+    methodsLabel: "Payment methods",
+    cardMethod: "card",
     privacy: "privacy policy",
     fieldErrors: {
       email: "Enter a valid email address.",
@@ -724,7 +726,7 @@ export const en: Messages = {
       resolution: "You choose",
       edit: "Edit",
       confirm: { CANCELLATION: "Confirm cancellation", WITHDRAWAL: "Confirm withdrawal", WARRANTY: "Send report" },
-      cancellation: "We won’t make this custom Palley and refund the full amount within 14 days, to the account you paid from with Bancontact.",
+      cancellation: "We won’t make this custom Palley and refund the full amount within 14 days, to the account you paid from.",
       withdrawalBefore: "Your Palleys haven’t been shipped or picked up yet. We refund you straight away, within 14 days, and you don’t need to send anything back.",
       withdrawalAfter: "Send the Palleys back unused and in good condition, at the latest 14 days from today, to {address}. You pay for the return shipping; keep the proof of postage. We refund you within 14 days, including the standard delivery costs of your order, but may wait until we have the Palleys or your proof of postage.",
       warranty: "We’ll look at your report and let you know what we’ll do as soon as possible. Usually you don’t need to send anything back, and you never pay delivery or return costs.",
@@ -786,11 +788,11 @@ export const en: Messages = {
     approvedSubject: "Your {type} for order {number} has been approved",
     approvedTitle: "Good news, {name}",
     approved: {
-      cancellation: "We won’t make your custom Palley and will refund the full amount within 14 days, to the account you paid from with Bancontact.",
-      withdrawalBefore: "We’ll refund the full amount within 14 days, to the account you paid from with Bancontact.",
+      cancellation: "We won’t make your custom Palley and will refund the full amount within 14 days, to the account you paid from.",
+      withdrawalBefore: "We’ll refund the full amount within 14 days, to the account you paid from.",
       withdrawalAfter: "Send the Palleys back to {address}, if you haven’t yet. We’ll refund you once we have them or you show us the proof of postage, and at the latest 14 days after your withdrawal.",
       reprint: "We’ll reprint your Palley for free and let you know when it’s on its way.",
-      refund: "We’ll refund the full amount as soon as possible, and at the latest within 14 days, to the account you paid from with Bancontact.",
+      refund: "We’ll refund the full amount as soon as possible, and at the latest within 14 days, to the account you paid from.",
     },
     rejectedSubject: "About your {type} for order {number}",
     rejectedTitle: "Hi {name},",
@@ -836,7 +838,7 @@ export const en: Messages = {
                 ["Print-ready 3D model of your Palley", "Being able to reprint your Palley under the guarantee", "Performance of the contract"],
                 [
                   "Payment status",
-                  "Handling your payment. You pay with Bancontact. We don’t see or keep your card or account details: they stay with Bancontact and your bank.",
+                  "Handling your payment. You pay through Stripe, with Bancontact or iDEAL | Wero. We don’t see or keep your card or account details: they stay with Stripe and your bank.",
                   "Performance of the contract",
                 ],
                 ["Administrative data (order, payment)", "Accounting and legal obligations", "Legal obligation"],
@@ -861,7 +863,7 @@ export const en: Messages = {
           blocks: [
             "We only share data with service providers we need, under a data processing agreement:",
             [
-              "Bancontact Pro / KBC (payments)",
+              "Stripe (payments)",
               "Google (AI processing of your photos), Meshy (3D model)",
               "Cloudflare (storage of photos and files), our hosting provider (a server in the EU, for the website and the database), Resend (emails)",
               "PostNL (delivery: name, address, email and phone, only if you choose delivery)",
@@ -977,7 +979,7 @@ export const en: Messages = {
         {
           title: "Article 6 – Payment",
           blocks: [
-            "6.1 You pay when you order with Bancontact, via Bancontact Pro (KBC): you scan the QR code or pay in your banking or Bancontact app. Your card or account details never reach us.",
+            "6.1 You pay when you order, on the secure payment page of our payment provider Stripe, with Bancontact or iDEAL | Wero (or another method shown there). Your card or account details never reach us.",
           ],
         },
         {
@@ -1098,7 +1100,7 @@ export const en: Messages = {
         {
           title: "Refunds",
           blocks: [
-            "We refund to the account you paid from with Bancontact, unless we agree otherwise together. If you cancel or withdraw, we refund within 14 days. For a warranty claim we do so as soon as possible and at the latest within 14 days of our decision.",
+            "We refund to the account you paid from, unless we agree otherwise together. If you cancel or withdraw, we refund within 14 days. For a warranty claim we do so as soon as possible and at the latest within 14 days of our decision.",
           ],
         },
         {

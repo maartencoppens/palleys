@@ -36,7 +36,7 @@ describe("order numbers", () => {
     expect(orderRef(12345)).toBe("PLY12345");
   });
 
-  it("stays within 12 characters for bpost and Bancontact", () => {
+  it("stays within 12 characters for bpost", () => {
     expect(orderRef(999_999_999)).toHaveLength(12);
     expect(() => orderRef(1_000_000_000)).toThrow();
   });

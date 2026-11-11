@@ -10,7 +10,7 @@ import type { Attachment } from "./options";
 export const ORDER_PREFIX = "PLY";
 export const ORDER_DIGITS = 4;
 export const ORDER_START = 1001;
-// bpost and Bancontact references allow at most this many characters.
+// bpost references allow at most this many characters (kept short for bank statements too).
 export const ORDER_REF_MAX_LENGTH = 12;
 // Order numbers from before the standard (PAL-2026-00042): still recognised wherever we read one back.
 export const LEGACY_ORDER_PATTERN = /^PAL-\d{4}-\d{5,}$/;

@@ -67,7 +67,7 @@ async function newCollectible() {
   return row.id;
 }
 
-/** A paid order (by hand, so no Bancontact) with one Palley op maat and two collectibles. */
+/** A paid order (by hand, so no Stripe) with one Palley op maat and two collectibles. */
 async function paidOrder({ email = `klant-${randomUUID().slice(0, 8)}@example.be`, delivery = { type: "handover" } as object } = {}) {
   const collectibleId = await newCollectible();
   const input = manualOrderSchema.parse({

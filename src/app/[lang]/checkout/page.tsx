@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { getMessages, getSiteContent, metadataLocale } from "@/core/locale/server";
 import { getSiteSettings } from "@/core/modules/settings/service";
+import { getActiveCheckoutMethods } from "@/core/modules/payments/method-config";
 import CheckoutForm from "@/components/functional/shop/checkout/CheckoutForm";
 import Footer from "@/components/functional/shop/layout/Footer";
 import InfoBanner from "@/components/functional/shop/home/InfoBanner";
@@ -15,8 +16,8 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/checkout">
 
 async function LiveCheckoutForm() {
   await connection();
-  const [content, { company }] = await Promise.all([getSiteContent(), getSiteSettings()]);
-  return <CheckoutForm deliveryTime={content.deliveryTime} instagramUrl={company.socials.instagram} />;
+  const [content, { company }, paymentMethods] = await Promise.all([getSiteContent(), getSiteSettings(), getActiveCheckoutMethods()]);
+  return <CheckoutForm deliveryTime={content.deliveryTime} instagramUrl={company.socials.instagram} paymentMethods={paymentMethods} />;
 }
 
 export default async function CheckoutPage() {

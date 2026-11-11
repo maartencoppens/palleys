@@ -18,7 +18,7 @@ import type { DeleteOrderInput, OrderDetailsInput } from "./types";
 // A payment that can still turn into money: deleting its order now would leave that money without an order.
 const LIVE_PAYMENT_STATUSES: PaymentStatus[] = ["OPEN", "PENDING", "AUTHORIZED"];
 
-/** Real money: paid, more than nothing, not in Bancontact's test mode. Cash or a transfer an admin recorded counts. */
+/** Real money: paid, more than nothing, not in Stripe's test mode. Cash or a transfer an admin recorded counts. */
 const isRealMoney = (payment: { status: PaymentStatus; amountCents: number; mode: string | null }) =>
   payment.status === "PAID" && payment.amountCents > 0 && payment.mode !== "test";
 
@@ -40,7 +40,7 @@ export async function deleteOrder(orderId: string, input: DeleteOrderInput, admi
   if (!order) throw new OrderNotFoundError(orderId);
   if (input.confirmNumber !== order.number) throw new OrderActionError("Het ordernummer klopt niet: typ het exact over");
   if (order.payments.some((payment) => payment.provider !== MANUAL_PAYMENT_PROVIDER && LIVE_PAYMENT_STATUSES.includes(payment.status))) {
-    throw new OrderActionError("Er loopt nog een Bancontact-betaling. Haal eerst de betaalstatus op, of wacht tot ze verlopen is (20 minuten).");
+    throw new OrderActionError("Er loopt nog een betaling via Stripe. Haal eerst de betaalstatus op, of wacht tot ze verlopen is (30 minuten).");
   }
   if (order.payments.some(isRealMoney) && !input.confirmPaid) {
     throw new OrderActionError("Deze order is met echt geld betaald: bevestig dat het terugbetaald is of een test was");

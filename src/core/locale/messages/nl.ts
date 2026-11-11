@@ -558,7 +558,7 @@ export const nl = {
   checkout: {
     title: "Afrekenen",
     subtitle:
-      "Nog één stap: vul je gegevens in en betaal veilig met Bancontact.",
+      "Nog één stap: vul je gegevens in en betaal veilig.",
     emptyTitle: "Je winkelmandje is leeg",
     emptyText: "Maak eerst je Palley, dan kun je hier afrekenen.",
     closedPaused: "Bestellen is even gepauzeerd",
@@ -616,8 +616,10 @@ export const nl = {
     submit: "Bestellen met betalingsverplichting",
     submitting: "Naar betalen…",
     payNote:
-      "Je betaalt veilig met {methods}: scan de QR-code of betaal in je bankapp. Lees ook ons {privacy}.",
+      "Je betaalt veilig met {methods}, op de beveiligde betaalpagina van Stripe. Lees ook ons {privacy}.",
     methodsJoin: " of ",
+    methodsLabel: "Betaalmethodes",
+    cardMethod: "kaart",
     privacy: "privacybeleid",
     fieldErrors: {
       email: "Vul een geldig e-mailadres in.",
@@ -881,7 +883,7 @@ export const nl = {
         WARRANTY: "Melding versturen",
       },
       cancellation:
-        "We maken deze Palley op maat niet en betalen je het volledige bedrag terug binnen 14 dagen, op de rekening waarmee je met Bancontact betaalde.",
+        "We maken deze Palley op maat niet en betalen je het volledige bedrag terug binnen 14 dagen, op de rekening waarmee je betaalde.",
       withdrawalBefore:
         "Je Palleys zijn nog niet verstuurd of opgehaald. We betalen je meteen terug, binnen 14 dagen, en je hoeft niets terug te sturen.",
       withdrawalAfter:
@@ -962,15 +964,15 @@ export const nl = {
     approvedTitle: "Goed nieuws, {name}",
     approved: {
       cancellation:
-        "We maken je Palley op maat niet en betalen je het volledige bedrag terug binnen 14 dagen, op de rekening waarmee je met Bancontact betaalde.",
+        "We maken je Palley op maat niet en betalen je het volledige bedrag terug binnen 14 dagen, op de rekening waarmee je betaalde.",
       withdrawalBefore:
-        "We betalen je het volledige bedrag terug binnen 14 dagen, op de rekening waarmee je met Bancontact betaalde.",
+        "We betalen je het volledige bedrag terug binnen 14 dagen, op de rekening waarmee je betaalde.",
       withdrawalAfter:
         "Stuur de Palleys terug naar {address}, als je dat nog niet deed. We betalen je terug zodra we ze hebben of je ons het verzendbewijs toont, en ten laatste 14 dagen na je herroeping.",
       reprint:
         "We printen je Palley gratis opnieuw en laten je weten wanneer hij vertrekt.",
       refund:
-        "We betalen je het volledige bedrag terug zo snel mogelijk, en ten laatste binnen 14 dagen, op de rekening waarmee je met Bancontact betaalde.",
+        "We betalen je het volledige bedrag terug zo snel mogelijk, en ten laatste binnen 14 dagen, op de rekening waarmee je betaalde.",
     },
     rejectedSubject: "Over je {type} voor bestelling {number}",
     rejectedTitle: "Hoi {name},",
@@ -1042,7 +1044,7 @@ export const nl = {
                 ],
                 [
                   "Betaalstatus",
-                  "Je betaling afhandelen. Je betaalt met Bancontact. Je kaart- of rekeninggegevens zien en bewaren wij niet: die blijven bij Bancontact en je bank.",
+                  "Je betaling afhandelen. Je betaalt via Stripe, met Bancontact of iDEAL | Wero. Je kaart- of rekeninggegevens zien en bewaren wij niet: die blijven bij Stripe en je bank.",
                   "Uitvoering van de overeenkomst",
                 ],
                 [
@@ -1091,7 +1093,7 @@ export const nl = {
           blocks: [
             "We delen gegevens alleen met dienstverleners die we nodig hebben, op basis van een verwerkersovereenkomst:",
             [
-              "Bancontact Pro / KBC (betalingen)",
+              "Stripe (betalingen)",
               "Google (AI-verwerking van je foto’s), Meshy (3D-model)",
               "Cloudflare (opslag van foto’s en bestanden), onze hostingprovider (een server in de EU, voor de website en de database), Resend (e-mails)",
               "PostNL (levering: naam, adres, e-mail en telefoon, alleen als je voor levering kiest)",
@@ -1215,7 +1217,7 @@ export const nl = {
         {
           title: "Artikel 6 – Betaling",
           blocks: [
-            "6.1 Je betaalt bij je bestelling met Bancontact, via Bancontact Pro (KBC): je scant de QR-code of betaalt in je bank- of Bancontact-app. Je kaart- of rekeninggegevens komen niet bij ons terecht.",
+            "6.1 Je betaalt bij je bestelling op de beveiligde betaalpagina van onze betaaldienst Stripe, met Bancontact of iDEAL | Wero (of een andere methode die daar getoond wordt). Je kaart- of rekeninggegevens komen niet bij ons terecht.",
           ],
         },
         {
@@ -1348,7 +1350,7 @@ export const nl = {
         {
           title: "Terugbetaling",
           blocks: [
-            "We betalen terug op de rekening waarmee je met Bancontact betaald hebt, tenzij we samen iets anders afspreken. Annuleer of herroep je, dan betalen we binnen 14 dagen terug. Bij een garantieclaim doen we dat zo snel mogelijk en ten laatste binnen 14 dagen na onze beslissing.",
+            "We betalen terug op de rekening waarmee je betaald hebt, tenzij we samen iets anders afspreken. Annuleer of herroep je, dan betalen we binnen 14 dagen terug. Bij een garantieclaim doen we dat zo snel mogelijk en ten laatste binnen 14 dagen na onze beslissing.",
           ],
         },
         {

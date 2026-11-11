@@ -9,14 +9,14 @@ import { MANUAL_PAYMENT_METHODS, PAYMENT_METHOD_LABELS, type ManualPaymentMethod
 
 type OrderPaymentPanelProps = {
   orderId: string;
-  /** The newest Bancontact link that hasn't been paid or lapsed yet. */
+  /** The newest payment link (Stripe Checkout) that hasn't been paid or lapsed yet. */
   checkoutUrl: string | null;
   paymentsAvailable: boolean;
   canSendConfirmation: boolean;
   free: boolean;
 };
 
-/* An unpaid order an admin added: let the customer pay with the Bancontact app, record money received, or cancel. */
+/* An unpaid order an admin added: let the customer pay through a Stripe payment link, record money received, or cancel. */
 export function OrderPaymentPanel({ orderId, checkoutUrl, paymentsAvailable, canSendConfirmation, free }: OrderPaymentPanelProps) {
   const router = useRouter();
   const [busy, setBusy] = useState<"link" | "paid" | "cancel" | null>(null);
@@ -52,8 +52,8 @@ export function OrderPaymentPanel({ orderId, checkoutUrl, paymentsAvailable, can
         {checkoutUrl ? (
           <>
             <p className="text-sm text-text-muted">
-              Open de betaalpagina op je laptop: de klant scant de QR-code met de Bancontact-app. Of stuur de link door; hij is 20 minuten
-              geldig.
+              Open de betaalpagina op je laptop: de klant kiest Bancontact (en scant de QR-code met de app) of iDEAL | Wero. Of stuur de
+              link door; hij is 30 minuten geldig.
             </p>
             <Button variant="primary" className="w-full" href={checkoutUrl} target="_blank" rel="noopener noreferrer">
               Open betaalpagina
@@ -67,8 +67,8 @@ export function OrderPaymentPanel({ orderId, checkoutUrl, paymentsAvailable, can
             {free
               ? "Deze order kost niets, dus er is geen betaallink nodig."
               : paymentsAvailable
-                ? "Maak een betaallink: de klant betaalt met de Bancontact-app."
-                : "Betaallinks kunnen zodra Bancontact Pro goedgekeurd en gekoppeld is. Markeer de order tot dan zelf als betaald."}
+                ? "Maak een betaallink: de klant betaalt op de betaalpagina van Stripe."
+                : "Betaallinks kunnen zodra Stripe gekoppeld is (zie Koppelingen). Markeer de order tot dan zelf als betaald."}
           </p>
         )}
         {paymentsAvailable && !free && (

@@ -11,7 +11,7 @@ import {
 
 const paramsSchema = z.object({ id: z.uuid() });
 
-// Payment of an order an admin added: a Bancontact link for the customer's app, or money received some other way.
+// Payment of an order an admin added: a payment link (Stripe Checkout) for the customer, or money received some other way.
 export async function POST(request: Request, ctx: RouteContext<"/api/admin/orders/[id]/payment">) {
   try {
     const session = await requireAdmin();
@@ -23,7 +23,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/admin/order
       return result ? NextResponse.json(result) : NextResponse.json({ error: "Not found" }, { status: 404 });
     }
     if (!paymentProvider.isConfigured()) {
-      return NextResponse.json({ error: "Bancontact Pro is nog niet gekoppeld" }, { status: 409 });
+      return NextResponse.json({ error: "Stripe is nog niet gekoppeld" }, { status: 409 });
     }
     const link = await createManualOrderPaymentLink(id);
     return link ? NextResponse.json(link) : NextResponse.json({ error: "Not found" }, { status: 404 });
