@@ -525,8 +525,9 @@ export const en: Messages = {
     terms: "terms and conditions",
     marketing: "Keep me posted about new Palleys (optional, you can unsubscribe at any time).",
     photoMarketing: "Palleys may use the photo of my pet and my Palley on the website and social media (optional, you can withdraw this at any time by emailing us).",
-    submit: "Order with obligation to pay",
-    submitting: "Going to payment…",
+    submit: "Order and pay",
+    submitAmount: "Order and pay · {amount}",
+    submitting: "Taking you to the secure payment page…",
     payNote: "You pay securely with {methods}, on Stripe’s secure payment page. Please also read our {privacy}.",
     methodsJoin: " or ",
     methodsLabel: "Payment methods",
@@ -813,10 +814,13 @@ export const en: Messages = {
 
   legal: {
     eyebrow: "Legal",
+    updated: "Last updated on {date}.",
+    versionUpdated: "Version {version}, last updated on {date}.",
+    archived: "You are viewing an older version. See the {current}.",
+    currentVersion: "current version",
     // LEGAL-REVIEW: translation of the privacy policy of 9 November 2026; see the Dutch text for what changed.
     privacy: {
       title: "Privacy policy",
-      intro: "Last updated: 9 November 2026.",
       sections: [
         {
           title: "1. Who are we?",
@@ -925,7 +929,6 @@ export const en: Messages = {
     // left out, as in the Dutch text.
     terms: {
       title: "Terms and conditions",
-      intro: "Version {version}, last updated on 9 November 2026.",
       company: "{name}, {address}. Email: {email}.",
       companyEnterprise: "{name}, {address}. Enterprise number {enterprise}. Email: {email}.",
       sections: [
@@ -963,7 +966,7 @@ export const en: Messages = {
           title: "Article 4 – Ordering and conclusion of the contract",
           blocks: [
             "4.1 You order in these steps: you choose a product. For a custom Palley you choose your pet and upload 1 to 4 photos. Then you check your cart, fill in your details, choose delivery or pickup, accept these terms and pay.",
-            "4.2 You place your order with the button “Order with obligation to pay”. The contract is concluded as soon as your payment is confirmed. You then receive a confirmation email with an overview of your order and a link to these terms. If you don’t pay, your order lapses.",
+            "4.2 You place your order with the button “Order and pay”. The contract is concluded as soon as your payment is confirmed. You then receive a confirmation email with an overview of your order and a link to these terms. If you don’t pay, your order lapses.",
             "4.3 We may refuse an order for a valid reason, for example a delivery problem. If we refuse an order, we refund you in full.",
           ],
         },
@@ -1056,7 +1059,6 @@ export const en: Messages = {
     // LEGAL-REVIEW: translation of the return and refund policy of 9 November 2026; see the Dutch text.
     returnPolicy: {
       title: "Return and refund policy",
-      intro: "Last updated: 9 November 2026.",
       sections: [
         {
           title: "Custom Palley",
@@ -1132,7 +1134,7 @@ export const en: Messages = {
     // LEGAL-REVIEW: translation of the shipping policy of 9 November 2026; see the Dutch text for what changed.
     shippingPolicy: {
       title: "Shipping policy",
-      intro: "Last updated: 9 November 2026. Thank you for ordering from Palleys. Here you can read how your order reaches you.",
+      intro: "Thank you for ordering from Palleys. Here you can read how your order reaches you.",
       sections: [
         { title: "Where do we deliver?", blocks: ["We only deliver in Belgium."] },
         {
@@ -1185,7 +1187,6 @@ export const en: Messages = {
     // LEGAL-REVIEW: translation of the company details; see the Dutch text.
     contactDetails: {
       title: "Contact details",
-      intro: "Last updated: 9 November 2026.",
       tradeName: "Trade name",
       capacity: "Legal status",
       capacityText: "student business within Step Up, an initiative of Unizo, the Union of Self-Employed Entrepreneurs",
@@ -1198,7 +1199,7 @@ export const en: Messages = {
       controllerText: "{name}, see above. You’ll find more in our {privacyPolicy}.",
       complaints: "Complaints",
       complaintsText: "email us at {email}.",
-      seeAlso: "See also: {terms} · {privacy} · {returnPolicy} · {shippingPolicy}.",
+      seeAlso: "See also: {terms} · {privacyPolicy} · {returnPolicy} · {shippingPolicy}.",
       termsLink: "terms and conditions",
       privacyLink: "privacy policy",
       shippingPolicyLink: "shipping policy",

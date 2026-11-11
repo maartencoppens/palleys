@@ -1,6 +1,9 @@
 // Instellingen van de AI-pipeline. Wijzigingen hier veranderen de kost per preview.
 
 export const MAX_POSE_ATTEMPTS = 3;
+// Poses die een admin zelf uploadt (gemaakt in een andere tool): kosten geen credits, dus los van MAX_POSE_ATTEMPTS.
+// Wel een grens, want elke upload blijft in R2 staan tot de pose vastligt.
+export const MAX_UPLOADED_POSES = 5;
 
 // Nano Banana Pro (Gemini). Hogere imageSize = duurder per pose.
 export const POSE_IMAGE_CONFIG = {

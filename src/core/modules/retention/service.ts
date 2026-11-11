@@ -43,11 +43,12 @@ async function deleteExpiredUploads(now: Date) {
     where: { status: "UPLOADED", expiresAt: { lt: now } },
     orderBy: { expiresAt: "asc" },
     take: RETENTION_BATCH_SIZE,
-    select: { id: true, photos: { select: { key: true } } },
+    select: { id: true, photos: { select: { key: true } }, poseCandidates: { select: { key: true } } },
   });
   let deleted = 0;
   for (const preview of previews) {
-    if (!(await deleteFiles(preview.photos.map((photo) => photo.key)))) continue;
+    const keys = [...preview.photos.map((photo) => photo.key), ...preview.poseCandidates.map((candidate) => candidate.key)];
+    if (!(await deleteFiles(keys))) continue;
     // Only while it's still unpaid: a payment that came in meanwhile wins.
     const { count } = await prisma.preview.updateMany({
       where: { id: preview.id, status: "UPLOADED" },
@@ -55,6 +56,8 @@ async function deleteExpiredUploads(now: Date) {
     });
     if (count === 0) continue;
     await prisma.previewPhoto.deleteMany({ where: { previewId: preview.id } });
+    await prisma.poseCandidate.deleteMany({ where: { previewId: preview.id } });
+    await prisma.preview.updateMany({ where: { id: preview.id }, data: { poseImageKey: null } });
     deleted++;
   }
   return deleted;
@@ -116,15 +119,34 @@ async function deletePhotosAfterDelivery(now: Date) {
     },
     orderBy: { createdAt: "asc" },
     take: RETENTION_BATCH_SIZE,
-    select: { id: true, poseImageKey: true, glbKey: true, objKey: true, mtlKey: true, textureKey: true, photos: { select: { key: true } }, ...ORDERS_SELECT },
+    select: {
+      id: true,
+      poseImageKey: true,
+      glbKey: true,
+      objKey: true,
+      mtlKey: true,
+      textureKey: true,
+      photos: { select: { key: true } },
+      poseCandidates: { select: { key: true } },
+      ...ORDERS_SELECT,
+    },
   });
   let deleted = 0;
   for (const preview of previews) {
     if (!photosAreDue(retentionOrders(preview), today)) continue;
-    const keys = [...preview.photos.map((photo) => photo.key), preview.poseImageKey, preview.glbKey, preview.objKey, preview.mtlKey, preview.textureKey];
+    const keys = [
+      ...preview.photos.map((photo) => photo.key),
+      ...preview.poseCandidates.map((candidate) => candidate.key), // every pose attempt, also the ones not chosen
+      preview.poseImageKey,
+      preview.glbKey,
+      preview.objKey,
+      preview.mtlKey,
+      preview.textureKey,
+    ];
     if (!(await deleteFiles(keys))) continue;
     await prisma.$transaction([
       prisma.previewPhoto.deleteMany({ where: { previewId: preview.id } }),
+      prisma.poseCandidate.deleteMany({ where: { previewId: preview.id } }),
       prisma.preview.update({
         where: { id: preview.id },
         data: { photosDeletedAt: now, poseImageKey: null, glbKey: null, objKey: null, mtlKey: null, textureKey: null },

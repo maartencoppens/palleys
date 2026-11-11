@@ -1,15 +1,17 @@
 import type { PreviewStatus } from "@/db/client";
 
+// → POSE_READY without GENERATING_POSE: an admin uploaded a pose made elsewhere (on the preview page, or with a manual
+// order, where it takes effect once the order is paid). Never further than that: approving a pose stays a click.
 const TRANSITIONS: Record<PreviewStatus, PreviewStatus[]> = {
   UPLOADED: ["PAID", "EXPIRED"],
-  PAID: ["GENERATING_POSE"],
+  PAID: ["GENERATING_POSE", "POSE_READY"],
   GENERATING_POSE: ["POSE_READY", "FAILED"],
   POSE_READY: ["GENERATING_MODEL", "GENERATING_POSE", "FAILED"],
   GENERATING_MODEL: ["MODEL_READY", "FAILED"],
-  MODEL_READY: ["APPROVED", "GENERATING_POSE", "GENERATING_MODEL"],
+  MODEL_READY: ["APPROVED", "GENERATING_POSE", "GENERATING_MODEL", "POSE_READY"],
   APPROVED: ["PRINT_READY"],
   PRINT_READY: [],
-  FAILED: ["GENERATING_POSE", "GENERATING_MODEL", "APPROVED"],
+  FAILED: ["GENERATING_POSE", "GENERATING_MODEL", "APPROVED", "POSE_READY"],
   EXPIRED: [],
 };
 

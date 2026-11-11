@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import CompanyValue from "@/components/functional/shop/legal/CompanyValue";
-import LegalPage from "@/components/functional/shop/legal/LegalPage";
-import LegalText from "@/components/functional/shop/legal/LegalText";
-import { getMessages, metadataLocale } from "@/core/locale/server";
+import LegalDocumentPage from "@/components/functional/shop/legal/LegalDocumentPage";
+import { metadataLocale } from "@/core/locale/server";
 import { PRIVACY_URL } from "@/data/checkout";
 import { pageMetadata } from "@/core/seo/metadata";
 
@@ -12,15 +10,8 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/privacy">)
   return pageMetadata({ locale, path: PRIVACY_URL, title: m.title, description: m.description });
 }
 
-// LEGAL-REVIEW: the privacy policy; company name, address and e-mail come from the company settings.
-export default async function PrivacyPage() {
-  const { legal: m } = await getMessages();
-  return (
-    <LegalPage eyebrow={m.eyebrow} title={m.privacy.title} intro={m.privacy.intro}>
-      <LegalText
-        sections={m.privacy.sections}
-        values={{ email: <CompanyValue field="email" />, companyAddress: <CompanyValue field="nameAddress" /> }}
-      />
-    </LegalPage>
-  );
+// LEGAL-REVIEW: the text is managed in /admin/settings/legal (core/modules/legal); until the first publication the one
+// in src/core/locale/messages applies. ?versie=... shows an older version.
+export default function PrivacyPage({ searchParams }: PageProps<"/[lang]/privacy">) {
+  return <LegalDocumentPage slug="privacy" searchParams={searchParams} />;
 }

@@ -34,8 +34,9 @@ export function isPhotoKeyOf(previewId: string, key: string) {
   );
 }
 
+// Every attempt is kept next to the others (PoseCandidate), so two poses in the same millisecond must not share a key.
 export function poseImageKey(previewId: string, mimeType: string) {
-  return `${previewFolder(previewId)}/pose-${Date.now()}.${extensionForMime(mimeType)}`;
+  return `${previewFolder(previewId)}/pose-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${extensionForMime(mimeType)}`;
 }
 
 export function unpaidExpiry(from: number = Date.now()) {

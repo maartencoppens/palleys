@@ -17,6 +17,7 @@ const GROUPS = [
       { href: "/admin/batches", label: "Batches" },
       { href: "/admin/production", label: "Productie" },
       { href: "/admin/returns", label: "Retour" },
+      { href: "/admin/finance", label: "Financieel" },
     ],
   },
   {

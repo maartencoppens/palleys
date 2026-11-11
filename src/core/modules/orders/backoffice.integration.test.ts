@@ -681,7 +681,7 @@ describe("collectible 3D models", () => {
     expect((await getCollectibleForAdmin(collectibleId))?.name).toBe("Nieuwe collectible");
 
     const pose = await sharp({ create: { width: 32, height: 32, channels: 3, background: "#ffffff" } }).jpeg().toBuffer();
-    await uploadPose(previewId, pose);
+    await uploadPose(previewId, pose, ADMIN);
     const preview = await prisma.preview.findUniqueOrThrow({ where: { id: previewId } });
     expect(preview).toMatchObject({ status: "POSE_READY", animalType: null });
     expect(preview.poseImageKey).toMatch(/\.png$/);
@@ -690,10 +690,7 @@ describe("collectible 3D models", () => {
     await prisma.preview.update({ where: { id: previewId }, data: { status: "MODEL_READY" } });
     await approvePreview(previewId);
     expect((await prisma.preview.findUniqueOrThrow({ where: { id: previewId } })).status).toBe("APPROVED");
-    await expect(uploadPose(previewId, pose)).rejects.toThrow("goedgekeurd");
-
-    const customer = await addOrder();
-    await expect(uploadPose(customer.previews[0].previewId, pose)).rejects.toThrow("nieuwe collectible");
+    await expect(uploadPose(previewId, pose, ADMIN)).rejects.toThrow("goedgekeurd");
   });
 });
 

@@ -79,7 +79,7 @@ function joinMethods(labels: string[], lastJoin: string) {
 }
 
 /*
- * Checkout: details, delivery and a clear "order with obligation to pay" step, then Stripe's hosted payment page.
+ * Checkout: details, delivery and a clear "order and pay" step, then Stripe's hosted payment page.
  * `paymentMethods` are the methods switched on in Stripe right now (server-side, cached a minute), only for the texts.
  * Only details and choices are sent; the server computes every amount again and refuses anything stale.
  */
@@ -623,14 +623,18 @@ export default function CheckoutForm({
           )}
         </div>
 
-        {/* LEGAL-REVIEW: the button must state the obligation to pay (WER VI.45 §2). */}
+        {/* LEGAL-REVIEW: the button must state the obligation to pay (WER VI.45 §2): "Bestellen en betalen", with the amount. */}
         <button
           type="submit"
           disabled={submitting || closed}
           aria-busy={submitting}
           className="flex items-center justify-center gap-3 rounded-pill bg-orange py-[18px] font-label text-lg leading-[normal] font-semibold text-off-white transition hover:bg-orange-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {submitting ? m.submitting : m.submit}
+          <svg aria-hidden="true" viewBox="0 0 24 24" className="size-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+            <rect x="4" y="10.5" width="16" height="10.5" rx="2.5" />
+            <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
+          </svg>
+          {submitting ? m.submitting : selected && totalCents > 0 ? fill(m.submitAmount, { amount: price(totalCents) }) : m.submit}
         </button>
         {submitError && (
           <p role="alert" className={errorClassName}>

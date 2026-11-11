@@ -5,7 +5,7 @@ import type { OrderStatus, PaymentStatus } from "@/db/generated/enums";
 import { env } from "@/core/utils/env";
 import { createToken, hashToken } from "@/core/utils/tokens";
 import { EmailError, sendEmail } from "@/core/networking/external/email-client";
-import { statusesThatCanTransitionTo } from "@/core/modules/previews/status";
+import { canTransition as canTransitionPreview, statusesThatCanTransitionTo } from "@/core/modules/previews/status";
 import { buildNewOrderTeamMail, buildOrderConfirmation } from "@/core/modules/orders/emails";
 import { canTransitionOrder, orderStatusesThatCanTransitionTo, PAID_ORDER_STATUSES } from "@/core/modules/orders/status";
 import { nextInvoiceNumber } from "@/core/modules/orders/service";
@@ -183,17 +183,24 @@ export async function processPayment(payment: ProviderPayment, source: ProcessSo
   }
   const order = stored.order;
 
-  await prisma.payment.update({
-    where: { id: stored.id },
-    data: {
-      status: payment.status,
-      mode: payment.mode,
-      method: payment.method,
-      refundedCents: payment.refundedCents,
-      chargedBackCents: payment.chargedBackCents,
-      rawLastStatus: payment.snapshot as object,
-      lastSyncedAt: new Date(),
-    },
+  await prisma.$transaction(async (tx) => {
+    // Locked, so two webhooks at once don't both log the same refund.
+    const [before] = await tx.$queryRaw<{ refundedCents: number; chargedBackCents: number }[]>`
+      SELECT "refundedCents", "chargedBackCents" FROM "Payment" WHERE "id" = ${stored.id} FOR UPDATE`;
+    await tx.payment.update({
+      where: { id: stored.id },
+      data: {
+        status: payment.status,
+        mode: payment.mode,
+        method: payment.method,
+        refundedCents: payment.refundedCents,
+        chargedBackCents: payment.chargedBackCents,
+        rawLastStatus: payment.snapshot as object,
+        lastSyncedAt: new Date(),
+      },
+    });
+    const adjustments = paymentAdjustments(before, payment).map((adjustment) => ({ ...adjustment, paymentId: stored.id, source }));
+    if (adjustments.length > 0) await tx.paymentAdjustment.createMany({ data: adjustments });
   });
 
   // The provider's answer has to match what we asked for. If it doesn't, we never mark the order paid automatically.
@@ -223,6 +230,41 @@ export async function processPayment(payment: ProviderPayment, source: ProcessSo
   const current = await prisma.order.findUniqueOrThrow({ where: { id: order.id }, select: { status: true } });
   if (current.status === "PAID") await sendConfirmationOnce(order.id);
   return { outcome: "processed", orderId: order.id, orderStatus: current.status };
+}
+
+/**
+ * Money that went back since we last looked: a refund or a chargeback (or one undone), each with today's date for the
+ * sales journal. Stripe only gives totals, so the difference with what we stored is what happened now.
+ */
+function paymentAdjustments(
+  before: { refundedCents: number; chargedBackCents: number },
+  after: { refundedCents: number; chargedBackCents: number },
+) {
+  const changes: { kind: "REFUND" | "CHARGEBACK"; amountCents: number }[] = [];
+  if (after.refundedCents !== before.refundedCents) changes.push({ kind: "REFUND", amountCents: after.refundedCents - before.refundedCents });
+  if (after.chargedBackCents !== before.chargedBackCents) {
+    changes.push({ kind: "CHARGEBACK", amountCents: after.chargedBackCents - before.chargedBackCents });
+  }
+  return changes;
+}
+
+/**
+ * An order paid by hand (cash, a transfer) was refunded by hand: the payment records the whole amount as refunded, with
+ * today's date for the sales journal. Free payments (a gift) have nothing to refund. Called after the order moved.
+ */
+export async function recordManualRefund(orderId: string, source: ProcessSource) {
+  const payments = await prisma.payment.findMany({
+    where: { orderId, provider: MANUAL_PAYMENT_PROVIDER, status: "PAID" },
+    select: { id: true, amountCents: true, refundedCents: true },
+  });
+  for (const payment of payments) {
+    const amountCents = payment.amountCents - payment.refundedCents;
+    if (amountCents <= 0) continue;
+    await prisma.$transaction([
+      prisma.payment.updateMany({ where: { id: payment.id, refundedCents: payment.refundedCents }, data: { refundedCents: payment.amountCents } }),
+      prisma.paymentAdjustment.create({ data: { paymentId: payment.id, kind: "REFUND", amountCents, source } }),
+    ]);
+  }
 }
 
 /** Conditional status change with a log row. Returns false when the order wasn't in a status that allows it. */
@@ -342,6 +384,11 @@ async function markOrderPaid(orderId: string, orderNumber: string, source: Proce
         },
       });
       if (updated.count === 1) {
+        // An admin uploaded a pose with the order (a manual order): it continues as if that pose had just been
+        // generated, so the team approves one pose as usual (and can still generate another). Never Meshy by itself.
+        if (canTransitionPreview("PAID", "POSE_READY")) {
+          await tx.preview.updateMany({ where: { id: item.previewId, status: "PAID", poseImageKey: { not: null } }, data: { status: "POSE_READY" } });
+        }
         const animalType = animalTypeOf(catalog.animals, item.animal);
         if (animalType) {
           // Prefill the animal the customer picked, unless an admin already chose one.

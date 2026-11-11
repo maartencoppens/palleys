@@ -613,8 +613,10 @@ export const nl = {
     // LEGAL-REVIEW: consent for art. 5.4 of the terms; withdrawing it is by mail.
     photoMarketing:
       "Palleys mag de foto van mijn huisdier en mijn Palley gebruiken op de website en sociale media (optioneel, intrekken kan altijd met een mailtje).",
-    submit: "Bestellen met betalingsverplichting",
-    submitting: "Naar betalen…",
+    // LEGAL-REVIEW: the button that places the order must say it means paying (WER VI.45 §2); "Bestellen en betalen" does.
+    submit: "Bestellen en betalen",
+    submitAmount: "Bestellen en betalen · {amount}",
+    submitting: "Naar de beveiligde betaalpagina…",
     payNote:
       "Je betaalt veilig met {methods}, op de beveiligde betaalpagina van Stripe. Lees ook ons {privacy}.",
     methodsJoin: " of ",
@@ -996,13 +998,18 @@ export const nl = {
 
   legal: {
     eyebrow: "Juridisch",
+    // Under the title of every legal page, from the published version (core/modules/legal).
+    updated: "Laatst bijgewerkt op {date}.",
+    versionUpdated: "Versie {version}, laatst bijgewerkt op {date}.",
+    // An older version of the terms, opened from the link in an order confirmation (?versie=...).
+    archived: "Je bekijkt een oudere versie. Bekijk de {current}.",
+    currentVersion: "huidige versie",
     // LEGAL-REVIEW: privacy policy of 9 November 2026. Changed from the given text: the database and the website run on a
     // server in the EU (not Aiven), Trustpilot is left out until the checkout asks for it (like the terms' old art. 12), and
     // the carrier is PostNL (not bpost).
     // The retention periods in art. 6 are applied by the cron (core/modules/retention, data/retention.ts).
     privacy: {
       title: "Privacybeleid",
-      intro: "Laatst bijgewerkt: 9 november 2026.",
       sections: [
         {
           title: "1. Wie zijn wij?",
@@ -1161,7 +1168,6 @@ export const nl = {
     // TERMS_VERSION.
     terms: {
       title: "Algemene voorwaarden",
-      intro: "Versie {version}, laatst bijgewerkt op 9 november 2026.",
       company: "{name}, {address}. E-mail: {email}.",
       // Only when the company settings have one.
       companyEnterprise:
@@ -1201,7 +1207,7 @@ export const nl = {
           title: "Artikel 4 – Bestellen en totstandkoming van de overeenkomst",
           blocks: [
             "4.1 Je bestelt in deze stappen: je kiest een product. Voor een Palley op maat kies je je huisdier en upload je 1 tot 4 foto’s. Daarna controleer je je winkelmandje, vul je je gegevens in, kies je levering of ophalen, aanvaard je deze voorwaarden en betaal je.",
-            "4.2 Met de knop “Bestellen met betalingsverplichting” plaats je je bestelling. De overeenkomst komt tot stand zodra je betaling bevestigd is. Je krijgt dan een bevestigingsmail met een overzicht van je bestelling en een link naar deze voorwaarden. Betaal je niet, dan vervalt je bestelling.",
+            "4.2 Met de knop “Bestellen en betalen” plaats je je bestelling. De overeenkomst komt tot stand zodra je betaling bevestigd is. Je krijgt dan een bevestigingsmail met een overzicht van je bestelling en een link naar deze voorwaarden. Betaal je niet, dan vervalt je bestelling.",
             "4.3 We kunnen een bestelling weigeren om een geldige reden, bijvoorbeeld een leveringsprobleem. Weigeren we een bestelling, dan betalen we je volledig terug.",
           ],
         },
@@ -1306,7 +1312,6 @@ export const nl = {
     // is article 14 since the terms of the same day. Address and e-mail come from the company settings.
     returnPolicy: {
       title: "Retour- en terugbetalingsbeleid",
-      intro: "Laatst bijgewerkt: 9 november 2026.",
       sections: [
         {
           title: "Palley op maat",
@@ -1386,7 +1391,7 @@ export const nl = {
     shippingPolicy: {
       title: "Verzendbeleid",
       intro:
-        "Laatst bijgewerkt: 9 november 2026. Bedankt voor je bestelling bij Palleys. Hieronder lees je hoe je bestelling bij jou terechtkomt.",
+        "Bedankt voor je bestelling bij Palleys. Hieronder lees je hoe je bestelling bij jou terechtkomt.",
       sections: [
         { title: "Waar leveren we?", blocks: ["We leveren alleen in België."] },
         {
@@ -1445,7 +1450,6 @@ export const nl = {
     // e-mail and phone come from the company settings.
     contactDetails: {
       title: "Contactgegevens",
-      intro: "Laatst bijgewerkt: 9 november 2026.",
       tradeName: "Handelsnaam",
       capacity: "Hoedanigheid",
       capacityText:
@@ -1461,7 +1465,7 @@ export const nl = {
       complaints: "Klachten",
       complaintsText: "mail ons op {email}.",
       seeAlso:
-        "Zie ook: {terms} · {privacy} · {returnPolicy} · {shippingPolicy}.",
+        "Zie ook: {terms} · {privacyPolicy} · {returnPolicy} · {shippingPolicy}.",
       termsLink: "algemene voorwaarden",
       privacyLink: "privacybeleid",
       shippingPolicyLink: "verzendbeleid",

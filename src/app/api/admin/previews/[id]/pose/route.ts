@@ -11,10 +11,10 @@ import { ALLOWED_IMAGE_TYPES, MAX_UPLOAD_BYTES } from "@/data/uploads";
 
 const paramsSchema = z.object({ id: z.uuid() });
 
-// A ready-made pose for a new collectible's model. Through our server: it's converted to PNG first.
+// A pose made elsewhere, next to the generated attempts. Through our server: it's converted to PNG first.
 export async function POST(request: Request, ctx: RouteContext<"/api/admin/previews/[id]/pose">) {
   try {
-    await requireAdmin();
+    const session = await requireAdmin();
     const params = paramsSchema.safeParse(await ctx.params);
     if (!params.success) return NextResponse.json({ error: "Not found" }, { status: 404 });
     const form = await request.formData().catch(() => null);
@@ -23,7 +23,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/admin/previ
       return NextResponse.json({ error: "Kies een JPG, PNG of WebP" }, { status: 400 });
     }
     if (file.size > MAX_UPLOAD_BYTES) return NextResponse.json({ error: "Deze afbeelding is groter dan 10 MB" }, { status: 400 });
-    return NextResponse.json(await uploadPose(params.data.id, Buffer.from(await file.arrayBuffer())));
+    return NextResponse.json(await uploadPose(params.data.id, Buffer.from(await file.arrayBuffer()), session.user.name));
   } catch (error) {
     if (error instanceof UnauthorizedError) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     if (error instanceof PreviewNotFoundError) return NextResponse.json({ error: "Not found" }, { status: 404 });

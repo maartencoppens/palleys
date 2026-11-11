@@ -60,7 +60,7 @@ import { MAX_PHOTOS_PER_PREVIEW } from "@/data/uploads";
 
 import { z } from "zod";
 import { parsePreviewRef } from "@/core/utils/naming";
-import { MAX_POSE_ATTEMPTS } from "@/data/pipeline";
+import { MAX_POSE_ATTEMPTS, MAX_UPLOADED_POSES } from "@/data/pipeline";
 import { REVIEW_LIST_LIMIT, SEARCH_LIMIT } from "@/data/admin";
 
 export class PreviewNotFoundError extends Error {}
@@ -222,6 +222,21 @@ export async function overrideStatus(
   return { previewId: id, status: input.status };
 }
 
+/**
+ * Once the model is approved the pose is settled: the other attempts are made from the customer's photos and have no use
+ * any more, so they go (rows and files). The chosen one stays until the retention removes it with the photos.
+ */
+async function deleteUnchosenPoses(id: string) {
+  const { poseImageKey } = await prisma.preview.findUniqueOrThrow({ where: { id }, select: { poseImageKey: true } });
+  const others = await prisma.poseCandidate.findMany({
+    where: { previewId: id, ...(poseImageKey ? { key: { not: poseImageKey } } : {}) },
+    select: { id: true, key: true },
+  });
+  if (others.length === 0) return;
+  await prisma.poseCandidate.deleteMany({ where: { id: { in: others.map((other) => other.id) } } });
+  await deleteReplacedFiles(others.map((other) => other.key));
+}
+
 export async function approvePreview(id: string) {
   const preview = await prisma.preview.findUnique({
     where: { id },
@@ -242,6 +257,7 @@ export async function approvePreview(id: string) {
   if (count === 0) {
     throw new InvalidTransitionError(preview.status, PreviewStatus.APPROVED);
   }
+  await deleteUnchosenPoses(id);
 
   return { previewId: id, status: PreviewStatus.APPROVED };
 }
@@ -260,29 +276,36 @@ export async function setAnimalType(id: string, animalType: string) {
 
 export class InvalidPoseImageError extends Error {}
 
+const TOO_MANY_POSE_UPLOADS = `Maximum ${MAX_UPLOADED_POSES} eigen poses per preview`;
+
 /**
- * A pose made elsewhere, for a new collectible's model: it takes the place of a generated one, so the next step is the
- * 3D model. Stored as PNG (what Meshy reads best). Like a new pose, it makes an existing model invalid.
+ * A pose made elsewhere, uploaded by an admin: it joins the other attempts (PoseCandidate) and becomes the current pose,
+ * as if it had just been generated. So the next step is approving one pose, never the 3D model by itself. Stored as PNG
+ * (what Meshy reads best). Doesn't count towards MAX_POSE_ATTEMPTS: it costs no Gemini credits.
+ *
+ * On a manual order that isn't paid yet (UPLOADED) the pose waits: the payment moves the preview to POSE_READY instead
+ * of PAID (markOrderPaid). A website upload can't get a pose this way: only an order an admin added.
  */
-export async function uploadPose(id: string, image: Buffer): Promise<PreviewActionResult> {
+export async function uploadPose(id: string, image: Buffer, adminName: string): Promise<PreviewActionResult> {
   const preview = await prisma.preview.findUnique({
     where: { id },
     select: {
       status: true,
       forCollectible: true,
-      poseImageKey: true,
-      glbKey: true,
-      objKey: true,
-      mtlKey: true,
-      textureKey: true,
+      _count: { select: { poseCandidates: { where: { source: "UPLOADED" } }, orderItems: { where: { order: { createdBy: { not: null } } } } } },
     },
   });
   if (!preview) throw new PreviewNotFoundError(id);
-  if (!preview.forCollectible) throw new PreviewConflictError("Een eigen pose kan alleen bij een nieuwe collectible");
-  // From where a new pose may be made: before the model is approved.
-  if (!canTransition(preview.status, PreviewStatus.GENERATING_POSE)) {
-    throw new PreviewConflictError("Dit model is al goedgekeurd: de pose ligt vast");
+  const waitsForPayment = preview.status === PreviewStatus.UPLOADED && preview._count.orderItems > 0;
+  const stays = preview.status === PreviewStatus.POSE_READY || waitsForPayment;
+  if (!stays && !canTransition(preview.status, PreviewStatus.POSE_READY)) {
+    throw new PreviewConflictError(
+      preview.status === PreviewStatus.UPLOADED
+        ? "Een pose uploaden kan pas als de preview betaald is"
+        : "Dit model is al goedgekeurd of wordt gemaakt: de pose ligt vast",
+    );
   }
+  if (preview._count.poseCandidates >= MAX_UPLOADED_POSES) throw new PreviewConflictError(TOO_MANY_POSE_UPLOADS);
 
   let png: Buffer;
   try {
@@ -292,16 +315,48 @@ export async function uploadPose(id: string, image: Buffer): Promise<PreviewActi
   }
   const key = poseImageKey(id, "image/png");
   await putObject(key, png, "image/png");
-  const { count } = await prisma.preview.updateMany({
-    where: { id, status: preview.status },
-    data: { status: PreviewStatus.POSE_READY, poseImageKey: key, error: null, ...NO_MODEL, meshyTaskId: null },
+  // The current model was made from another pose: it goes, like with a new generated pose. The earlier poses stay.
+  const replaced = await prisma.preview.findUniqueOrThrow({ where: { id }, select: { glbKey: true, objKey: true, mtlKey: true, textureKey: true } });
+  const saved = await prisma.$transaction(async (tx) => {
+    const { count } = await tx.preview.updateMany({
+      where: { id, status: preview.status },
+      data: {
+        status: stays ? preview.status : PreviewStatus.POSE_READY,
+        poseImageKey: key,
+        error: null,
+        ...NO_MODEL,
+        meshyTaskId: null,
+      },
+    });
+    if (count === 0) return false;
+    await tx.poseCandidate.create({ data: { previewId: id, key, source: "UPLOADED", createdBy: adminName } });
+    return true;
   });
-  if (count === 0) {
+  if (!saved) {
     await deleteReplacedFiles([key]);
     throw new PreviewConflictError("Status is intussen gewijzigd");
   }
-  await deleteReplacedFiles([preview.poseImageKey, ...modelKeyList(preview)]);
-  return { previewId: id, status: PreviewStatus.POSE_READY };
+  await deleteReplacedFiles(modelKeyList(replaced));
+  return { previewId: id, status: stays ? preview.status : PreviewStatus.POSE_READY };
+}
+
+/**
+ * Approves one specific pose of all the attempts: it becomes the current pose and Meshy makes the 3D model from it (the
+ * same step as "Pose goedkeuren"). The model of another pose stays until the new one is in (syncModelTask replaces it).
+ */
+export async function approvePoseCandidate(id: string, candidateId: string, adminName: string): Promise<PreviewActionResult> {
+  const [preview, candidate] = await Promise.all([
+    prisma.preview.findUnique({ where: { id }, select: { status: true, poseImageKey: true } }),
+    prisma.poseCandidate.findFirst({ where: { id: candidateId, previewId: id }, select: { key: true } }),
+  ]);
+  if (!preview || !candidate) throw new PreviewNotFoundError(candidateId);
+  assertTransition(preview.status, PreviewStatus.GENERATING_MODEL);
+
+  if (preview.poseImageKey !== candidate.key) {
+    const { count } = await prisma.preview.updateMany({ where: { id, status: preview.status }, data: { poseImageKey: candidate.key } });
+    if (count === 0) throw new PreviewConflictError("Status is intussen gewijzigd");
+  }
+  return startModelGeneration(id, adminName);
 }
 
 /** The prompt for the next pose of a new collectible's model. Customers' Palleys follow the settings. */
@@ -356,17 +411,20 @@ export async function generatePose(id: string): Promise<PreviewActionResult> {
     const key = poseImageKey(id, pose.mimeType);
     await putObject(key, pose.image, pose.mimeType);
 
-    // Een nieuwe pose maakt een bestaand model ongeldig.
-    await prisma.preview.update({
-      where: { id },
-      data: {
-        status: PreviewStatus.POSE_READY,
-        poseImageKey: key,
-        ...NO_MODEL,
-        meshyTaskId: null,
-      },
-    });
-    await deleteReplacedFiles([preview.poseImageKey, ...modelKeyList(preview)]);
+    // Een nieuwe pose maakt een bestaand model ongeldig. De vorige pose blijft: de admin vergelijkt en kiest er één.
+    await prisma.$transaction([
+      prisma.preview.update({
+        where: { id },
+        data: {
+          status: PreviewStatus.POSE_READY,
+          poseImageKey: key,
+          ...NO_MODEL,
+          meshyTaskId: null,
+        },
+      }),
+      prisma.poseCandidate.create({ data: { previewId: id, key, source: "GENERATED" } }),
+    ]);
+    await deleteReplacedFiles(modelKeyList(preview));
 
     return { previewId: id, status: PreviewStatus.POSE_READY };
   } catch (err) {
@@ -442,6 +500,8 @@ export async function startModelGeneration(
     });
     throw err;
   }
+  // Which of the attempts was approved, for the record (a pose from before the candidates has no row).
+  await prisma.poseCandidate.updateMany({ where: { previewId: id, key: poseKey }, data: { approvedAt: new Date(), approvedBy: adminName } });
   // Outside the try: the model is on its way whatever happens with the mail.
   await startProductionForPreview(id, adminName);
   return { previewId: id, status: PreviewStatus.GENERATING_MODEL };
@@ -609,6 +669,10 @@ export async function getPreviewForAdmin(
       quantity: true,
       createdAt: true,
       poseImageKey: true,
+      poseCandidates: {
+        orderBy: { createdAt: "asc" },
+        select: { id: true, key: true, source: true, createdBy: true, createdAt: true, approvedAt: true, approvedBy: true },
+      },
       // De betaalde order van deze preview (eigen checkout), voor de link en de opmerking van de klant.
       orderItems: {
         where: { order: { paidAt: { not: null } } },
@@ -644,7 +708,9 @@ export async function getPreviewForAdmin(
   const isGeneratingModel =
     preview.status === PreviewStatus.GENERATING_MODEL && preview.meshyTaskId;
 
-  const [photos, poseImageUrl, glbUrl, meshyProgress] = await Promise.all([
+  const canApprovePose = canTransition(preview.status, PreviewStatus.GENERATING_MODEL);
+  let generatedNr = 0;
+  const [photos, poseImageUrl, glbUrl, meshyProgress, poseCandidates] = await Promise.all([
     Promise.all(
       preview.photos.map(async (photo) => ({
         id: photo.id,
@@ -657,7 +723,21 @@ export async function getPreviewForAdmin(
     isGeneratingModel
       ? getMeshyProgress(preview.meshyTaskId!)
       : Promise.resolve(null),
+    Promise.all(
+      preview.poseCandidates.map(async (candidate) => ({
+        id: candidate.id,
+        url: await createDownloadUrl(candidate.key),
+        source: candidate.source,
+        label: candidate.source === "GENERATED" ? `Poging ${++generatedNr}` : "Eigen pose",
+        createdBy: candidate.createdBy,
+        createdAt: candidate.createdAt.toISOString(),
+        approvedAt: candidate.approvedAt?.toISOString() ?? null,
+        approvedBy: candidate.approvedBy,
+        current: candidate.key === preview.poseImageKey,
+      })),
+    ),
   ]);
+  const uploadedPoses = preview.poseCandidates.filter((candidate) => candidate.source === "UPLOADED").length;
 
   return {
     id: preview.id,
@@ -678,6 +758,14 @@ export async function getPreviewForAdmin(
       createdAt: change.createdAt.toISOString(),
     })),
     poseImageUrl,
+    poseCandidates,
+    canApprovePose,
+    canUploadPose:
+      (preview.status === PreviewStatus.POSE_READY ||
+        preview.status === PreviewStatus.UPLOADED ||
+        canTransition(preview.status, PreviewStatus.POSE_READY)) &&
+      uploadedPoses < MAX_UPLOADED_POSES,
+    uploadedPosesLeft: Math.max(0, MAX_UPLOADED_POSES - uploadedPoses),
     glbUrl,
     animalType: preview.animalType,
     meshyTaskId: preview.meshyTaskId,

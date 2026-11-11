@@ -3,31 +3,38 @@
 import { useEffect, useRef, useState } from "react";
 import Button from "@/components/design/Button";
 
+export type ComparedPose = { id: string; url: string; label: string; current: boolean };
+
 type PoseComparisonProps = {
   photoUrls: string[];
-  poseUrl: string;
+  /** Every pose attempt, oldest first. */
+  poses: ComparedPose[];
+  /** Approve one pose straight from the comparison; left out when no pose can be approved now. */
+  onApprove?: (pose: ComparedPose) => void;
+  approving?: string | null;
 };
 
 const controlClassName =
   "flex size-12 items-center justify-center rounded-full bg-white/15 text-2xl text-white transition-colors hover:bg-white/30";
 
 /*
- * The customer's photos beside the generated pose, as large as the screen allows: photos on the left in a grid, the
- * pose on the right; on a phone one above the other. A photo can be opened on its own to look at a detail.
+ * The customer's photos beside every pose attempt, as large as the screen allows: photos on the left in a grid, the
+ * poses on the right; on a phone one above the other. A photo can be opened on its own to look at a detail, and a pose
+ * can be approved right here.
  */
-export function PoseComparison({ photoUrls, poseUrl }: PoseComparisonProps) {
+export function PoseComparison(props: PoseComparisonProps) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <Button variant="secondary" onClick={() => setOpen(true)}>
-        Vergelijk pose met de foto&apos;s
+        {props.poses.length > 1 ? `Vergelijk de ${props.poses.length} poses met de foto's` : "Vergelijk pose met de foto's"}
       </Button>
-      {open && <ComparisonDialog photoUrls={photoUrls} poseUrl={poseUrl} onClose={() => setOpen(false)} />}
+      {open && <ComparisonDialog {...props} onClose={() => setOpen(false)} />}
     </>
   );
 }
 
-function ComparisonDialog({ photoUrls, poseUrl, onClose }: PoseComparisonProps & { onClose: () => void }) {
+function ComparisonDialog({ photoUrls, poses, onApprove, approving, onClose }: PoseComparisonProps & { onClose: () => void }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [focused, setFocused] = useState<number | null>(null);
 
@@ -61,7 +68,7 @@ function ComparisonDialog({ photoUrls, poseUrl, onClose }: PoseComparisonProps &
       <div className="flex h-full flex-col">
         <div className="flex shrink-0 items-center justify-between gap-4 p-3">
           <p className="pl-2 font-label text-base font-bold">
-            {focused === null ? `Foto's (${photoUrls.length}) en pose` : `Foto ${focused + 1} van ${photoUrls.length}`}
+            {focused === null ? `Foto's (${photoUrls.length}) en poses (${poses.length})` : `Foto ${focused + 1} van ${photoUrls.length}`}
           </p>
           <div className="flex items-center gap-3">
             {focused !== null && (
@@ -102,11 +109,35 @@ function ComparisonDialog({ photoUrls, poseUrl, onClose }: PoseComparisonProps &
               })}
             </div>
           </section>
-          <section aria-label="Pose" className="flex min-h-0 flex-col gap-2">
-            <h2 className="font-label text-sm font-semibold text-white/70">Pose</h2>
-            <div className="flex min-h-48 flex-1 items-center justify-center rounded-xl bg-white/5">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={poseUrl} alt="Pose" className="max-h-[70dvh] max-w-full rounded-xl object-contain lg:max-h-[85dvh]" />
+          <section aria-label="Poses" className="flex min-h-0 flex-col gap-2 lg:overflow-y-auto">
+            <h2 className="font-label text-sm font-semibold text-white/70">Poses</h2>
+            <div className={`grid min-h-0 flex-1 gap-3 ${poses.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+              {poses.map((pose) => (
+                <figure key={pose.id} className="flex min-h-48 flex-col items-center justify-center gap-2 rounded-xl bg-white/5 p-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={pose.url}
+                    alt={pose.label}
+                    className={`max-w-full rounded-xl object-contain ${poses.length > 1 ? "max-h-[36dvh] lg:max-h-[38dvh]" : "max-h-[70dvh] lg:max-h-[80dvh]"}`}
+                  />
+                  <figcaption className="flex flex-wrap items-center justify-center gap-3 font-label text-sm font-bold">
+                    <span>
+                      {pose.label}
+                      {pose.current ? " · huidige" : ""}
+                    </span>
+                    {onApprove && (
+                      <button
+                        type="button"
+                        disabled={Boolean(approving)}
+                        onClick={() => onApprove(pose)}
+                        className="rounded-full bg-white px-4 py-1.5 text-medium-green transition-colors hover:bg-orange hover:text-white disabled:opacity-50"
+                      >
+                        {approving === pose.id ? "Bezig…" : "Deze goedkeuren"}
+                      </button>
+                    )}
+                  </figcaption>
+                </figure>
+              ))}
             </div>
           </section>
         </div>

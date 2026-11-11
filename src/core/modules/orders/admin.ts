@@ -7,6 +7,7 @@ import {
   createManualOrderPaymentLink,
   moveOrder,
   recordManualPayment,
+  recordManualRefund,
 } from "@/core/modules/payments/service";
 import { getShopSettings } from "@/core/modules/settings/service";
 import { resolveDeliveryOption } from "@/core/modules/shipping/service";
@@ -279,6 +280,9 @@ export async function updateOrderStatus(orderId: string, input: OrderStatusActio
 
   const moved = await moveOrder(orderId, input.status, `admin:${adminName}`, input.note);
   if (!moved) throw new OrderActionError("Deze stap kan niet vanuit de huidige status");
+
+  // Paid by hand, so refunded by hand: the payment records it, with today's date for the sales journal.
+  if (input.status === "REFUNDED") await recordManualRefund(orderId, `admin:${adminName}`);
 
   if (input.status === "SHIPPED") {
     await prisma.shipment.updateMany({

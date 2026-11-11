@@ -20,6 +20,7 @@ const GROUPS = [
     links: [
       { href: "/admin/settings/content", label: "Teksten" },
       { href: "/admin/settings/company", label: "Bedrijf & sociale media" },
+      { href: "/admin/settings/legal", label: "Juridisch" },
     ],
   },
   {

@@ -18,7 +18,7 @@ import {
 import { getShopSettings } from "@/core/modules/settings/service";
 import { friendsDelivery, getDeliveryOptions, resolveDeliveryOption } from "@/core/modules/shipping/service";
 import type { DeliveryAddress } from "@/core/modules/shipping/types";
-import { TERMS_VERSION } from "@/data/checkout";
+import { getCurrentTermsVersion } from "@/core/modules/legal/service";
 import { FRIENDS_DELIVERY, needsShippingAddress } from "@/data/shipping";
 import { CURRENCY } from "@/data/pricing";
 import type { CheckoutConfig, CheckoutInput, CheckoutResult, DeliveryOptionView } from "./types";
@@ -129,6 +129,8 @@ export async function startCheckout(cartToken: string | null, input: CheckoutInp
 
   const statusToken = createToken();
   const cartId = await findCartId(cartToken);
+  // The terms published in /admin/settings/legal right now: what the customer accepts with the box.
+  const termsVersion = await getCurrentTermsVersion();
 
   const order = await prisma.$transaction(async (tx) => {
     // Checked here rather than once more up front: this is what stops two checkouts sharing the last use of a code.
@@ -167,7 +169,7 @@ export async function startCheckout(cartToken: string | null, input: CheckoutInp
         country: input.country,
         currency: CURRENCY,
         ...totals,
-        termsVersion: TERMS_VERSION,
+        termsVersion,
         termsAcceptedAt: new Date(),
         locale: input.locale,
         marketingOptIn: input.marketingOptIn,

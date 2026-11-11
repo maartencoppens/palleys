@@ -160,7 +160,8 @@ describe("checkout", () => {
     expect(order.shippingCents).toBe(610);
     expect(order.totalCents).toBe(2 * 2799 + 610);
     expect(order.vatCents).toBe(0);
-    expect(order.termsVersion).toBeTruthy();
+    // The terms published in /admin/settings/legal (or the text in the code): what the customer accepted.
+    expect(order.termsVersion).toBe(await (await import("@/core/modules/legal/service")).getCurrentTermsVersion());
     expect(payment.amountCents).toBe(order.totalCents);
     expect(payment.status).toBe("OPEN");
     // The payment page gets the e-mail from our checkout, so the customer doesn't type it twice.

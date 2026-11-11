@@ -58,6 +58,7 @@ model Preview {
   promptOverride  String?
   collectible     Collectible?
   photos          PreviewPhoto[]
+  poseCandidates  PoseCandidate[]
   statusChanges   PreviewStatusChange[]
   orderItems      OrderItem[]
   cartLines       CartLine[]
@@ -148,6 +149,29 @@ model PreviewPhoto {
   createdAt  DateTime @default(now())
 
   @@index([previewId])
+}
+
+enum PoseSource {
+  GENERATED // door Gemini, telt mee voor MAX_POSE_ATTEMPTS
+  UPLOADED // door een admin, elders gemaakt; telt niet mee
+}
+
+// Elke pose-afbeelding van een preview: alle pogingen en uploads, zodat een admin ze naast elkaar kan zetten en er één
+// kiest. Preview.poseImageKey is de huidige (gekozen) pose en is altijd een van deze keys. Na goedkeuring van het model
+// worden de niet-gekozen kandidaten opgeruimd; de retentie ruimt de rest op samen met de foto's.
+model PoseCandidate {
+  id         String     @id @default(uuid())
+  previewId  String
+  preview    Preview    @relation(fields: [previewId], references: [id], onDelete: Cascade)
+  key        String     @unique // R2-key, onder previews/<id>/
+  source     PoseSource
+  createdBy  String? // null = de pipeline, anders de naam van de admin
+  createdAt  DateTime   @default(now())
+  // Deze pose werd goedgekeurd om er een 3D-model van te maken (de laatste keer).
+  approvedAt DateTime?
+  approvedBy String?
+
+  @@index([previewId, createdAt])
 }
 
 // Logboek van handmatige statuswijzigingen door een admin (de noodknop).
@@ -352,6 +376,7 @@ model Order {
   returnAccess            ReturnAccess[]
 
   @@index([status, createdAt])
+  @@index([paidAt])
   @@index([email])
   @@index([discountCodeId])
   @@index([batchId])
@@ -403,12 +428,33 @@ model Payment {
   refundedCents     Int           @default(0)
   chargedBackCents  Int           @default(0)
   checkoutUrl       String?
+  adjustments       PaymentAdjustment[]
   rawLastStatus     Json? // veilige selectie uit de laatste Checkout Session (zonder naam, e-mail of rekening van de betaler)
   lastSyncedAt      DateTime?
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 
   @@index([orderId])
+}
+
+enum PaymentAdjustmentKind {
+  REFUND
+  CHARGEBACK
+}
+
+// Wanneer geld terugging (of terugkwam): elke wijziging van Payment.refundedCents of chargedBackCents, met de datum waarop
+// wij ze zagen. Het verkoopdagboek boekt terugbetalingen hiermee op hun eigen dag. Alleen toevoegen, nooit aanpassen.
+model PaymentAdjustment {
+  id          String                @id @default(uuid())
+  paymentId   String
+  payment     Payment               @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  kind        PaymentAdjustmentKind
+  amountCents Int // het verschil: positief = geld terug naar de klant, negatief = teruggedraaid (bv. dispute gewonnen)
+  occurredAt  DateTime              @default(now())
+  source      String // webhook | return-page | admin:<naam> | backfill | ...
+
+  @@index([occurredAt])
+  @@index([paymentId])
 }
 
 model Shipment {
@@ -633,4 +679,28 @@ model ReturnAccess {
 
   @@index([orderId])
   @@index([linkExpiresAt])
+}
+
+// Juridische documenten die een admin in /admin/settings/legal publiceert (core/modules/legal). Elke publicatie is een
+// nieuwe rij die nooit meer wijzigt: Order.termsVersion en de link in de bevestigingsmail wijzen naar een versie.
+// Geen rij = de teksten uit src/core/locale/messages (versie LEGAL_FALLBACK_VERSION).
+enum LegalDocumentKind {
+  PRIVACY
+  TERMS
+  RETURNS
+  SHIPPING
+  CONTACT
+}
+
+model LegalDocumentVersion {
+  id            String            @id @default(uuid())
+  document      LegalDocumentKind
+  version       String // 2026-11-11, een tweede publicatie op dezelfde dag 2026-11-11-2
+  effectiveDate DateTime          @db.Date // "laatst bijgewerkt op"
+  content       Json // per taal { title, intro, sections } of { title, intro, rows, seeAlso }
+  publishedBy   String // naam van de admin
+  createdAt     DateTime          @default(now())
+
+  @@unique([document, version])
+  @@index([document, createdAt])
 }

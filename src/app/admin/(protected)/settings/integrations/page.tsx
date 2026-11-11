@@ -6,7 +6,7 @@ import { STRIPE_WEBHOOK_EVENTS } from "@/core/modules/payments/providers/stripe-
 import { isEmailConfigured } from "@/core/networking/external/email-client";
 import { stripeKeyMode } from "@/core/networking/external/stripe-client";
 import { env } from "@/core/utils/env";
-import { TERMS_VERSION } from "@/data/checkout";
+import { getCurrentTermsVersion } from "@/core/modules/legal/service";
 import { Badge } from "@/components/design/Badge";
 import { SettingsHeader } from "@/components/functional/admin/settings/SettingsParts";
 
@@ -15,6 +15,7 @@ export const instant = false;
 // Only whether something is set and in which mode: never a key, secret or configuration id itself.
 export default async function AdminIntegrationsPage() {
   await requireAdminPage();
+  const termsVersion = await getCurrentTermsVersion();
   const mode = paymentProvider.mode();
   const fake = paymentProvider.name === "fake";
   const keyMode = stripeKeyMode();
@@ -67,7 +68,7 @@ export default async function AdminIntegrationsPage() {
       tone: env.CRON_SECRET ? "success" : "waiting",
       hint: "POST /api/cron/expire-orders met Authorization: Bearer $CRON_SECRET, elke 10 min",
     },
-    { label: "Versie voorwaarden", value: TERMS_VERSION, tone: "neutral", hint: "src/data/checkout.ts" },
+    { label: "Versie voorwaarden", value: termsVersion, tone: "neutral", hint: "Instellingen → Juridisch" },
   ] as const;
 
   return (

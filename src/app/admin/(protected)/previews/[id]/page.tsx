@@ -16,7 +16,7 @@ import { AnimalTypePicker } from "@/components/functional/admin/AnimalTypePicker
 import { AttachModelButton } from "@/components/functional/admin/AttachModelButton";
 import { PreviewPromptEditor } from "@/components/functional/admin/PreviewPromptEditor";
 import { PhotoManager } from "@/components/functional/admin/PhotoManager";
-import { PoseComparison } from "@/components/functional/admin/PoseComparison";
+import { PoseCandidates } from "@/components/functional/admin/PoseCandidates";
 import { StatusOverridePanel } from "@/components/functional/admin/StatusOverridePanel";
 import type { MeshyProgress } from "@/core/modules/previews/types";
 
@@ -175,6 +175,7 @@ export default async function AdminPreviewDetailPage({
                 {preview.poseImageUrl
                   ? "Niet tevreden met de pose? Genereer een nieuwe versie."
                   : "Genereer de pose-afbeelding op basis van de originele foto."}
+                {preview.poseCandidates.length > 0 && " Eerdere poses blijven staan om te vergelijken."}
               </p>
               <GeneratePoseButton
                 previewId={preview.id}
@@ -244,12 +245,14 @@ export default async function AdminPreviewDetailPage({
             canAdd={preview.canAddPhoto}
             canDelete={preview.canDeletePhoto}
           />
-          <div className="grid grid-cols-2 gap-4">
-            <Photo url={preview.poseImageUrl} caption="Pose" />
-          </div>
-          {preview.poseImageUrl && preview.photos.length > 0 && (
-            <PoseComparison photoUrls={preview.photos.map((photo) => photo.url)} poseUrl={preview.poseImageUrl} />
-          )}
+          <PoseCandidates
+            previewId={preview.id}
+            photoUrls={preview.photos.map((photo) => photo.url)}
+            candidates={preview.poseCandidates}
+            canApprove={preview.canApprovePose}
+            canUpload={preview.canUploadPose}
+            uploadsLeft={preview.uploadedPosesLeft}
+          />
         </div>
       </div>
     </main>
@@ -267,31 +270,4 @@ function meshyProgressLabel(meshy: MeshyProgress) {
   }
   // SUCCEEDED of FAILED: klaar bij Meshy, nog niet bij ons opgehaald.
   return `Meshy: ${meshy.status.toLowerCase()} — haal de status op`;
-}
-
-type PhotoProps = {
-  url: string | null;
-  caption: string;
-};
-
-function Photo({ url, caption }: PhotoProps) {
-  return (
-    <figure>
-      {url ? (
-        /* Bewust <img> en geen next/image: die zou de klantfoto via de
-           image optimizer van de server proxyen en cachen (GDPR). */
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={url}
-          alt={caption}
-          className="aspect-[4/3] w-full rounded-3xl bg-white object-cover"
-        />
-      ) : (
-        <div className="flex aspect-[4/3] w-full items-center justify-center rounded-3xl border-2 border-dashed border-medium-green/25 text-sm text-text-muted">
-          Nog niet beschikbaar
-        </div>
-      )}
-      <figcaption className="mt-2 font-label text-sm font-semibold text-text-muted">{caption}</figcaption>
-    </figure>
-  );
 }

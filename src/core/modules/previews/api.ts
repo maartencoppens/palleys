@@ -136,3 +136,8 @@ export async function uploadPose(previewId: string, file: File) {
   form.append("file", file);
   await api.post(`/admin/previews/${previewId}/pose`, form, { headers: { "Content-Type": "multipart/form-data" } });
 }
+
+export async function postApprovePoseCandidate(previewId: string, candidateId: string) {
+  const { data } = await api.post<PreviewActionResult>(`/admin/previews/${previewId}/pose-candidates/${candidateId}/approve`);
+  return data;
+}

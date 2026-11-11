@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { MAX_ANIMAL_PROMPT_LENGTH, MAX_PROMPT_LENGTH } from "@/data/prompts";
-import type { PreviewStatus } from "@/db/client";
+import type { PoseSource, PreviewStatus } from "@/db/client";
 import {
   ALLOWED_IMAGE_TYPES,
   MAX_UPLOAD_BYTES,
@@ -44,6 +44,19 @@ export type AdminPhoto = {
   uploadedBy: string | null; // null = klant
 };
 
+/** One pose image of a preview: a generated attempt or an admin's upload. */
+export type AdminPoseCandidate = {
+  id: string;
+  url: string; // signed URL, kort geldig
+  source: PoseSource;
+  label: string; // "Poging 2" of "Eigen pose"
+  createdBy: string | null; // null = de pipeline
+  createdAt: string;
+  approvedAt: string | null;
+  approvedBy: string | null;
+  current: boolean; // de huidige pose (Preview.poseImageKey)
+};
+
 export type AdminStatusChange = {
   fromStatus: PreviewStatus;
   toStatus: PreviewStatus;
@@ -75,6 +88,11 @@ export type AdminPreviewDetail = {
   canDeletePhoto: boolean;
   statusChanges: AdminStatusChange[];
   poseImageUrl: string | null;
+  /** Every pose so far, oldest first, to compare and approve one of them. */
+  poseCandidates: AdminPoseCandidate[];
+  canApprovePose: boolean;
+  canUploadPose: boolean;
+  uploadedPosesLeft: number;
   glbUrl: string | null;
   meshyTaskId: string | null;
   meshyProgress: MeshyProgress | null; // alleen terwijl het model gemaakt wordt

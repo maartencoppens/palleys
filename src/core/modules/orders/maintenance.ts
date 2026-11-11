@@ -50,7 +50,7 @@ export async function deleteOrder(orderId: string, input: DeleteOrderInput, admi
   const previewIds = order.items.flatMap((item) => item.previewId ?? []);
   const previews = await prisma.preview.findMany({
     where: { id: { in: previewIds }, forCollectible: false, orderItems: { every: { orderId } } },
-    select: { id: true, poseImageKey: true, glbKey: true, objKey: true, mtlKey: true, textureKey: true, processedKey: true, photos: { select: { key: true } } },
+    select: { id: true, poseImageKey: true, glbKey: true, objKey: true, mtlKey: true, textureKey: true, processedKey: true, photos: { select: { key: true } }, poseCandidates: { select: { key: true } } },
   });
 
   await prisma.$transaction([
@@ -79,7 +79,7 @@ export async function deleteOrder(orderId: string, input: DeleteOrderInput, admi
 
   // Photos, poses and models in R2: best effort, the rows are gone either way.
   const keys = previews.flatMap((preview) =>
-    [preview.poseImageKey, preview.glbKey, preview.objKey, preview.mtlKey, preview.textureKey, preview.processedKey, ...preview.photos.map((photo) => photo.key)].filter(
+    [preview.poseImageKey, preview.glbKey, preview.objKey, preview.mtlKey, preview.textureKey, preview.processedKey, ...preview.photos.map((photo) => photo.key), ...preview.poseCandidates.map((candidate) => candidate.key)].filter(
       (key): key is string => Boolean(key),
     ),
   );

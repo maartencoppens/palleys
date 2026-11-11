@@ -7,7 +7,7 @@ import { editionPriceCents } from "@/core/modules/catalog/utils";
 import type { CollectibleView } from "@/core/modules/collectibles/types";
 import { postManualOrder } from "@/core/modules/orders/api";
 import type { ManualOrderRequest } from "@/core/modules/orders/types";
-import { uploadAdminPhoto } from "@/core/modules/previews/api";
+import { uploadAdminPhoto, uploadPose } from "@/core/modules/previews/api";
 import type { CatalogSettings } from "@/core/modules/settings/types";
 import { getApiErrorMessage } from "@/core/networking/api";
 import { formatPrice, fromEuroInput, toEuroInput } from "@/core/utils/format";
@@ -41,6 +41,8 @@ type PersonalizedLine = {
   price: string | null;
   notes: string;
   photos: File[];
+  /** A pose made beforehand: the preview starts at "pose ready" instead of generating one. */
+  pose: File | null;
 };
 type CollectibleLine = {
   key: number;
@@ -139,6 +141,7 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
       if (line.kind !== "personalized") continue;
       if (line.photos.length > MAX_PHOTOS_PER_PREVIEW) return `Maximaal ${MAX_PHOTOS_PER_PREVIEW} foto's per Palley`;
       if (line.photos.some((photo) => photo.size > MAX_UPLOAD_BYTES)) return "Een van de foto's is groter dan 10 MB";
+      if (line.pose && line.pose.size > MAX_UPLOAD_BYTES) return "Een pose-afbeelding is groter dan 10 MB";
     }
     if (!stockOrder && deliveryType === "ship") {
       if (!option) return "Er is geen verzendoptie beschikbaar";
@@ -193,13 +196,17 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
 
       const uploads = result.previews.flatMap(({ lineIndex, previewId }) => {
         const line = lines[lineIndex];
-        return line.kind === "personalized" ? line.photos.map((photo) => ({ previewId, photo })) : [];
+        if (line.kind !== "personalized") return [];
+        return [
+          ...line.photos.map((file) => ({ previewId, file, pose: false })),
+          ...(line.pose ? [{ previewId, file: line.pose, pose: true }] : []),
+        ];
       });
       let failed = 0;
       for (const [index, upload] of uploads.entries()) {
-        setStatus(`Foto ${index + 1} van ${uploads.length} uploaden…`);
+        setStatus(`${upload.pose ? "Pose" : "Foto"} uploaden (${index + 1} van ${uploads.length})…`);
         try {
-          await uploadAdminPhoto(upload.previewId, upload.photo);
+          await (upload.pose ? uploadPose(upload.previewId, upload.file) : uploadAdminPhoto(upload.previewId, upload.file));
         } catch {
           failed++;
         }
@@ -222,8 +229,8 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
       <section role="alert" className={`${cardClassName} flex flex-col items-start gap-4`}>
         <h2 className={cardTitleClassName}>Order {uploadFailure.number} is aangemaakt</h2>
         <p className="text-base">
-          {uploadFailure.failed === 1 ? "1 foto kon" : `${uploadFailure.failed} foto's konden`} niet geüpload worden. Voeg ze toe via de
-          preview op de orderpagina.
+          {uploadFailure.failed === 1 ? "1 bestand kon" : `${uploadFailure.failed} bestanden konden`} niet geüpload worden (foto&apos;s of
+          pose). Voeg ze toe via de preview op de orderpagina.
         </p>
         <Button variant="primary" href={`/admin/orders/${uploadFailure.orderId}`}>
           Naar de order
@@ -427,6 +434,21 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
                       onChange={(e) => updateLine(line.key, { photos: Array.from(e.target.files ?? []) })}
                       className="block w-full text-sm file:mr-3 file:rounded-full file:border-[1.5px] file:border-medium-green file:bg-white file:px-4 file:py-2 file:font-label file:font-semibold file:text-medium-green"
                     />
+                  </Field>
+                )}
+                {line.kind === "personalized" && (
+                  <Field label="Pose, al gegenereerd (optioneel)" id={`pose-${index}`}>
+                    <input
+                      id={`pose-${index}`}
+                      type="file"
+                      accept={ALLOWED_IMAGE_TYPES.join(",")}
+                      onChange={(e) => updateLine(line.key, { pose: e.target.files?.[0] ?? null })}
+                      aria-describedby={`pose-help-${index}`}
+                      className="block w-full text-sm file:mr-3 file:rounded-full file:border-[1.5px] file:border-medium-green file:bg-white file:px-4 file:py-2 file:font-label file:font-semibold file:text-medium-green"
+                    />
+                    <p id={`pose-help-${index}`} className="mt-1 text-sm text-text-muted">
+                      Slaat het genereren over: de Palley staat na betaling klaar om de pose goed te keuren (of toch een nieuwe te maken).
+                    </p>
                   </Field>
                 )}
 
@@ -654,7 +676,7 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
 }
 
 function newPersonalizedLine(key: number, animals: AnimalOption[]): PersonalizedLine {
-  return { key, kind: "personalized", animal: animals[0].value, edition: "keychain", attachment: attachments[0].value, quantity: 1, price: null, notes: "", photos: [] };
+  return { key, kind: "personalized", animal: animals[0].value, edition: "keychain", attachment: attachments[0].value, quantity: 1, price: null, notes: "", photos: [], pose: null };
 }
 
 function newCollectibleLine(key: number, collectibles: CollectibleView[]): CollectibleLine {
