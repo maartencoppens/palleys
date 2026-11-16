@@ -9,6 +9,7 @@ import { InvalidRangeError } from "@/core/modules/finance/utils";
  * The sales journal for a period, to paste into our Excel. Admin only, never cached (customer names and addresses).
  *   ?from=2026-11-01&to=2026-11-30&mode=live            → JSON with the three tables
  *   ...&format=tsv&table=receipts|customers|ledger      → one table as tab-separated text with a header row
+ *   ...&header=0                                        → the same without the header row (to paste under ours)
  */
 export async function GET(request: Request) {
   await connection(); // per request, never prerendered at build time (it needs the admin's session)
@@ -28,7 +29,7 @@ export async function GET(request: Request) {
     if (query.format === "json") return NextResponse.json(journal, { headers: { "Cache-Control": "no-store" } });
 
     const table = query.table!;
-    return new Response(toTsv(journal[table]), {
+    return new Response(toTsv(journal[table], { header: query.header === "1" }), {
       headers: {
         "Content-Type": "text/tab-separated-values; charset=utf-8",
         "Content-Disposition": `inline; filename="${journalFileName(table, journal.from, journal.to)}"`,

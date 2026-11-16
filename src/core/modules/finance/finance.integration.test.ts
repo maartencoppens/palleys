@@ -169,13 +169,13 @@ describe("sales journal", () => {
     const journal = await getSalesJournal(journalQuerySchema.parse(PERIOD));
     const orders = await prisma.order.findMany({ where: { id: { in: [...createdOrders] } }, select: { id: true, number: true, invoiceNumber: true, totalCents: true } });
     const byId = Object.fromEntries(orders.map((order) => [order.id, order]));
-    const ours = journal.receipts.rows.filter((row) => row[2].endsWith(suffix));
+    const ours = journal.receipts.rows.filter((row) => row[3].endsWith(suffix));
 
     expect(ours).toEqual([
-      ["05/03/2019", `${byId[ids.cash].invoiceNumber} · ${byId[ids.cash].number} · Contant`, `Fin Contant ${suffix}`, "30,00", "ja", byId[ids.cash].number, "nee"],
-      ["06/03/2019", `${byId[ids.gift].invoiceNumber} · ${byId[ids.gift].number} · Geschenk (geen betaling)`, `Fin Geschenk ${suffix}`, "30,00", "nee", byId[ids.gift].number, "nee"],
-      ["07/03/2019", `${byId[ids.stripe].invoiceNumber} · ${byId[ids.stripe].number} · Bancontact`, `Fin Stripe ${suffix}`, "30,00", "ja", "pi_fintest", "nee"],
-      ["08/03/2019", `${byId[ids.refundedByHand].invoiceNumber} · ${byId[ids.refundedByHand].number} · Overschrijving`, `Fin Terug ${suffix}`, "30,00", "ja", byId[ids.refundedByHand].number, "nee"],
+      ["05/03/2019", `${byId[ids.cash].invoiceNumber} · ${byId[ids.cash].number}`, "Contant", `Fin Contant ${suffix}`, "30,00", "ja", byId[ids.cash].number, "nee"],
+      ["06/03/2019", `${byId[ids.gift].invoiceNumber} · ${byId[ids.gift].number}`, "Geschenk (geen betaling)", `Fin Geschenk ${suffix}`, "30,00", "nee", byId[ids.gift].number, "nee"],
+      ["07/03/2019", `${byId[ids.stripe].invoiceNumber} · ${byId[ids.stripe].number}`, "Bancontact", `Fin Stripe ${suffix}`, "30,00", "ja", "pi_fintest", "nee"],
+      ["08/03/2019", `${byId[ids.refundedByHand].invoiceNumber} · ${byId[ids.refundedByHand].number}`, "Overschrijving", `Fin Terug ${suffix}`, "30,00", "ja", byId[ids.refundedByHand].number, "nee"],
     ]);
     expect(journal.customers.rows.filter((row) => row[0].endsWith(suffix)).map((row) => row[6])).toEqual([
       `contant-${suffix}@example.com`,
@@ -194,7 +194,7 @@ describe("sales journal", () => {
     ]);
 
     const test = await getSalesJournal(journalQuerySchema.parse({ ...PERIOD, mode: "test" }));
-    expect(test.receipts.rows.filter((row) => row[2].endsWith(suffix)).map((row) => row[2])).toEqual([`Fin Test ${suffix}`]);
+    expect(test.receipts.rows.filter((row) => row[3].endsWith(suffix)).map((row) => row[3])).toEqual([`Fin Test ${suffix}`]);
   });
 
   it("is served as TSV to admins only", async () => {
@@ -204,6 +204,8 @@ describe("sales journal", () => {
     expect(response.headers.get("cache-control")).toBe("no-store");
     const text = await response.text();
     expect(text.split("\n")[0]).toBe("Datum\tOmschrijving\tOntvangst\tUitgave");
+    const rowsOnly = await (await GET(new Request(`http://localhost/api/admin/finance/journal?from=${PERIOD.from}&to=${PERIOD.to}&format=tsv&table=ledger&header=0`))).text();
+    expect(rowsOnly).toBe(text.split("\n").slice(1).join("\n"));
 
     expect((await GET(new Request("http://localhost/api/admin/finance/journal?format=tsv"))).status).toBe(400);
     expect((await GET(new Request("http://localhost/api/admin/finance/journal?from=2019-03-31&to=2019-03-01"))).status).toBe(400);

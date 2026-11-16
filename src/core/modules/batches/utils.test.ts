@@ -58,9 +58,9 @@ describe("batch zip contents", () => {
     const { entries, missing } = batchContents("BATCH-0001", orders);
     expect(missing).toEqual([]);
     expect(entries.map((entry) => [entry.path, entry.key])).toEqual([
-      ["BATCH-0001/PLY1042/PAL-PLY1042-01-P-RING-KAT-R1_print.zip", "previews/a/processed-1.zip"],
-      ["BATCH-0001/PLY1042/PAL-PLY1042-02-COL-CLP-007_print.zip", "collectibles/models/m.zip"],
-      ["BATCH-0001/PLY1043/PAL-PLY1043-01-P-FIG-HOND_print.zip", "previews/b/p.zip"],
+      ["BATCH-0001/models/PAL-PLY1042-01-P-RING-KAT-R1_print.zip", "previews/a/processed-1.zip"],
+      ["BATCH-0001/models/PAL-PLY1042-02-COL-CLP-007_print.zip", "collectibles/models/m.zip"],
+      ["BATCH-0001/models/PAL-PLY1043-01-P-FIG-HOND_print.zip", "previews/b/p.zip"],
     ]);
   });
 
@@ -80,9 +80,9 @@ describe("batch zip contents", () => {
     expect(isOrderPrintReady([personalized({ cancelledQuantity: 1 })])).toBe(false);
   });
 
-  it("names a reprint order's Palleys after the first order, under its own folder", () => {
+  it("names a reprint order's Palleys after the first order, with the other models", () => {
     const { entries } = batchContents("BATCH-0002", [{ number: "PLY1050", reprintOf: { number: "PLY1042" }, items: [personalized({ reprintNr: 1 })] }]);
-    expect(entries.map((entry) => entry.path)).toEqual(["BATCH-0002/PLY1050/PAL-PLY1042-01-P-RING-KAT-R1_print.zip"]);
+    expect(entries.map((entry) => entry.path)).toEqual(["BATCH-0002/models/PAL-PLY1042-01-P-RING-KAT-R1_print.zip"]);
   });
 
   it("names what has no file instead of leaving it out", () => {

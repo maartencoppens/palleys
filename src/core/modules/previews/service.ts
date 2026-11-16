@@ -60,10 +60,11 @@ import type {
   StatusOverrideInput,
 } from "./types";
 
-import { MAX_PHOTOS_PER_PREVIEW, PRINT_FILE_CONTENT_TYPE } from "@/data/uploads";
+import { MAX_PHOTOS_PER_PREVIEW, MAX_STORED_PHOTOS_PER_PREVIEW, PRINT_FILE_CONTENT_TYPE } from "@/data/uploads";
 
 import { z } from "zod";
 import { parsePreviewRef } from "@/core/utils/naming";
+import { readModelMeta } from "@/core/modules/print-prep/model-meta";
 import { MAX_POSE_ATTEMPTS, MAX_UPLOADED_POSES } from "@/data/pipeline";
 import { REVIEW_LIST_LIMIT, SEARCH_LIMIT } from "@/data/admin";
 
@@ -138,12 +139,14 @@ async function countPhotos(id: string) {
   return preview._count.photos;
 }
 
-const TOO_MANY_PHOTOS = `Maximum ${MAX_PHOTOS_PER_PREVIEW} foto's per preview`;
+const countPhotosInPrompt = (id: string) => prisma.previewPhoto.count({ where: { previewId: id, inPrompt: true } });
+
+const TOO_MANY_PHOTOS = `Maximum ${MAX_STORED_PHOTOS_PER_PREVIEW} foto's per preview: haal eerst een foto weg die je niet meer nodig hebt`;
 
 // Stap 1 van een upload door de admin: alleen een signed URL, nog geen rij.
 // De rij komt pas in confirmPhotoUpload, als het bestand echt in R2 staat.
 export async function createPhotoUpload(id: string, input: PhotoInput) {
-  if ((await countPhotos(id)) >= MAX_PHOTOS_PER_PREVIEW) {
+  if ((await countPhotos(id)) >= MAX_STORED_PHOTOS_PER_PREVIEW) {
     throw new PreviewConflictError(TOO_MANY_PHOTOS);
   }
   const key = photoKey(id, input.contentType);
@@ -151,7 +154,8 @@ export async function createPhotoUpload(id: string, input: PhotoInput) {
   return { key, uploadUrl };
 }
 
-// Stap 2: de browser heeft geüpload, wij controleren en slaan de foto op.
+// Stap 2: de browser heeft geüpload, wij controleren en slaan de foto op. Een nieuwe foto gaat mee in de prompt zolang
+// daar plaats is; anders staat hij klaar om aan te vinken.
 export async function confirmPhotoUpload(
   id: string,
   key: string,
@@ -159,7 +163,7 @@ export async function confirmPhotoUpload(
 ) {
   if (!isPhotoKeyOf(id, key)) throw new PreviewConflictError("Ongeldige key");
 
-  if ((await countPhotos(id)) >= MAX_PHOTOS_PER_PREVIEW) {
+  if ((await countPhotos(id)) >= MAX_STORED_PHOTOS_PER_PREVIEW) {
     await deleteReplacedFiles([key]); // te veel: geüpload bestand opruimen
     throw new PreviewConflictError(TOO_MANY_PHOTOS);
   }
@@ -167,31 +171,51 @@ export async function confirmPhotoUpload(
     throw new PreviewConflictError("Upload niet gevonden, probeer opnieuw");
   }
 
+  const inPrompt = (await countPhotosInPrompt(id)) < MAX_PHOTOS_PER_PREVIEW;
   const photo = await prisma.previewPhoto.upsert({
     where: { key }, // twee keer bevestigen maakt geen tweede rij
-    create: { previewId: id, key, uploadedBy: adminName },
+    create: { previewId: id, key, uploadedBy: adminName, inPrompt },
     update: {},
   });
-  return { photoId: photo.id };
+  return { photoId: photo.id, inPrompt: photo.inPrompt };
 }
 
-// Er blijft altijd minstens één foto over, anders kan er geen pose meer
-// gemaakt worden. Dus: eerst de nieuwe uploaden, dan de slechte verwijderen.
+/**
+ * Whether a photo goes along to Nano Banana for the next pose. Taking one out keeps it with the preview (the customer's
+ * photo stays as it was sent); at least one always goes, and never more than MAX_PHOTOS_PER_PREVIEW.
+ */
+export async function setPhotoInPrompt(id: string, photoId: string, inPrompt: boolean) {
+  const photo = await prisma.previewPhoto.findFirst({ where: { id: photoId, previewId: id }, select: { inPrompt: true } });
+  if (!photo) throw new PreviewNotFoundError(photoId);
+  if (photo.inPrompt === inPrompt) return { photoId, inPrompt };
+  const count = await countPhotosInPrompt(id);
+  if (inPrompt && count >= MAX_PHOTOS_PER_PREVIEW) {
+    throw new PreviewConflictError(`Er gaan maximaal ${MAX_PHOTOS_PER_PREVIEW} foto's mee in de prompt: vink er eerst een uit`);
+  }
+  if (!inPrompt && count <= 1) {
+    throw new PreviewConflictError("Er moet minstens één foto mee in de prompt");
+  }
+  await prisma.previewPhoto.update({ where: { id: photoId }, data: { inPrompt } });
+  return { photoId, inPrompt };
+}
+
+// Alleen een foto die een admin zelf toevoegde (bv. de verkeerde gekozen). Een foto van de klant gaat niet weg: die haal
+// je uit de prompt. Er blijft altijd minstens één foto in de prompt.
 export async function deletePhoto(id: string, photoId: string) {
   const photo = await prisma.previewPhoto.findFirst({
     where: { id: photoId, previewId: id },
-    select: { key: true },
+    select: { key: true, uploadedBy: true, inPrompt: true },
   });
   if (!photo) throw new PreviewNotFoundError(photoId);
-
-  if ((await countPhotos(id)) <= 1) {
-    throw new PreviewConflictError(
-      "De laatste foto kan niet verwijderd worden. Upload eerst een nieuwe.",
-    );
+  if (!photo.uploadedBy) {
+    throw new PreviewConflictError("Een foto van de klant verwijder je niet: haal hem uit de prompt");
+  }
+  if (photo.inPrompt && (await countPhotosInPrompt(id)) <= 1) {
+    throw new PreviewConflictError("Dit is de enige foto in de prompt. Zet eerst een andere aan.");
   }
 
   await prisma.previewPhoto.delete({ where: { id: photoId } });
-  await deleteReplacedFiles([photo.key]); // klantfoto: ook uit R2 weg (GDPR)
+  await deleteReplacedFiles([photo.key]);
   return { photoId };
 }
 
@@ -417,6 +441,15 @@ async function textureAsPng(texture: ModelZipContents["texture"]) {
  * for printing), so the preview simply carries on after Meshy: review and approve, or, already print-ready, straight to
  * Processed with the zip itself as the print file. A running Meshy task is dropped: its webhook no longer finds it.
  */
+/** Size, triangles and texture of a print zip; null when they can't be read (the upload goes on regardless). */
+function safeModelMeta(zip: Uint8Array) {
+  try {
+    return readModelMeta(zip);
+  } catch {
+    return null;
+  }
+}
+
 export async function confirmOwnModelUpload(
   id: string,
   input: { key: string; printReady: boolean },
@@ -428,8 +461,10 @@ export async function confirmOwnModelUpload(
 
   let contents: ModelZipContents;
   let texture: Buffer;
+  let zipBytes: Buffer;
   try {
-    contents = readModelZip(await getObject(input.key));
+    zipBytes = await getObject(input.key);
+    contents = readModelZip(zipBytes);
     texture = await textureAsPng(contents.texture);
   } catch (err) {
     await deleteReplacedFiles([input.key]);
@@ -456,7 +491,7 @@ export async function confirmOwnModelUpload(
         error: null,
         downloadedAt: null,
         downloadedBy: null,
-        ...(input.printReady && { processedKey: input.key, processedAt: now, processedBy: adminName }),
+        ...(input.printReady && { processedKey: input.key, processedAt: now, processedBy: adminName, processedMeta: safeModelMeta(zipBytes) ?? undefined }),
       },
     });
     if (count === 0) return false;
@@ -526,7 +561,8 @@ export async function generatePose(id: string): Promise<PreviewActionResult> {
   const preview = await prisma.preview.findUnique({
     where: { id },
     include: {
-      photos: { orderBy: { createdAt: "asc" }, select: { key: true } },
+      // Only the photos the admin left in the prompt.
+      photos: { where: { inPrompt: true }, orderBy: { createdAt: "asc" }, select: { key: true }, take: MAX_PHOTOS_PER_PREVIEW },
     },
   });
   if (!preview) throw new PreviewNotFoundError(id);
@@ -534,7 +570,7 @@ export async function generatePose(id: string): Promise<PreviewActionResult> {
   assertTransition(preview.status, PreviewStatus.GENERATING_POSE);
 
   if (preview.photos.length === 0) {
-    throw new PreviewConflictError("No photos to build a pose from");
+    throw new PreviewConflictError("Geen foto's in de prompt: vink er minstens één aan");
   }
   if (preview.poseAttempts >= MAX_POSE_ATTEMPTS) {
     throw new PreviewConflictError("Max pose attempts reached");
@@ -841,12 +877,12 @@ export async function getPreviewForAdmin(
       meshyTaskId: true,
       forCollectible: true,
       processedKey: true,
-      _count: { select: { orderItems: { where: { order: { createdBy: { not: null } } } } } },
-      collectible: { select: { id: true, modelKey: true } },
+      _count: { select: { orderItems: { where: { order: { createdBy: { not: null } } } }, collectibleModels: true } },
+      targetCollectible: { select: { id: true } },
       promptOverride: true,
       photos: {
         orderBy: { createdAt: "asc" },
-        select: { id: true, key: true, uploadedBy: true },
+        select: { id: true, key: true, uploadedBy: true, inPrompt: true },
       },
       statusChanges: {
         orderBy: { createdAt: "desc" },
@@ -874,6 +910,7 @@ export async function getPreviewForAdmin(
         id: photo.id,
         url: await createDownloadUrl(photo.key),
         uploadedBy: photo.uploadedBy,
+        inPrompt: photo.inPrompt,
       })),
     ),
     signedUrlOrNull(preview.poseImageKey),
@@ -899,6 +936,12 @@ export async function getPreviewForAdmin(
   ]);
   const waitsForPayment = preview.status === PreviewStatus.UPLOADED && preview._count.orderItems > 0;
   const uploadedPoses = preview.poseCandidates.filter((candidate) => candidate.source === "UPLOADED").length;
+  // The order line whose edition (keychain or figure) the customer may still change: an open order, not at JLC yet.
+  const editionItem = await prisma.orderItem.findFirst({
+    where: { previewId: id, order: { status: { in: ["PENDING_PAYMENT", "PAID", "IN_PRODUCTION"] } } },
+    orderBy: { order: { createdAt: "desc" } },
+    select: { edition: true, attachment: true, order: { select: { batch: { select: { status: true } } } } },
+  });
 
   return {
     id: preview.id,
@@ -918,8 +961,14 @@ export async function getPreviewForAdmin(
     quantity: preview.quantity,
     createdAt: preview.createdAt.toISOString(),
     photos,
-    canAddPhoto: photos.length < MAX_PHOTOS_PER_PREVIEW,
-    canDeletePhoto: photos.length > 1,
+    canAddPhoto: photos.length < MAX_STORED_PHOTOS_PER_PREVIEW,
+    edition: editionItem?.edition
+      ? {
+          edition: editionItem.edition,
+          attachment: editionItem.attachment,
+          locked: editionItem.order.batch !== null && editionItem.order.batch.status !== "OPEN",
+        }
+      : null,
     statusChanges: preview.statusChanges.map((change) => ({
       ...change,
       createdAt: change.createdAt.toISOString(),
@@ -961,10 +1010,11 @@ export async function getPreviewForAdmin(
       preview.status === PreviewStatus.GENERATING_MODEL &&
       preview.meshyTaskId !== null,
     forCollectible: preview.forCollectible,
-    collectibleId: preview.collectible?.id ?? null,
+    collectibleId: preview.targetCollectible?.id ?? null,
+    // A print-ready model that didn't become a version of its collectible by itself (the copy failed): retry.
     canAttachModel:
       preview.forCollectible &&
-      !preview.collectible?.modelKey &&
+      preview._count.collectibleModels === 0 &&
       preview.status === PreviewStatus.PRINT_READY &&
       preview.processedKey !== null,
     prompt: preview.promptOverride?.trim() || posePrompt((await getShopSettings()).prompts, preview.animalType),

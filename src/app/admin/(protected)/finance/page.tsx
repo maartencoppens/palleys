@@ -155,7 +155,8 @@ export default async function AdminFinancePage({ searchParams }: PageProps<"/adm
           Verkoopdagboek
         </h2>
         <p className="mt-1 mb-4 text-sm text-text-muted">
-          {filters.from} tot en met {filters.to}, {filters.mode}. Tab-gescheiden met kopregel: plak rechtstreeks in Excel. De filters op
+          {filters.from} tot en met {filters.to}, {filters.mode}. Tab-gescheiden, zonder kopregel: plak onder de kolomtitels in ons Excel. Dagontvangsten
+          heeft een aparte kolom &ldquo;Type transactie&rdquo; (Bancontact, Wero, …) tussen omschrijving en naam klant. De filters op
           methode en status gelden hier niet.
         </p>
         <JournalCopyButtons from={filters.from} to={filters.to} mode={filters.mode} />

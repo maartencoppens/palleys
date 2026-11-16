@@ -5,7 +5,7 @@ import { Link } from "@/core/locale/client";
 import { fill } from "@/core/locale/fill";
 import { getLocale, getMessages } from "@/core/locale/server";
 import { getSiteSettings } from "@/core/modules/settings/service";
-import { getDeliveryOptions } from "@/core/modules/shipping/service";
+import { listDeliveryOptionsByCountry } from "@/core/modules/shipping/service";
 import { formatPrice } from "@/core/utils/format";
 import { COMPANY } from "@/data/company";
 import { PRIVACY_URL, TERMS_URL } from "@/data/checkout";
@@ -33,16 +33,18 @@ async function LiveCompanyLine() {
   return <CompanyLine company={company} />;
 }
 
-type Price = { id: string; label: string; priceCents: number };
+type Price = { id: string; label: string; priceCents: number; country: string };
 
-/** The options a customer can pick now, with the price from Instellingen → Verzending. */
+/** The options a customer can pick now, per country, with the price from Instellingen → Verzending. */
 async function PriceLine({ prices }: { prices: Price[] }) {
   const [{ legal, shipping }, locale] = await Promise.all([getMessages(), getLocale()]);
   const m = legal.shippingPolicy;
+  const countries = new Intl.DisplayNames([locale], { type: "region" });
   return prices
     .map((option) =>
-      fill(m.inBelgium, {
+      fill(m.inCountry, {
         label: shipping.options[option.id]?.label ?? option.label,
+        country: countries.of(option.country) ?? option.country,
         price: option.priceCents === 0 ? m.free : formatPrice(option.priceCents / 100, locale),
       }),
     )
@@ -51,12 +53,12 @@ async function PriceLine({ prices }: { prices: Price[] }) {
 
 async function LivePrices() {
   await connection();
-  const options = await getDeliveryOptions({ country: "BE" }, [{ size: SHOWN_KEYCHAIN_SIZE, quantity: 1 }]);
-  return <PriceLine prices={options} />;
+  const byCountry = await listDeliveryOptionsByCountry(SHOWN_KEYCHAIN_SIZE);
+  return <PriceLine prices={byCountry.flatMap(({ country, options }) => options.map((option) => ({ ...option, country })))} />;
 }
 
-// While the settings load: the starting prices.
-const STARTING_PRICES = STATIC_DELIVERY_OPTIONS.filter((option) => option.deliveryType === "HOME").map((option) => ({
+// While the settings load: the starting prices of what's on from the start.
+const STARTING_PRICES = STATIC_DELIVERY_OPTIONS.filter((option) => option.deliveryType === "HOME" && option.defaultEnabled !== false).map((option) => ({
   ...option,
   priceCents: option.defaultPriceCents,
 }));

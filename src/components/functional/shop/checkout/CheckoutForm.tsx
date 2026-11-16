@@ -21,7 +21,14 @@ import { FIELD_LIMITS, PRIVACY_URL, TERMS_URL } from "@/data/checkout";
 import { DISCOUNT_CODE_MAX_LENGTH } from "@/data/discounts";
 import { PAYMENT_METHOD_LABELS } from "@/data/payment-methods";
 import { attachments, type Attachment } from "@/data/options";
-import { FRIENDS_DELIVERY, needsShippingAddress, POSTAL_CODE_PATTERNS, type ShippingCountry } from "@/data/shipping";
+import {
+  isShippingCountry,
+  needsShippingAddress,
+  POSTAL_CODE_HINTS,
+  POSTAL_CODE_PATTERNS,
+  SHIPPING_COUNTRIES,
+  type ShippingCountry,
+} from "@/data/shipping";
 import DeliveryOptionsPicker from "./DeliveryOptionsPicker";
 
 const errorClassName = "font-label text-base font-semibold text-[#a3341a]";
@@ -128,12 +135,21 @@ export default function CheckoutForm({
   const [discount, setDiscount] = useState<AppliedDiscount | null>(null);
   const [discountError, setDiscountError] = useState<string | null>(null);
   const [applyingDiscount, setApplyingDiscount] = useState(false);
+  // Clicked "delivery in person" without a code: say how to get one.
+  const [friendsHint, setFriendsHint] = useState(false);
+  const discountInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadCart().catch(() => setCartFailed(true));
     fetchCheckoutConfig()
-      .then(setConfig)
-      .catch(() => setConfig({ enabled: true, closedMessage: null, paymentsAvailable: true }));
+      .then((next) => {
+        setConfig(next);
+        // Belgium isn't offered (or no longer): start from the first country that is.
+        setFields((current) =>
+          next.countries.length === 0 || next.countries.includes(current.country) ? current : { ...current, country: next.countries[0] },
+        );
+      })
+      .catch(() => setConfig({ enabled: true, closedMessage: null, paymentsAvailable: true, countries: ["BE"] }));
   }, []);
 
   // Coming back from Stripe's payment page with the back button restores the page: re-enable the button.
@@ -174,6 +190,12 @@ export default function CheckoutForm({
       clearTimeout(timer);
     };
   }, [fields.country, knownPostalCode, appliedCode, optionsVersion]);
+
+  const countries = config?.countries.length ? config.countries : (["BE"] as ShippingCountry[]);
+  const countryName = useMemo(() => {
+    const names = new Intl.DisplayNames([locale], { type: "region" });
+    return (code: string) => names.of(code) ?? code;
+  }, [locale]);
 
   const selected = options.find((option) => option.id === deliveryOptionId) ?? null;
   const shipsToAddress = needsShippingAddress(selected?.deliveryType);
@@ -376,30 +398,83 @@ export default function CheckoutForm({
           <h2 id="delivery-title" className="font-display text-2xl leading-[1.2] font-bold text-medium-green">
             {m.delivery}
           </h2>
+          {/* The country decides the delivery options and their price, so it comes first. */}
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="country" className={labelClassName}>
+              {m.deliveryCountry}
+            </Label>
+            {countries.length > 1 ? (
+              <select
+                id="country"
+                name="country"
+                value={fields.country}
+                autoComplete="country"
+                onChange={(event) => {
+                  const country = event.target.value;
+                  if (!isShippingCountry(country)) return;
+                  setFields((current) => ({ ...current, country }));
+                  setErrors((current) => new Set([...current].filter((n) => n !== "postalCode" && n !== "country")));
+                }}
+                className="h-12 rounded-[15px] bg-off-white-dark px-4 font-label text-base font-semibold text-medium-green outline-none focus-visible:ring-3 focus-visible:ring-accent-highlights md:h-14 md:text-lg"
+              >
+                {countries.map((code) => (
+                  <option key={code} value={code}>
+                    {countryName(code)}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <p className="text-base text-text-primary">{countryName(countries[0])}</p>
+            )}
+            <p className="text-sm leading-[1.5] text-text-muted">
+              {fill(m.countriesNote, {
+                countries: joinMethods(
+                  SHIPPING_COUNTRIES.filter((country) => countries.includes(country.code)).map(
+                    (country) => `${countryName(country.code)} (${country.payment})`,
+                  ),
+                  m.methodsAnd,
+                ),
+              })}
+            </p>
+          </div>
           <DeliveryOptionsPicker
             options={options}
             value={deliveryOptionId}
             onChange={(id) => {
               setDeliveryOptionId(id);
+              setFriendsHint(false);
               setErrors((current) => new Set([...current].filter((n) => n !== "deliveryOptionId")));
             }}
             status={optionsStatus}
             error={errors.has("deliveryOptionId") ? fieldErrors.deliveryOptionId : undefined}
+            friendsHintOpen={friendsHint}
+            onFriendsLocked={() => setFriendsHint(true)}
+            friendsHint={
+              <WarningNote>
+                {fillNodes(m.friendsWarning, {
+                  instagram: instagramUrl ? (
+                    <a href={instagramUrl} target="_blank" rel="noopener noreferrer" className="text-medium-green underline underline-offset-2">
+                      Instagram
+                    </a>
+                  ) : (
+                    "Instagram"
+                  ),
+                  code: (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        discountInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                        discountInputRef.current?.focus({ preventScroll: true });
+                      }}
+                      className="text-medium-green underline underline-offset-2"
+                    >
+                      {m.friendsWarningCode}
+                    </button>
+                  ),
+                })}
+              </WarningNote>
+            }
           />
-          {/* Friends and family get a code for free delivery in person; once it's applied, that option is right above. */}
-          {!options.some((option) => option.id === FRIENDS_DELIVERY.id) && (
-            <p className="text-sm leading-[1.5] text-text-muted">
-              {fillNodes(m.friendsNote, {
-                instagram: instagramUrl ? (
-                  <a href={instagramUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-medium-green underline underline-offset-2">
-                    Instagram
-                  </a>
-                ) : (
-                  "Instagram"
-                ),
-              })}
-            </p>
-          )}
         </section>
 
         {shipsToAddress && (
@@ -415,16 +490,16 @@ export default function CheckoutForm({
             {field("postalCode", m.postalCode, {
               autoComplete: "postal-code",
               maxLength: 7,
-              inputMode: "numeric",
-              placeholder: "9000",
+              inputMode: POSTAL_CODE_HINTS[fields.country].numeric ? "numeric" : "text",
+              placeholder: POSTAL_CODE_HINTS[fields.country].placeholder,
             })}
             {field("city", m.city, { autoComplete: "address-level2", maxLength: FIELD_LIMITS.city })}
           </div>
-          {/* Belgium only for now. More countries: SHIPPING_COUNTRIES plus a select here. */}
+          {/* Chosen under Levering: the options and their price depend on it. */}
           <p className="text-base text-text-primary">
             <span className={`${labelClassName} font-label font-extrabold text-medium-green`}>{m.country}</span>
             <br />
-            {m.belgium} <span className="text-sm text-text-muted">{m.belgiumOnly}</span>
+            {countryName(fields.country)} <span className="text-sm text-text-muted">{m.countryChosenAbove}</span>
           </p>
         </section>
         )}
@@ -482,6 +557,7 @@ export default function CheckoutForm({
           </Label>
           <div className="flex items-center gap-2">
             <Input
+              ref={discountInputRef}
               id="discountCode"
               value={discountInput}
               onChange={(event) => {

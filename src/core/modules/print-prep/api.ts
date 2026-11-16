@@ -23,3 +23,7 @@ export async function getProcessedDownload(previewId: string) {
   );
   return data;
 }
+
+export async function postRefreshProcessedMeta(previewId: string) {
+  await api.post(`/admin/print-prep/${previewId}/meta`);
+}

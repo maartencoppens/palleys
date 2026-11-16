@@ -16,7 +16,7 @@ import {
   orderReturnUrl,
 } from "@/core/modules/payments/service";
 import { getShopSettings } from "@/core/modules/settings/service";
-import { friendsDelivery, getDeliveryOptions, resolveDeliveryOption } from "@/core/modules/shipping/service";
+import { friendsDelivery, getDeliveryOptions, listShippingCountries, resolveDeliveryOption } from "@/core/modules/shipping/service";
 import type { DeliveryAddress } from "@/core/modules/shipping/types";
 import { getCurrentTermsVersion } from "@/core/modules/legal/service";
 import { FRIENDS_DELIVERY, needsShippingAddress } from "@/data/shipping";
@@ -52,11 +52,12 @@ export class CheckoutError extends Error {
 }
 
 export async function getCheckoutConfig(): Promise<CheckoutConfig> {
-  const settings = await getShopSettings();
+  const [settings, countries] = await Promise.all([getShopSettings(), listShippingCountries()]);
   return {
     enabled: settings.checkoutEnabled,
     closedMessage: settings.checkoutEnabled ? null : settings.checkoutClosedMessage,
     paymentsAvailable: paymentProvider.isConfigured(),
+    countries,
   };
 }
 

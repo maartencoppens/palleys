@@ -4,11 +4,13 @@ import { useState } from "react";
 import type { ShippingSettings } from "@/core/modules/settings/types";
 import { fromEuroInput, toEuroInput } from "@/core/utils/format";
 import { Input } from "@/components/design/form";
-import { MAX_SHIPPING_PRICE_CENTS, STATIC_DELIVERY_OPTIONS } from "@/data/shipping";
+import { isOptionEnabled, MAX_SHIPPING_PRICE_CENTS, SHIPPING_COUNTRIES, STATIC_DELIVERY_OPTIONS } from "@/data/shipping";
 import { SaveBar, SettingsCard } from "./SettingsParts";
 import { useSettingsSave } from "./useSettingsSave";
 
 type Row = { enabled: boolean; price: string };
+
+const countryNames = new Intl.DisplayNames(["nl-BE"], { type: "region" });
 
 export function ShippingSettingsForm({ settings }: { settings: ShippingSettings }) {
   const [rows, setRows] = useState<Record<string, Row>>(() =>
@@ -17,7 +19,7 @@ export function ShippingSettingsForm({ settings }: { settings: ShippingSettings 
         const override = settings.shippingOverrides[option.id];
         return [
           option.id,
-          { enabled: override?.enabled ?? true, price: toEuroInput(override?.priceCents ?? option.defaultPriceCents) },
+          { enabled: isOptionEnabled(option, override), price: toEuroInput(override?.priceCents ?? option.defaultPriceCents) },
         ];
       }),
     ),
@@ -32,7 +34,7 @@ export function ShippingSettingsForm({ settings }: { settings: ShippingSettings 
       const row = rows[option.id];
       const priceCents = fromEuroInput(row.price);
       if (priceCents === null || priceCents > MAX_SHIPPING_PRICE_CENTS) {
-        setError(`Ongeldige prijs voor "${option.label}" (bv. 4,95, maximum € ${MAX_SHIPPING_PRICE_CENTS / 100})`);
+        setError(`Ongeldige prijs voor "${option.label}" (${option.country}) (bv. 4,95, maximum € ${MAX_SHIPPING_PRICE_CENTS / 100})`);
         return;
       }
       shippingOverrides[option.id] = { enabled: row.enabled, priceCents };
@@ -42,45 +44,50 @@ export function ShippingSettingsForm({ settings }: { settings: ShippingSettings 
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-6">
-      <SettingsCard
-        title="Verzendopties"
-        intro="Prijs die de klant betaalt: in de checkout en op het verzendbeleid (/verzendbeleid). Uitgevinkt = niet te kiezen."
-      >
-        <ul className="divide-y divide-off-white-dark">
-          {STATIC_DELIVERY_OPTIONS.map((option) => (
-            <li key={option.id} className="flex flex-wrap items-center gap-4 py-4">
-              <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={rows[option.id].enabled}
-                  onChange={(event) =>
-                    setRows((current) => ({ ...current, [option.id]: { ...current[option.id], enabled: event.target.checked } }))
-                  }
-                  className="size-5 accent-medium-green"
-                />
-                <span className="flex flex-col">
-                  <span className="font-label text-base font-bold">{option.label}</span>
-                  <span className="text-sm text-text-muted">
-                    {option.country} · {option.carrier}
-                  </span>
-                </span>
-              </label>
-              <div className="flex items-center gap-2">
-                <span className="font-label font-semibold text-text-muted">€</span>
-                <Input
-                  aria-label={`Prijs ${option.label}`}
-                  inputMode="decimal"
-                  value={rows[option.id].price}
-                  onChange={(event) =>
-                    setRows((current) => ({ ...current, [option.id]: { ...current[option.id], price: event.target.value } }))
-                  }
-                  className="h-11 w-28 text-base!"
-                />
-              </div>
-            </li>
-          ))}
-        </ul>
-      </SettingsCard>
+      {SHIPPING_COUNTRIES.map((country) => {
+        const options = STATIC_DELIVERY_OPTIONS.filter((option) => option.country === country.code);
+        const open = options.some((option) => rows[option.id].enabled);
+        return (
+          <SettingsCard
+            key={country.code}
+            title={`${countryNames.of(country.code) ?? country.code}${open ? "" : " (niet beschikbaar)"}`}
+            intro={`Betalen met ${country.payment}. Prijs die de klant betaalt als hij dit land kiest in de checkout, en op het verzendbeleid. Geen enkele optie aan = het land staat niet in de checkout.`}
+          >
+            <ul className="divide-y divide-off-white-dark">
+              {options.map((option) => (
+                <li key={option.id} className="flex flex-wrap items-center gap-4 py-4">
+                  <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={rows[option.id].enabled}
+                      onChange={(event) =>
+                        setRows((current) => ({ ...current, [option.id]: { ...current[option.id], enabled: event.target.checked } }))
+                      }
+                      className="size-5 accent-medium-green"
+                    />
+                    <span className="flex flex-col">
+                      <span className="font-label text-base font-bold">{option.label}</span>
+                      <span className="text-sm text-text-muted">{option.carrier}</span>
+                    </span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <span className="font-label font-semibold text-text-muted">€</span>
+                    <Input
+                      aria-label={`Prijs ${option.label} (${country.code})`}
+                      inputMode="decimal"
+                      value={rows[option.id].price}
+                      onChange={(event) =>
+                        setRows((current) => ({ ...current, [option.id]: { ...current[option.id], price: event.target.value } }))
+                      }
+                      className="h-11 w-28 text-base!"
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </SettingsCard>
+        );
+      })}
       <SaveBar saving={saving} message={message} error={error} />
     </form>
   );

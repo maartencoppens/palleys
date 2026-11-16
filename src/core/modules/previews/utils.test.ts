@@ -21,7 +21,7 @@ const PREVIEW_ID = "a3f9c2e1-0b4d-4c3a-9e2f-1234567890ab";
 const source = (overrides: Partial<PrintNameSource> = {}): PrintNameSource => ({
   id: PREVIEW_ID,
   forCollectible: false,
-  collectible: null,
+  targetCollectible: null,
   orderItems: [],
   ...overrides,
 });
@@ -40,8 +40,8 @@ describe("print names", () => {
   });
 
   it("names a new collectible's model after the collectible", () => {
-    expect(printBaseName(source({ forCollectible: true, collectible: { number: 7, animalCode: "HOND" } }))).toBe("COL-007-HOND");
-    expect(printBaseName(source({ forCollectible: true, collectible: { number: 7, animalCode: null } }))).toBe("PRV-A3F9C2E1");
+    expect(printBaseName(source({ forCollectible: true, targetCollectible: { number: 7, animalCode: "HOND" } }))).toBe("COL-007-HOND");
+    expect(printBaseName(source({ forCollectible: true, targetCollectible: { number: 7, animalCode: null } }))).toBe("PRV-A3F9C2E1");
   });
 });
 

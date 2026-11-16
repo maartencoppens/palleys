@@ -14,8 +14,11 @@ export const IMAGE_EXTENSIONS: Record<ImageMimeType, string> = {
   "image/webp": "webp",
 };
 
-// Hoeveel foto's van het dier een preview mag hebben (klant + admin samen).
+// Hoeveel foto's van het dier mee naar Nano Banana gaan (en hoeveel een klant uploadt).
 export const MAX_PHOTOS_PER_PREVIEW = 4;
+// Hoeveel foto's een preview in totaal mag hebben: een admin kan er bijzetten en foto's uit de prompt halen zonder ze
+// te verwijderen. Er gaan er nooit meer dan MAX_PHOTOS_PER_PREVIEW mee.
+export const MAX_STORED_PHOTOS_PER_PREVIEW = 10;
 
 // Verwerkte printbestanden uit Blender: één zip met OBJ + MTL + PNG.
 export const PRINT_FILE_CONTENT_TYPE = "application/zip";

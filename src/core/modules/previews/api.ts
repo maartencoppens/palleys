@@ -74,6 +74,14 @@ export async function deleteAdminPhoto(previewId: string, photoId: string) {
   await api.delete(`/admin/previews/${previewId}/photos/${photoId}`);
 }
 
+export async function patchPhotoInPrompt(previewId: string, photoId: string, inPrompt: boolean) {
+  await api.patch(`/admin/previews/${previewId}/photos/${photoId}`, { inPrompt });
+}
+
+export async function putPreviewEdition(previewId: string, edition: string, attachment: string | null) {
+  await api.put(`/admin/previews/${previewId}/edition`, { edition, attachment });
+}
+
 export async function postStatusOverride(
   previewId: string,
   status: PreviewStatus,

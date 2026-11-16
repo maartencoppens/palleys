@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { MAX_PRINT_FILE_BYTES } from "@/data/uploads";
+import type { ModelMeta } from "./model-meta";
 
 export const printFileUploadSchema = z.object({
   size: z.number().int().positive().max(MAX_PRINT_FILE_BYTES),
@@ -17,6 +18,8 @@ export type ProcessingItem = {
   downloadedBy: string | null;
   processedAt: string | null;
   processedBy: string | null;
+  /** Read from the processed zip; null before it was uploaded or when it couldn't be read. */
+  meta: ModelMeta | null;
 };
 
 export type ProcessingOverview = {

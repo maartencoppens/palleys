@@ -9,7 +9,7 @@ import Button from "@/components/design/Button";
 
 type JournalCopyButtonsProps = { from: string; to: string; mode: PaymentMode };
 
-/** One button per table of the sales journal: copies it as tab-separated text, ready to paste into Excel. */
+/** One button per table of the sales journal: copies its rows (no header) as tab-separated text, to paste into our Excel. */
 export function JournalCopyButtons({ from, to, mode }: JournalCopyButtonsProps) {
   const [busy, setBusy] = useState<JournalTable | null>(null);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
@@ -20,8 +20,8 @@ export function JournalCopyButtons({ from, to, mode }: JournalCopyButtonsProps) 
     try {
       const tsv = await fetchJournalTsv({ from, to, mode, table });
       await navigator.clipboard.writeText(tsv);
-      const rows = Math.max(0, tsv.trimEnd().split("\n").length - 1);
-      setMessage({ text: `${JOURNAL_TABLE_LABELS[table]} gekopieerd (${rows} ${rows === 1 ? "rij" : "rijen"} + kopregel). Plak in Excel.`, error: false });
+      const rows = tsv.trim() === "" ? 0 : tsv.trimEnd().split("\n").length;
+      setMessage({ text: `${JOURNAL_TABLE_LABELS[table]} gekopieerd (${rows} ${rows === 1 ? "rij" : "rijen"}, zonder kopregel). Plak onder de kolomtitels in Excel.`, error: false });
     } catch (error) {
       setMessage({ text: error instanceof Error && error.name === "NotAllowedError" ? "Kopiëren werd geweigerd door de browser" : getApiErrorMessage(error), error: true });
     } finally {

@@ -7,6 +7,8 @@ import { CollectibleModelButton } from "@/components/functional/admin/orders/Col
 import { formatDateTime } from "@/core/utils/format";
 import { Badge } from "@/components/design/Badge";
 import { ProcessedFileActions } from "@/components/functional/admin/ProcessedFileActions";
+import { BulkProcessedUpload } from "@/components/functional/admin/BulkProcessedUpload";
+import { ModelMetaInfo } from "@/components/functional/admin/ModelMetaInfo";
 
 export const instant = false;
 
@@ -23,8 +25,14 @@ export default async function AdminProcessedPage() {
       <section className="mt-8">
         <h2 className="font-display text-xl font-medium text-medium-green">In Blender ({inProgress.length})</h2>
         <p className="mt-1 text-base text-text-muted">
-          Gedownload uit Goedgekeurd. Upload de zip zodra hij print ready is.
+          Gedownload uit Goedgekeurd. Upload de zip zodra hij print ready is: per model, of alle zips uit één folder tegelijk.
         </p>
+        <BulkProcessedUpload
+          items={[
+            ...inProgress.map((item) => ({ id: item.id, baseName: item.baseName, hasProcessedFile: false })),
+            ...printReady.map((item) => ({ id: item.id, baseName: item.baseName, hasProcessedFile: true })),
+          ]}
+        />
         <ProcessingTable
           items={inProgress}
           dateLabel="Gedownload"
@@ -39,6 +47,10 @@ export default async function AdminProcessedPage() {
         <h2 className="font-display text-xl font-medium text-medium-green">
           Klaar voor print ({printReady.length})
         </h2>
+        <p className="mt-1 text-base text-text-muted">
+          Zodra hun batch naar JLC is, verdwijnen ze uit deze lijst. Controleer per model de afmetingen (x × y × z, in de eenheden
+          van het OBJ-bestand zoals Blender ze exporteerde), de triangles en de textuur.
+        </p>
         <ProcessingTable
           items={printReady}
           dateLabel="Verwerkt"
@@ -94,6 +106,7 @@ function ProcessingTable({
           <tr>
             <th className="px-5 py-4 font-semibold">Bestandsnaam</th>
             <th className="px-5 py-4 font-semibold">Aantal</th>
+            {hasProcessedFile && <th className="px-5 py-4 font-semibold">Model</th>}
             <th className="px-5 py-4 font-semibold">{dateLabel}</th>
             <th className="px-5 py-4">
               <span className="sr-only">Acties</span>
@@ -116,6 +129,11 @@ function ProcessingTable({
                 <td data-label="Aantal" className="px-5 py-4">
                   {item.quantity > 1 ? <Badge tone="waiting">{item.quantity}×</Badge> : "1"}
                 </td>
+                {hasProcessedFile && (
+                  <td data-label="Model" className="px-5 py-4">
+                    <ModelMetaInfo meta={item.meta} source={{ previewId: item.id }} />
+                  </td>
+                )}
                 <td data-label={dateLabel} className="whitespace-nowrap px-5 py-4 text-text-muted">
                   {date ? `${byOf(item)} · ${formatDateTime(date)}` : "—"}
                 </td>

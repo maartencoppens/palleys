@@ -23,7 +23,8 @@ import {
  * - Refunds are an "uitgave" in the "Financieel dagboek"; a refund or chargeback undone is an "ontvangst".
  */
 
-export const RECEIPTS_HEADER = ["Datum", "Omschrijving", "Naam klant", "Bedrag", "Betaald", "Betalingsreferentie", "Verzending"];
+// "Type transactie": how it was paid (Bancontact, Wero, Contant, …), in a column of its own since November 2026.
+export const RECEIPTS_HEADER = ["Datum", "Omschrijving", "Type transactie", "Naam klant", "Bedrag", "Betaald", "Betalingsreferentie", "Verzending"];
 export const CUSTOMERS_HEADER = [
   "Naam klant",
   "Straat + nr",
@@ -48,9 +49,13 @@ export function textCell(value: string | null | undefined) {
   return /^[=+\-@]/.test(flat) ? `'${flat}` : flat;
 }
 
-/** Tab-separated with a header row: what Excel splits into columns on paste. */
-export function toTsv(table: JournalTableData) {
-  return [table.header, ...table.rows].map((row) => row.join("\t")).join("\n") + "\n";
+/**
+ * Tab-separated: what Excel splits into columns on paste. Without the header row by default for copying, since our
+ * Excel has the headers already; with it for a file that stands on its own.
+ */
+export function toTsv(table: JournalTableData, { header = true }: { header?: boolean } = {}) {
+  const rows = header ? [table.header, ...table.rows] : table.rows;
+  return rows.length === 0 ? "" : rows.map((row) => row.join("\t")).join("\n") + "\n";
 }
 
 const inJournal = (order: FinanceOrder) => !order.stockOrder && order.paidAt !== null;
@@ -66,7 +71,8 @@ export function receiptsTable(orders: FinanceOrder[]): JournalTableData {
       const payment = settledPayment(order);
       return [
         formatJournalDate(order.paidAt!),
-        textCell(`${describeOrder(order)} · ${methodLabel(methodKey(payment))}`),
+        textCell(describeOrder(order)),
+        textCell(methodLabel(methodKey(payment))),
         textCell(customerName(order)),
         formatJournalAmount(order.totalCents),
         yesNo(receivedCents(order) > 0),

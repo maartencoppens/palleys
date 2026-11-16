@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { DEFAULT_LOCALE, LOCALES } from "@/core/locale/config";
 import { FIELD_LIMITS } from "@/data/checkout";
-import { POSTAL_CODE_PATTERNS, SHIPPING_COUNTRY_CODES } from "@/data/shipping";
+import { POSTAL_CODE_PATTERNS, SHIPPING_COUNTRY_CODES, type ShippingCountry } from "@/data/shipping";
 import { enteredDiscountCodeSchema } from "@/core/modules/discounts/types";
 import type { DeliveryOption } from "@/core/modules/shipping/types";
 
@@ -58,6 +58,8 @@ export type CheckoutConfig = {
   enabled: boolean;
   closedMessage: string | null;
   paymentsAvailable: boolean;
+  /** Countries with a delivery option switched on, to choose from in the checkout. */
+  countries: ShippingCountry[];
 };
 
 export type DeliveryOptionView = Omit<DeliveryOption, "provider">;

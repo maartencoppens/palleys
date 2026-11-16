@@ -18,7 +18,9 @@ Productie start met `npm run start:prod` (`prisma migrate deploy && next start`)
 
 ## Checkout en betalingen (Stripe Checkout)
 
-Enkel België. Flow: `/create` uploadt foto's naar R2 (`/api/uploads`) → `/api/cart` zet de preview in ons eigen
+Landen: België (Bancontact), Nederland, Duitsland, Frankrijk en Luxemburg (Wero), in `SHIPPING_COUNTRIES`
+(`src/data/shipping.ts`). Een land staat pas in de checkout als er onder **Verzending** een leveroptie voor aanstaat; de
+nieuwe landen staan standaard uit tot hun prijs gecontroleerd is. De klant kiest eerst het land, dan de leveroptie. Flow: `/create` uploadt foto's naar R2 (`/api/uploads`) → `/api/cart` zet de preview in ons eigen
 winkelmandje (DB, token in een httpOnly-cookie) → `/checkout` vraagt gegevens en levering → `/api/checkout` maakt een order
 (`PENDING_PAYMENT`, bedragen server-side uit `src/data/pricing.ts` en de verzendopties) en een Stripe Checkout Session
 (`client_reference_id` = ordernummer, 30 minuten geldig) → klant betaalt op de gehoste Stripe-pagina met de methodes uit de
@@ -78,6 +80,7 @@ nergens anders worden ze met de hand samengesteld. De database bewaart de onderd
 | Collectible | `COL-007-HOND` |
 | Productcode | `P-RING-KAT`, `COL-CLP-007` |
 | Palley (fysiek exemplaar, printbestanden) | `PAL-PLY1042-01-P-RING-KAT`, herdruk `…-R1` |
+| Batch-zip voor JLC | `BATCH-0001/models/<palley>_print.zip` (alle modellen in één map) + `BATCH-0001/manifest.csv` |
 
 R2-keys blijven op UUID's; leesbare namen krijgt een bestand pas bij het downloaden. Na de migratie `naming_standard`
 zet `npm run db:backfill-naming` bestaande rijen recht (eerst zonder vlag: alleen tonen; `--apply` om te schrijven;
@@ -134,7 +137,11 @@ staat, zoals op `/create`).
 
 **Collectibles** zijn kant-en-klare modellen zonder foto: `/shop`, `/shop/<slug>` en de homepage (de eerste vier). Foto's gaan
 via onze server (omgezet naar WebP) naar R2 en zijn publiek via `/api/collectibles/images/<bestand>`. Verwijderen archiveert:
-oude orders verwijzen er nog naar en terugzetten kan. Ze zijn niet op maat gemaakt, dus er geldt wel 14 dagen herroepingsrecht
+oude orders verwijzen er nog naar en terugzetten kan. Een gearchiveerde collectible kan daarna **definitief** weg (rij, foto en
+modellen), zolang geen open order hem nodig heeft; lijnen van afgesloten orders houden titel en productcode.
+Elk 3D-model is een versie (`CollectibleModel`); `Collectible.modelKey` is de gekozen versie. Op de pagina van een collectible
+genereer je een nieuw model voor díe collectible (`Preview.targetCollectibleId`) of upload je een zip; een nieuwe versie wordt
+pas gebruikt als je ze kiest (of als er nog geen model was). Ze zijn niet op maat gemaakt, dus er geldt wel 14 dagen herroepingsrecht
 (`OrderItem.withdrawable`).
 
 **Kortingscodes** gelden bij het afrekenen op de producten, nooit op de verzending. Hoe vaak een code gebruikt is, wordt niet

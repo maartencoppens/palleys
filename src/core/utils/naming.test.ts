@@ -227,11 +227,11 @@ describe("batches and bpost", () => {
     expect(batchZipName("BATCH-0001")).toBe("BATCH-0001.zip");
     expect(bpostCsvName("BATCH-0001", "BE", 1)).toBe("BPOST-BATCH-0001-BE-1.csv");
     expect(bpostCsvName("BATCH-0001", "INT", 2)).toBe("BPOST-BATCH-0001-INT-2.csv");
-    expect(batchZipEntry("BATCH-0001", "PLY1042", "PAL-PLY1042-01-P-RING-KAT_print.zip")).toBe(
-      "BATCH-0001/PLY1042/PAL-PLY1042-01-P-RING-KAT_print.zip",
+    expect(batchZipEntry("BATCH-0001", "PAL-PLY1042-01-P-RING-KAT_print.zip")).toBe(
+      "BATCH-0001/models/PAL-PLY1042-01-P-RING-KAT_print.zip",
     );
     expect(batchManifestEntry("BATCH-0001")).toBe("BATCH-0001/manifest.csv");
-    expect(() => batchZipEntry("BATCH-0001", "PLY1042", "../secret.zip")).toThrow();
+    expect(() => batchZipEntry("BATCH-0001", "../secret.zip")).toThrow();
   });
 
   it("rejects invalid input", () => {

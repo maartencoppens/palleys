@@ -4,7 +4,6 @@ import Image from "next/image";
 import { useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
-  downloadCollectibleModel,
   postCollectible,
   putCollectible,
   uploadCollectibleImage,
@@ -58,7 +57,7 @@ export function CollectibleForm({
   const [model, setModel] = useState({ key: collectible?.modelKey ?? null, fileName: collectible?.modelFileName ?? null });
   const modelInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const [modelBusy, setModelBusy] = useState<"upload" | "download" | null>(null);
+  const [modelBusy, setModelBusy] = useState<"upload" | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -97,19 +96,6 @@ export function CollectibleForm({
     }
   }
 
-  async function handleModelDownload() {
-    if (!collectible) return;
-    setModelBusy("download");
-    setError(null);
-    try {
-      await downloadCollectibleModel(collectible.id);
-    } catch (e) {
-      setError(getApiErrorMessage(e));
-    } finally {
-      setModelBusy(null);
-    }
-  }
-
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
@@ -139,8 +125,8 @@ export function CollectibleForm({
       tag: tag.trim() || null,
       priceCents,
       imageKey: image.key,
-      modelKey: model.key,
-      modelFileName: model.key ? model.fileName : null,
+      // Editing: the model is picked among its versions above the form, never overwritten from here.
+      ...(!collectible && { modelKey: model.key, modelFileName: model.key ? model.fileName : null }),
       animalCode: animalCode || null,
       published,
       soldOut,
@@ -275,6 +261,7 @@ export function CollectibleForm({
         </div>
       </SettingsCard>
 
+      {!collectible && (
       <SettingsCard
         title="3D-model"
         intro="De printklare zip uit Blender (OBJ + MTL + PNG), maximaal 200 MB. Elke bestelling van deze collectible gebruikt dit model: er wordt nooit een nieuw gegenereerd."
@@ -284,24 +271,12 @@ export function CollectibleForm({
             {model.key ? (
               <>
                 <span className="font-semibold break-all">{model.fileName ?? "Model"}</span>
-                {model.key !== collectible?.modelKey && <span className="text-text-muted"> · nieuw, wordt bewaard bij opslaan</span>}
+                <span className="text-text-muted"> · wordt bewaard bij opslaan</span>
               </>
             ) : (
               <span className="text-text-muted">Nog geen 3D-model</span>
             )}
           </p>
-          {collectible?.modelKey && model.key === collectible.modelKey && (
-            <Button
-              type="button"
-              variant="secondary"
-              loading={modelBusy === "download"}
-              loadingText="Bezig…"
-              disabled={modelBusy !== null}
-              onClick={handleModelDownload}
-            >
-              Download
-            </Button>
-          )}
           <Button
             type="button"
             variant={model.key ? "secondary" : "primary"}
@@ -325,6 +300,7 @@ export function CollectibleForm({
           <input ref={modelInputRef} type="file" accept=".zip,application/zip" onChange={handleModel} className="hidden" />
         </div>
       </SettingsCard>
+      )}
 
       <SettingsCard title="Op de website">
         <div className="flex flex-col gap-3">

@@ -575,11 +575,14 @@ export const nl = {
     postalCode: "Postcode",
     city: "Gemeente",
     country: "Land",
-    belgium: "België",
-    belgiumOnly: "(we leveren voorlopig enkel in België)",
+    countryChosenAbove: "(gekozen bij Levering)",
+    deliveryCountry: "Land van levering",
+    countriesNote: "Levering en betalen: {countries}.",
+    methodsAnd: " en ",
     delivery: "Levering",
-    friendsNote:
-      "Ken je ons persoonlijk? Stuur ons een DM op {instagram}, dan krijg je een code om je Palley bij ons af te halen in plaats van hem te laten leveren.",
+    friendsWarning:
+      "Persoonlijk overhandigen kan alleen met een code. Ken je ons? Stuur ons een bericht op {instagram} om je code te krijgen, en vul hem daarna in bij {code}.",
+    friendsWarningCode: "Kortingscode",
     summary: "Je bestelling",
     products: "Producten",
     discount: "Kortingscode",
@@ -678,6 +681,22 @@ export const nl = {
       "be-postnl-home": {
         label: "Thuislevering met PostNL",
         eta: "1–2 werkdagen na verzending",
+      },
+      "nl-postnl-home": {
+        label: "Thuislevering met PostNL",
+        eta: "2–5 werkdagen na verzending",
+      },
+      "de-postnl-home": {
+        label: "Thuislevering met PostNL",
+        eta: "2–5 werkdagen na verzending",
+      },
+      "fr-postnl-home": {
+        label: "Thuislevering met PostNL",
+        eta: "2–5 werkdagen na verzending",
+      },
+      "lu-postnl-home": {
+        label: "Thuislevering met PostNL",
+        eta: "2–5 werkdagen na verzending",
       },
       "be-pickup-kantienberg": {
         label: "Ophalen op campus Kantienberg",
@@ -1393,7 +1412,12 @@ export const nl = {
       intro:
         "Bedankt voor je bestelling bij Palleys. Hieronder lees je hoe je bestelling bij jou terechtkomt.",
       sections: [
-        { title: "Waar leveren we?", blocks: ["We leveren alleen in België."] },
+        {
+          title: "Waar leveren we?",
+          blocks: [
+            "We leveren in België, Nederland, Duitsland, Frankrijk en Luxemburg. In België betaal je met Bancontact, in Nederland, Duitsland, Frankrijk en Luxemburg met Wero. Bij het afrekenen kies je eerst het land: je ziet dan meteen de leveropties en wat ze kosten.",
+          ],
+        },
         {
           title: "Hoe lang duurt het?",
           blocks: [
@@ -1443,7 +1467,7 @@ export const nl = {
         { title: "Wijzigen of annuleren", blocks: ["Zie ons {returnPolicy}."] },
         { title: "Vragen?", blocks: ["Mail ons op {email}."] },
       ],
-      inBelgium: "{label} in België: {price}",
+      inCountry: "{label} in {country}: {price}",
       free: "gratis",
     },
     // LEGAL-REVIEW: the legally required company details (WER boek XII), from the text of 9 November 2026. Name, address,

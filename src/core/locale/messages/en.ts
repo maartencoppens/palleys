@@ -496,10 +496,14 @@ export const en: Messages = {
     postalCode: "Postal code",
     city: "City",
     country: "Country",
-    belgium: "Belgium",
-    belgiumOnly: "(for now we only deliver in Belgium)",
+    countryChosenAbove: "(chosen under Delivery)",
+    deliveryCountry: "Country of delivery",
+    countriesNote: "Delivery and payment: {countries}.",
+    methodsAnd: " and ",
     delivery: "Delivery",
-    friendsNote: "Do you know us personally? Send us a DM on {instagram} and you’ll get a discount code to pick up your Palley from us instead of having it delivered.",
+    friendsWarning:
+      "Delivery in person only works with a code. Do you know us? Send us a message on {instagram} to get your code, then enter it under {code}.",
+    friendsWarningCode: "Discount code",
     summary: "Your order",
     products: "Products",
     discount: "Discount code",
@@ -576,6 +580,22 @@ export const en: Messages = {
     friendsLocked: "Only with a friends and family code",
     options: {
       "be-postnl-home": { label: "Home delivery with PostNL", eta: "1–2 working days after shipping" },
+      "nl-postnl-home": {
+        label: "Home delivery with PostNL",
+        eta: "2–5 working days after shipping",
+      },
+      "de-postnl-home": {
+        label: "Home delivery with PostNL",
+        eta: "2–5 working days after shipping",
+      },
+      "fr-postnl-home": {
+        label: "Home delivery with PostNL",
+        eta: "2–5 working days after shipping",
+      },
+      "lu-postnl-home": {
+        label: "Home delivery with PostNL",
+        eta: "2–5 working days after shipping",
+      },
       "be-pickup-kantienberg": { label: "Pick up at campus Kantienberg", eta: "We’ll let you know when your order is ready." },
       "friends-family": { label: "Handed over in person", eta: "We’ll agree together when we give it to you." },
     },
@@ -1136,7 +1156,12 @@ export const en: Messages = {
       title: "Shipping policy",
       intro: "Thank you for ordering from Palleys. Here you can read how your order reaches you.",
       sections: [
-        { title: "Where do we deliver?", blocks: ["We only deliver in Belgium."] },
+        {
+          title: "Where do we deliver?",
+          blocks: [
+            "We deliver in Belgium, the Netherlands, Germany, France and Luxembourg. In Belgium you pay with Bancontact; in the Netherlands, Germany, France and Luxembourg with Wero. At checkout you choose the country first, and see the delivery options and what they cost right away.",
+          ],
+        },
         {
           title: "How long does it take?",
           blocks: [
@@ -1181,7 +1206,7 @@ export const en: Messages = {
         { title: "Changing or cancelling", blocks: ["See our {returnPolicy}."] },
         { title: "Questions?", blocks: ["Email us at {email}."] },
       ],
-      inBelgium: "{label} in Belgium: {price}",
+      inCountry: "{label} in {country}: {price}",
       free: "free",
     },
     // LEGAL-REVIEW: translation of the company details; see the Dutch text.

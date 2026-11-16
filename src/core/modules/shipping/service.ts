@@ -1,6 +1,6 @@
 import "server-only";
 import { parcelFor } from "@/core/modules/catalog/utils";
-import { FRIENDS_DELIVERY } from "@/data/shipping";
+import { FRIENDS_DELIVERY, SHIPPING_COUNTRY_CODES, type ShippingCountry } from "@/data/shipping";
 import type { KeychainSize } from "@/data/sizes";
 import { staticShippingProvider } from "./providers/static";
 import type { ShippingProvider } from "./providers/types";
@@ -27,4 +27,17 @@ export async function resolveDeliveryOption(
 ): Promise<DeliveryOption | null> {
   const options = await getDeliveryOptions(address, items);
   return options.find((option) => option.id === optionId) ?? null;
+}
+
+/** Every country with the delivery options switched on there (none = not offered), in our order. */
+export async function listDeliveryOptionsByCountry(size: KeychainSize = "M") {
+  const all = await Promise.all(
+    SHIPPING_COUNTRY_CODES.map(async (country) => ({ country, options: await getDeliveryOptions({ country }, [{ size, quantity: 1 }]) })),
+  );
+  return all.filter(({ options }) => options.length > 0);
+}
+
+/** The countries a customer can choose now: those with at least one delivery option switched on. */
+export async function listShippingCountries(): Promise<ShippingCountry[]> {
+  return (await listDeliveryOptionsByCountry()).map(({ country }) => country);
 }

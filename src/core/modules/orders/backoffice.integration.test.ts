@@ -77,6 +77,9 @@ const {
   createCollectible,
   attachPreviewModel,
   startCollectibleGeneration,
+  getCollectibleModels,
+  selectCollectibleModel,
+  deleteCollectiblePermanently,
   createModelUpload,
   getCollectibleModelDownload,
   getCollectibleForAdmin,
@@ -87,10 +90,10 @@ const {
   updateCollectible,
 } = await import("@/core/modules/collectibles/service");
 const { collectibleInputSchema } = await import("@/core/modules/collectibles/types");
-const { createManualOrder, setItemCheckIn, updateOrderNotes, updateOrderStatus } = await import("./admin");
+const { changePreviewEdition, createManualOrder, setItemCheckIn, updateOrderNotes, updateOrderStatus } = await import("./admin");
 const { getOrderForAdmin, listOrdersForAdmin, listOrdersForCheckIn } = await import("./service");
 const { confirmProcessedUpload, getCollectiblePrintQueue } = await import("@/core/modules/print-prep/service");
-const { approvePreview, setPromptOverride, uploadPose } = await import("@/core/modules/previews/service");
+const { approvePreview, deletePhoto, setPhotoInPrompt, setPromptOverride, uploadPose } = await import("@/core/modules/previews/service");
 const { updateSettingsSection, getShopSettings } = await import("@/core/modules/settings/service");
 const { DEFAULT_ANIMALS } = await import("@/data/animals");
 const { COMPANY } = await import("@/data/company");
@@ -661,14 +664,25 @@ describe("collectible 3D models", () => {
     expect(storage.objects.get(collectible!.modelKey!)?.toString()).toBe("zip");
     expect(collectible?.imageKey).toMatch(/^collectibles\/[0-9a-f-]{36}\.webp$/);
 
-    // A better zip later replaces the model, the photo stays.
+    // A better zip later is one more version: the model in use stays until the admin picks the new one; nothing is deleted.
     const better = `previews/${previewId}/processed-${randomUUID()}.zip`;
     storage.objects.set(better, Buffer.from("zip v2"));
     await confirmProcessedUpload(previewId, better, ADMIN);
+    expect((await getCollectibleForAdmin(collectibleId))?.modelKey).toBe(collectible?.modelKey);
+    const { versions } = await getCollectibleModels(collectibleId);
+    expect(versions.map((version) => version.active)).toEqual([false, true]);
+    await selectCollectibleModel(collectibleId, versions[0].id, ADMIN);
     const replaced = await getCollectibleForAdmin(collectibleId);
     expect(storage.objects.get(replaced!.modelKey!)?.toString()).toBe("zip v2");
-    expect(storage.objects.has(collectible!.modelKey!)).toBe(false);
+    expect(storage.objects.has(collectible!.modelKey!)).toBe(true);
     expect(replaced?.imageKey).toBe(collectible?.imageKey);
+
+    // A new model for this existing collectible: its own preview, and the collectible stays the only one.
+    const again = await startCollectibleGeneration({ collectibleId, animalType: null, prompt: "Een konijn, zittend." }, ADMIN);
+    expect(again.collectibleId).toBe(collectibleId);
+    expect(again.previewId).not.toBe(previewId);
+    expect((await getCollectibleModels(collectibleId)).generations.map((generation) => generation.previewId)).toEqual([again.previewId]);
+    await prisma.preview.delete({ where: { id: again.previewId } });
 
     const customer = await addOrder();
     await expect(setPromptOverride(customer.previews[0].previewId, "x")).rejects.toThrow("nieuwe collectible");
@@ -718,5 +732,50 @@ describe("animals managed in the backoffice", () => {
       payment: { type: "paid", method: "cash" },
     });
     expect((await prisma.preview.findUniqueOrThrow({ where: { id: previews[0].previewId } })).animalType).toBe("PAPEGAAI");
+  });
+});
+
+describe("after ordering", () => {
+  it("changes a keychain into a figure on the customer's request, with the product code and title along", async () => {
+    const { orderId, previews } = await addOrder();
+    const before = (await loadOrder(orderId)).items[0];
+    expect(before.productCode).toMatch(/^P-CLP-/);
+    await changePreviewEdition(previews[0].previewId, { edition: "figure", attachment: null }, ADMIN);
+    const after = await loadOrder(orderId);
+    expect(after.items[0]).toMatchObject({ edition: "figure", attachment: null, unitCents: before.unitCents });
+    expect(after.items[0].productCode).toBe(before.productCode.replace("P-CLP-", "P-FIG-"));
+    expect(after.items[0].title).toContain("Enkel figuurtje");
+    expect(after.statusChanges.some((change) => change.note?.startsWith("Uitvoering aangepast"))).toBe(true);
+    // Back to a keychain: the standard attachment when none is given.
+    await changePreviewEdition(previews[0].previewId, { edition: "keychain", attachment: null }, ADMIN);
+    expect((await loadOrder(orderId)).items[0].productCode).toBe(before.productCode);
+  });
+
+  it("takes photos out of the prompt instead of deleting them, and keeps at least one in", async () => {
+    const { previews } = await addOrder();
+    const previewId = previews[0].previewId;
+    const [first, second] = await Promise.all(
+      [1, 2].map((n) => prisma.previewPhoto.create({ data: { previewId, key: `previews/${previewId}/photo-${n}-${randomUUID()}.jpg` } })),
+    );
+    await setPhotoInPrompt(previewId, first.id, false);
+    await expect(setPhotoInPrompt(previewId, second.id, false)).rejects.toThrow("minstens één");
+    await expect(deletePhoto(previewId, first.id)).rejects.toThrow("van de klant");
+    expect(await prisma.previewPhoto.count({ where: { previewId } })).toBe(2);
+    await setPhotoInPrompt(previewId, first.id, true);
+    expect(await prisma.previewPhoto.count({ where: { previewId, inPrompt: true } })).toBe(2);
+    await prisma.previewPhoto.deleteMany({ where: { previewId } });
+  });
+
+  it("deletes an archived collectible for good, but not while an open order needs it", async () => {
+    const { id } = await newCollectible();
+    await expect(deleteCollectiblePermanently(id)).rejects.toThrow("eerst van de website");
+    await addOrder({ lines: [{ kind: "collectible", collectibleId: id, edition: "keychain", quantity: 1 }] });
+    await archiveCollectible(id, ADMIN);
+    await expect(deleteCollectiblePermanently(id)).rejects.toThrow("open orders");
+
+    const { id: unused } = await newCollectible();
+    await archiveCollectible(unused, ADMIN);
+    await deleteCollectiblePermanently(unused);
+    expect(await prisma.collectible.findUnique({ where: { id: unused } })).toBeNull();
   });
 });

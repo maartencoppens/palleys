@@ -3,8 +3,9 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 import { requireAdminPage } from "@/core/modules/auth/service";
 import { getShopSettings } from "@/core/modules/settings/service";
-import { getCollectibleForAdmin } from "@/core/modules/collectibles/service";
+import { getCollectibleForAdmin, getCollectibleModels } from "@/core/modules/collectibles/service";
 import { CollectibleForm } from "@/components/functional/admin/settings/CollectibleForm";
+import { CollectibleModels } from "@/components/functional/admin/settings/CollectibleModels";
 import { SettingsHeader } from "@/components/functional/admin/settings/SettingsParts";
 
 export const instant = false;
@@ -17,6 +18,7 @@ export default async function EditCollectiblePage({ params }: PageProps<"/admin/
   if (!parsed.success) notFound();
   const [collectible, { catalog }] = await Promise.all([getCollectibleForAdmin(parsed.data.id), getShopSettings()]);
   if (!collectible) notFound();
+  const models = await getCollectibleModels(collectible.id);
   return (
     <>
       <Link
@@ -26,17 +28,12 @@ export default async function EditCollectiblePage({ params }: PageProps<"/admin/
         Terug naar collectibles
       </Link>
       <SettingsHeader title={collectible.name} />
-      {collectible.sourcePreviewId && (
-        <p className="-mt-2 text-sm text-text-muted">
-          {collectible.modelKey ? "Gegenereerd met de AI-pipeline." : "Het model wordt nog gegenereerd."}{" "}
-          <Link
-            href={`/admin/previews/${collectible.sourcePreviewId}`}
-            className="font-label font-bold text-medium-green underline underline-offset-4 hover:text-orange"
-          >
-            Naar de preview
-          </Link>
-        </p>
-      )}
+      <CollectibleModels
+        collectibleId={collectible.id}
+        versions={models.versions}
+        generations={models.generations}
+        archived={collectible.archivedAt !== null}
+      />
       <CollectibleForm collectible={collectible} animals={catalog.animals} />
     </>
   );

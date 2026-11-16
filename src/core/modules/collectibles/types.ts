@@ -5,6 +5,8 @@ import { MAX_PRINT_FILE_BYTES } from "@/data/uploads";
 import { animalOptionSchema } from "@/core/modules/animals/types";
 import { MAX_ANIMAL_PROMPT_LENGTH, MAX_PROMPT_LENGTH } from "@/data/prompts";
 import { isCollectibleImageKey, isCollectibleModelKey } from "./utils";
+import type { ModelMeta } from "@/core/modules/print-prep/model-meta";
+import type { PreviewStatus } from "@/db/generated/enums";
 import { collectibleTranslationsSchema, missingTranslations, type CollectibleTranslations } from "./translations";
 
 export { TRANSLATED_LOCALES, missingTranslations, type CollectibleTranslation, type CollectibleTranslations, type TranslatedLocale } from "./translations";
@@ -24,8 +26,9 @@ export const collectibleInputSchema = z
     tag: optionalText(COLLECTIBLE_LIMITS.tag),
     priceCents: z.number().int().min(100).max(MAX_PRODUCT_PRICE_CENTS),
     imageKey: z.string().refine(isCollectibleImageKey).nullable(),
-    modelKey: z.string().refine(isCollectibleModelKey).nullable().default(null),
-    modelFileName: z.string().trim().max(200).nullable().default(null),
+    // Left out = the model stays as it is (the edit page picks it among the versions).
+    modelKey: z.string().refine(isCollectibleModelKey).nullable().optional(),
+    modelFileName: z.string().trim().max(200).nullable().optional(),
     animalCode: animalOptionSchema.shape.code.nullable().default(null),
     published: z.boolean(),
     soldOut: z.boolean(),
@@ -80,7 +83,28 @@ export type AdminCollectible = CollectibleView & {
   sortOrder: number;
   archivedAt: string | null;
   orderedQuantity: number;
+  /** A model is being generated for it (a preview that hasn't given a version yet). */
+  generating: boolean;
+  /** Any order line points at it: deleting for good keeps those lines, without the link. */
+  hasOrders: boolean;
 };
+
+/** One version of a collectible's 3D model. */
+export type CollectibleModelVersion = {
+  id: string;
+  fileName: string | null;
+  meta: ModelMeta | null;
+  createdBy: string | null;
+  createdAt: string;
+  /** The preview it was generated from, for its pose and viewer; null for an upload. */
+  previewId: string | null;
+  poseUrl: string | null;
+  /** The version orders use now. */
+  active: boolean;
+};
+
+/** A model still being made for a collectible. */
+export type CollectibleGeneration = { previewId: string; status: PreviewStatus; createdAt: string; poseUrl: string | null };
 
 export const modelUploadSchema = z.object({ size: z.number().int().positive().max(MAX_PRINT_FILE_BYTES) });
 
@@ -89,6 +113,8 @@ export const modelUploadSchema = z.object({ size: z.number().int().positive().ma
  * prompt as the admin left it.
  */
 export const generateCollectibleSchema = z.object({
+  /** An existing collectible to make a new model version for; left out = a new collectible. */
+  collectibleId: z.uuid().optional(),
   animalType: animalOptionSchema.shape.code.nullable(),
   prompt: z.string().trim().min(1).max(MAX_PROMPT_LENGTH + MAX_ANIMAL_PROMPT_LENGTH),
 });

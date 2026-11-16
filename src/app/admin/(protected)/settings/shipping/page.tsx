@@ -10,7 +10,10 @@ export default async function AdminShippingSettingsPage() {
   const settings = await getShopSettings();
   return (
     <>
-      <SettingsHeader title="Verzending" intro="Hoe we leveren, en wat het de klant kost." />
+      <SettingsHeader
+        title="Verzending"
+        intro="Hoe we leveren, en wat het de klant kost, per land. In de checkout kiest de klant eerst het land; daarna ziet hij de opties en prijzen van dat land. Een nieuw land staat uit tot je de prijs controleert en een optie aanvinkt."
+      />
       <ShippingSettingsForm settings={settings} />
     </>
   );

@@ -17,6 +17,7 @@ import { AnimalTypePicker } from "@/components/functional/admin/AnimalTypePicker
 import { AttachModelButton } from "@/components/functional/admin/AttachModelButton";
 import { PreviewPromptEditor } from "@/components/functional/admin/PreviewPromptEditor";
 import { PhotoManager } from "@/components/functional/admin/PhotoManager";
+import { EditionPicker } from "@/components/functional/admin/EditionPicker";
 import { PoseCandidates } from "@/components/functional/admin/PoseCandidates";
 import { StatusOverridePanel } from "@/components/functional/admin/StatusOverridePanel";
 import { OwnModelUpload } from "@/components/functional/admin/OwnModelUpload";
@@ -61,7 +62,7 @@ export default async function AdminPreviewDetailPage({
           Preview
         </h1>
         <PreviewStatusBadge status={preview.status} />
-        {preview.forCollectible && <Badge tone="success">Nieuwe collectible</Badge>}
+        {preview.forCollectible && <Badge tone="success">Collectible-model</Badge>}
       </div>
       <p className="mt-1 break-all font-mono text-sm text-text-muted">{preview.id}</p>
 
@@ -103,9 +104,10 @@ export default async function AdminPreviewDetailPage({
         <aside className="order-2 space-y-6 lg:order-none lg:row-span-2">
           {preview.forCollectible && (
             <section className="rounded-3xl bg-white p-6">
-              <h2 className="font-display text-xl font-medium text-medium-green">Nieuwe collectible</h2>
+              <h2 className="font-display text-xl font-medium text-medium-green">Collectible-model</h2>
               <p className="mt-2 text-sm text-text-muted">
-                Los van een order. Zodra de printklare zip op Processed staat, komt het model vanzelf op de collectible.
+                Los van een order. Zodra de printklare zip op Processed staat, komt het model als nieuwe versie bij de
+                collectible; heeft die nog geen model, dan gebruiken bestellingen het meteen.
               </p>
               {preview.collectibleId && (
                 <Link
@@ -249,6 +251,22 @@ export default async function AdminPreviewDetailPage({
               <OwnModelUpload previewId={preview.id} hasModel={preview.hasModel} />
             </section>
           )}
+          {preview.edition && (
+            <section className="rounded-3xl bg-white p-6">
+              <h2 className="font-display text-xl font-medium text-medium-green">Uitvoering</h2>
+              <p className="mt-1 text-sm leading-[1.5] text-text-muted">
+                {preview.edition.locked
+                  ? "De order is al naar JLC: de uitvoering ligt vast."
+                  : "Vraagt de klant toch een sleutelhanger of een figuurtje? Pas het hier aan. De prijs blijft wat de klant betaalde."}
+              </p>
+              <EditionPicker
+                previewId={preview.id}
+                edition={preview.edition.edition}
+                attachment={preview.edition.attachment}
+                locked={preview.edition.locked}
+              />
+            </section>
+          )}
           <section className="rounded-3xl bg-white p-6">
             <h2 className="font-display text-xl font-medium text-medium-green">Diersoort</h2>
             <p className="mt-1 text-sm leading-[1.5] text-text-muted">
@@ -273,12 +291,7 @@ export default async function AdminPreviewDetailPage({
         </aside>
 
         <div className="order-1 space-y-8 lg:order-none">
-          <PhotoManager
-            previewId={preview.id}
-            photos={preview.photos}
-            canAdd={preview.canAddPhoto}
-            canDelete={preview.canDeletePhoto}
-          />
+          <PhotoManager previewId={preview.id} photos={preview.photos} canAdd={preview.canAddPhoto} />
           <PoseCandidates
             previewId={preview.id}
             photoUrls={preview.photos.map((photo) => photo.url)}

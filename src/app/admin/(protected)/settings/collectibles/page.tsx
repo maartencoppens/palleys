@@ -46,7 +46,10 @@ export default async function AdminCollectiblesPage() {
       {archived.length > 0 && (
         <section>
           <h3 className="font-display text-2xl font-medium text-medium-green">Verwijderd</h3>
-          <p className="mt-1 text-sm text-text-muted">Niet meer op de website. Oude orders verwijzen er nog naar.</p>
+          <p className="mt-1 text-sm text-text-muted">
+            Niet meer op de website. Oude orders verwijzen er nog naar. Definitief verwijderen kan zodra geen open order hem
+            nog nodig heeft.
+          </p>
           <div className="mt-4">
             <CollectibleTable collectibles={archived} />
           </div>
@@ -100,9 +103,8 @@ function CollectibleTable({ collectibles }: { collectibles: AdminCollectible[] }
                   {collectible.stock !== null && !collectible.archivedAt && (
                     <Badge tone={collectible.stock > 0 ? "success" : "waiting"}>Voorraad: {collectible.stock}</Badge>
                   )}
-                  {!collectible.modelKey && !collectible.archivedAt && (
-                    <Badge tone="waiting">{collectible.sourcePreviewId ? "Model wordt gegenereerd" : "Geen 3D-model"}</Badge>
-                  )}
+                  {collectible.generating && !collectible.archivedAt && <Badge tone="waiting">Model wordt gegenereerd</Badge>}
+                  {!collectible.modelKey && !collectible.generating && !collectible.archivedAt && <Badge tone="waiting">Geen 3D-model</Badge>}
                   {collectible.missingTranslations.length > 0 && !collectible.archivedAt && (
                     <Badge tone="waiting">Vertaling ontbreekt</Badge>
                   )}
@@ -122,7 +124,12 @@ function CollectibleTable({ collectibles }: { collectibles: AdminCollectible[] }
                       Bewerken
                     </Link>
                   )}
-                  <CollectibleActions id={collectible.id} name={collectible.name} archived={Boolean(collectible.archivedAt)} />
+                  <CollectibleActions
+                    id={collectible.id}
+                    name={collectible.name}
+                    archived={Boolean(collectible.archivedAt)}
+                    hasOrders={collectible.hasOrders}
+                  />
                 </div>
               </td>
             </tr>

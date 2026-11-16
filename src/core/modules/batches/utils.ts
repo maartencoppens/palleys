@@ -78,7 +78,7 @@ export function batchContents(
         continue;
       }
       const fileName = palleyFileName(palleyName, "print");
-      entries.push({ path: batchZipEntry(batchRef, order.number, fileName), key, palleyName });
+      entries.push({ path: batchZipEntry(batchRef, fileName), key, palleyName });
       manifest.push({ orderNumber: order.number, palleyName, productCode: item.productCode, edition: editionForJlc(item.productCode), copies: activeQuantity(item), fileName });
     }
   }

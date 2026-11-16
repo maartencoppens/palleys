@@ -3,6 +3,7 @@ import type { Attachment, Edition } from "@/data/options";
 import {
   BATCH_DIGITS,
   BATCH_MANIFEST_NAME,
+  BATCH_MODELS_FOLDER,
   BATCH_PREFIX,
   BPOST_PREFIX,
   BPOST_REGIONS,
@@ -275,12 +276,14 @@ export function batchZipName(ref: string) {
   return `${ref}.zip`;
 }
 
-/** Where a file goes in a batch zip: BATCH-0001/PLY1042/PAL-PLY1042-01-P-RING-KAT_print.zip. */
-export function batchZipEntry(ref: string, order: string, fileName: string) {
+/**
+ * Where a file goes in a batch zip: BATCH-0001/models/PAL-PLY1042-01-P-RING-KAT_print.zip. Every model in one folder,
+ * so they go into JLC's upload in one drag; the order number is in each name already.
+ */
+export function batchZipEntry(ref: string, fileName: string) {
   if (parseBatchRef(ref) === null) throw new NamingError(`Invalid batch: ${ref}`);
-  if (parseOrderRef(order) === null) throw new NamingError(`Invalid order number: ${order}`);
   if (parsePalleyFileName(fileName) === null) throw new NamingError(`Invalid file name: ${fileName}`);
-  return `${ref}/${order}/${fileName}`;
+  return `${ref}/${BATCH_MODELS_FOLDER}/${fileName}`;
 }
 
 /** The list for JLC in a batch zip: BATCH-0001/manifest.csv. */

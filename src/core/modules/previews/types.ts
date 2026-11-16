@@ -53,10 +53,13 @@ export type CreateUploadInput = z.infer<typeof createUploadSchema>;
 export type PhotoInput = z.infer<typeof photoInputSchema>;
 export type StatusOverrideInput = z.input<typeof statusOverrideSchema>;
 
+export const photoInPromptSchema = z.object({ inPrompt: z.boolean() });
+
 export type AdminPhoto = {
   id: string;
   url: string; // signed URL, kort geldig
   uploadedBy: string | null; // null = klant
+  inPrompt: boolean; // gaat mee naar Nano Banana bij een nieuwe pose
 };
 
 /** One pose image of a preview: a generated attempt or an admin's upload. */
@@ -100,7 +103,8 @@ export type AdminPreviewDetail = {
   createdAt: string; // ISO-string: Date gaat niet zuiver van server naar client
   photos: AdminPhoto[];
   canAddPhoto: boolean;
-  canDeletePhoto: boolean;
+  /** Keychain or figure on the open order, which an admin can change on request; locked once the order is at JLC. */
+  edition: { edition: string; attachment: string | null; locked: boolean } | null;
   statusChanges: AdminStatusChange[];
   poseImageUrl: string | null;
   /** Every pose so far, oldest first, to compare and approve one of them. */

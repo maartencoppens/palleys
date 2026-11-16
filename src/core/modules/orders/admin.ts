@@ -12,10 +12,11 @@ import {
 import { getShopSettings } from "@/core/modules/settings/service";
 import { resolveDeliveryOption } from "@/core/modules/shipping/service";
 import { createToken, hashToken } from "@/core/utils/tokens";
-import { attachments, DEFAULT_ATTACHMENT } from "@/data/options";
+import { attachments, DEFAULT_ATTACHMENT, editions, type Attachment, type Edition } from "@/data/options";
 import { findAnimal } from "@/core/modules/animals/utils";
 import { collectibleProductCode } from "@/core/modules/collectibles/utils";
-import { productCode } from "@/core/utils/naming";
+import { parseProductCode, productCode } from "@/core/utils/naming";
+import type { OrderStatus } from "@/db/generated/enums";
 import { MANUAL_PAYMENT_PROVIDER, STOCK_PAYMENT_METHOD } from "@/data/payment-methods";
 import { CURRENCY } from "@/data/pricing";
 import { HANDOVER_DELIVERY } from "@/data/shipping";
@@ -325,4 +326,74 @@ export async function updateOrderNotes(orderId: string, notes: string, adminName
     updatedAt: order.adminNotesUpdatedAt?.toISOString() ?? null,
     updatedBy: order.adminNotesUpdatedBy,
   };
+}
+
+// ---------- Changing a Palley's edition after ordering ----------
+
+/** Orders whose Palley can still change: open, and not at JLC yet. */
+const EDITABLE_ORDER_STATUSES: OrderStatus[] = ["PENDING_PAYMENT", "PAID", "IN_PRODUCTION"];
+
+const editionTitle = (title: string, animalLabel: string | null, edition: Edition, attachment: Attachment | null) => {
+  const base = animalLabel ? `Palley ${animalLabel}` : title.split(" · ")[0];
+  const editionLabel = editions.find((option) => option.value === edition)?.label ?? edition;
+  const attachmentLabel = attachments.find((option) => option.value === attachment)?.label ?? null;
+  return [base, editionLabel, attachmentLabel].filter(Boolean).join(" · ");
+};
+
+/**
+ * The customer asked for a keychain instead of a figure (or a clip instead of a key ring) after ordering: the order
+ * line of this Palley gets the new edition, product code and title. The price stays what was paid; settle any
+ * difference apart. Only before the order goes to JLC, since the product code is in the print's name.
+ */
+export async function changePreviewEdition(previewId: string, input: { edition: Edition; attachment: Attachment | null }, adminName: string) {
+  const attachment = input.edition === "keychain" ? (input.attachment ?? DEFAULT_ATTACHMENT) : null;
+  const items = await prisma.orderItem.findMany({
+    where: { previewId, order: { status: { in: EDITABLE_ORDER_STATUSES } } },
+    select: {
+      id: true,
+      orderId: true,
+      productCode: true,
+      title: true,
+      edition: true,
+      attachment: true,
+      animal: true,
+      order: { select: { status: true, batch: { select: { status: true } } } },
+    },
+  });
+  if (items.length === 0) throw new OrderActionError("Deze Palley hoort bij geen open order");
+  if (items.some((item) => item.order.batch && item.order.batch.status !== "OPEN")) {
+    throw new OrderActionError("De order is al naar JLC: de uitvoering ligt vast");
+  }
+  const { catalog } = await getShopSettings();
+  await prisma.$transaction(
+    items.flatMap((item) => {
+      const parsed = parseProductCode(item.productCode);
+      if (!parsed || parsed.kind !== "P") throw new OrderActionError(`Onbekende productcode ${item.productCode}`);
+      if (item.edition === input.edition && (item.attachment ?? null) === attachment) return [];
+      const animal = findAnimal(catalog.animals, item.animal ?? "");
+      const title = editionTitle(item.title, animal?.labels.nl ?? null, input.edition, attachment);
+      const before = item.title;
+      return [
+        prisma.orderItem.update({
+          where: { id: item.id },
+          data: {
+            edition: input.edition,
+            attachment,
+            productCode: productCode({ kind: "P", edition: input.edition, attachment, animalCode: parsed.animalCode }),
+            title,
+          },
+        }),
+        prisma.orderStatusChange.create({
+          data: {
+            orderId: item.orderId,
+            fromStatus: item.order.status,
+            toStatus: item.order.status,
+            source: `admin:${adminName}`,
+            note: `Uitvoering aangepast op vraag van de klant: ${before} → ${title}`.slice(0, 1000),
+          },
+        }),
+      ];
+    }),
+  );
+  return { previewId, edition: input.edition, attachment };
 }

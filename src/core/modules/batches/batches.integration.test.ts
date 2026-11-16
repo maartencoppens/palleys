@@ -40,6 +40,7 @@ const { setItemCheckIn, updateOrderStatus } = await import("@/core/modules/order
 const { moveOrder } = await import("@/core/modules/payments/service");
 const service = await import("./service");
 const { batchZipChunks } = await import("./zip");
+const { getProcessingOverview } = await import("@/core/modules/print-prep/service");
 
 const ADMIN = "Testadmin";
 const orderIds: string[] = [];
@@ -184,8 +185,9 @@ describe("the batch zip", () => {
     const files = unzipSync(Buffer.concat(chunks));
     const palley = `PAL-${order.number}-01-P-RING-KAT_print.zip`;
     const col = `PAL-${order.number}-02-${order.items[1].productCode}_print.zip`;
-    expect(Object.keys(files).sort()).toEqual([`${ref}/${order.number}/${palley}`, `${ref}/${order.number}/${col}`, `${ref}/manifest.csv`].sort());
-    expect(strFromU8(files[`${ref}/${order.number}/${palley}`])).toBe(`${order.items[0] && `previews/${order.items[0].previewId}/processed-1.zip`}:end`);
+    // Every model in one folder, to drag into JLC at once.
+    expect(Object.keys(files).sort()).toEqual([`${ref}/models/${palley}`, `${ref}/models/${col}`, `${ref}/manifest.csv`].sort());
+    expect(strFromU8(files[`${ref}/models/${palley}`])).toBe(`${order.items[0] && `previews/${order.items[0].previewId}/processed-1.zip`}:end`);
     expect(strFromU8(files[`${ref}/manifest.csv`])).toContain(`${order.number},PAL-${order.number}-02-${order.items[1].productCode},${order.items[1].productCode},Keychain (clip),2,${col}`);
   });
 
@@ -203,8 +205,14 @@ describe("JLC and post-production", () => {
     const pickup = await paidOrder({ delivery: "PICKUP" });
     const handover = await paidOrder({ delivery: "HANDOVER" });
     const { batchId, ref } = await newBatch([home.id, pickup.id, handover.id]);
+    const previewOf = async (orderId: string) => (await prisma.orderItem.findFirstOrThrow({ where: { orderId, previewId: { not: null } } })).previewId!;
+    const homePreview = await previewOf(home.id);
+    const readyIds = async () => (await getProcessingOverview()).printReady.map((item) => item.id);
+    // In an open batch the model is still "Klaar voor print" on Processed; once the batch is at JLC it leaves the list.
+    expect(await readyIds()).toContain(homePreview);
 
     await service.sendBatchToJlc(batchId, ADMIN);
+    expect(await readyIds()).not.toContain(homePreview);
     expect(await Promise.all([home, pickup, handover].map((order) => statusOf(order.id)))).toEqual(["IN_PRODUCTION", "IN_PRODUCTION", "IN_PRODUCTION"]);
     await expect(service.addOrdersToBatch(batchId, [(await paidOrder()).id], ADMIN)).rejects.toThrow("al naar JLC");
     await expect(service.removeOrderFromBatch(batchId, home.id, ADMIN)).rejects.toThrow("al naar JLC");

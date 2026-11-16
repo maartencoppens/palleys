@@ -52,11 +52,17 @@ model Preview {
   processedKey    String? // zip uit Blender, klaar voor print
   processedAt     DateTime?
   processedBy     String?
+  // Afmetingen, triangles en textuur van de verwerkte zip (core/modules/print-prep/model-meta.ts), bij het uploaden gelezen.
+  processedMeta   Json?
   // Gemaakt om een collectible van te maken (backoffice-order), niet voor een klant.
   forCollectible  Boolean               @default(false)
   // De prompt voor deze ene generatie, door de admin aangepast. Leeg = de prompt uit de instellingen.
   promptOverride  String?
   collectible     Collectible?
+  // De collectible waarvoor dit model gegenereerd wordt: ook een bestaande, die al een model heeft (een nieuwe versie).
+  targetCollectibleId String?
+  targetCollectible   Collectible?       @relation("CollectibleGenerations", fields: [targetCollectibleId], references: [id], onDelete: SetNull)
+  collectibleModels   CollectibleModel[]
   photos          PreviewPhoto[]
   poseCandidates  PoseCandidate[]
   statusChanges   PreviewStatusChange[]
@@ -146,6 +152,8 @@ model PreviewPhoto {
   preview    Preview  @relation(fields: [previewId], references: [id], onDelete: Cascade)
   key        String   @unique // R2-key, nooit de foto zelf
   uploadedBy String? // null = klant, anders de naam van de admin
+  // Gaat mee naar Nano Banana bij een nieuwe pose. Uit = blijft bij de preview, maar zit niet in de prompt.
+  inPrompt   Boolean  @default(true)
   createdAt  DateTime @default(now())
 
   @@index([previewId])
@@ -281,8 +289,29 @@ model Collectible {
   updatedAt       DateTime    @updatedAt
   cartLines       CartLine[]
   orderItems      OrderItem[]
+  models          CollectibleModel[]
+  generations     Preview[]   @relation("CollectibleGenerations")
 
   @@index([published, archivedAt, sortOrder])
+}
+
+// Elke versie van het 3D-model van een collectible: geüpload of gegenereerd. Collectible.modelKey is de gekozen versie
+// en altijd een van deze keys (of leeg). Oude versies blijven staan om te vergelijken en terug te kiezen.
+model CollectibleModel {
+  id            String      @id @default(uuid())
+  collectibleId String
+  collectible   Collectible @relation(fields: [collectibleId], references: [id], onDelete: Cascade)
+  key           String      @unique // R2-key onder collectibles/models/
+  fileName      String?
+  // De preview waaruit deze versie gegenereerd werd (pose, viewer), als die er is.
+  previewId     String?
+  preview       Preview?    @relation(fields: [previewId], references: [id], onDelete: SetNull)
+  meta          Json? // zie Preview.processedMeta
+  createdBy     String?
+  createdAt     DateTime    @default(now())
+
+  @@index([collectibleId, createdAt])
+  @@index([previewId])
 }
 
 enum DiscountType {

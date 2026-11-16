@@ -35,6 +35,8 @@ export const journalQuerySchema = z.object({
   format: z.enum(["json", "tsv"]).default("json"),
   /** Which table as TSV (one paste per table); JSON returns all three. */
   table: z.enum(JOURNAL_TABLES).optional(),
+  /** TSV with (1, default) or without (0) the header row: pasting into our Excel, which has the headers already. */
+  header: z.enum(["0", "1"]).default("1"),
 });
 
 export type FinanceQuery = z.infer<typeof financeQuerySchema>;

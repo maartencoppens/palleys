@@ -80,7 +80,7 @@ export function isModelUploadKeyOf(previewId: string, key: string) {
 export const PRINT_NAME_SELECT = {
   id: true,
   forCollectible: true,
-  collectible: { select: { number: true, animalCode: true } },
+  targetCollectible: { select: { number: true, animalCode: true } },
   orderItems: {
     where: { order: { status: { in: PAID_ORDER_STATUSES } } },
     // The first print, not a reprint of it.
@@ -93,7 +93,7 @@ export const PRINT_NAME_SELECT = {
 export type PrintNameSource = {
   id: string;
   forCollectible: boolean;
-  collectible: { number: number; animalCode: string | null } | null;
+  targetCollectible: { number: number; animalCode: string | null } | null;
   orderItems: PalleyNameSource[];
 };
 
@@ -105,7 +105,7 @@ export type PrintNameSource = {
 export function printBaseName(preview: PrintNameSource) {
   const item = preview.orderItems[0];
   const fromOrder = item ? palleyNameOf(item) : null;
-  const fromCollectible = preview.forCollectible && preview.collectible ? collectibleIdOf(preview.collectible) : null;
+  const fromCollectible = preview.forCollectible && preview.targetCollectible ? collectibleIdOf(preview.targetCollectible) : null;
   return fromOrder ?? fromCollectible ?? previewRef(preview.id);
 }
 

@@ -69,8 +69,10 @@ describe("formats for Excel (nl-BE)", () => {
     expect(textCell("+32470000000")).toBe("'+32470000000");
   });
 
-  it("joins a table into tab-separated text with the header first", () => {
+  it("joins a table into tab-separated text with the header first, or the rows alone", () => {
     expect(toTsv({ header: ["A", "B"], rows: [["1", "2"]] })).toBe("A\tB\n1\t2\n");
+    expect(toTsv({ header: ["A", "B"], rows: [["1", "2"]] }, { header: false })).toBe("1\t2\n");
+    expect(toTsv({ header: ["A", "B"], rows: [] }, { header: false })).toBe("");
   });
 });
 
@@ -92,14 +94,14 @@ describe("periods", () => {
 describe("Dagontvangsten", () => {
   it("has one row per paid order on its payment day, with Stripe's PaymentIntent as the reference", () => {
     const { header, rows } = receiptsTable([order()]);
-    expect(header).toEqual(["Datum", "Omschrijving", "Naam klant", "Bedrag", "Betaald", "Betalingsreferentie", "Verzending"]);
-    expect(rows).toEqual([["03/11/2026", "F2026-0007 · PLY1042 · Bancontact", "An Peeters", "34,90", "ja", "pi_123", "ja"]]);
+    expect(header).toEqual(["Datum", "Omschrijving", "Type transactie", "Naam klant", "Bedrag", "Betaald", "Betalingsreferentie", "Verzending"]);
+    expect(rows).toEqual([["03/11/2026", "F2026-0007 · PLY1042", "Bancontact", "An Peeters", "34,90", "ja", "pi_123", "ja"]]);
   });
 
   it("falls back to the Checkout Session, and uses the order number for money recorded by hand", () => {
-    expect(receiptsTable([order({ payments: [payment({ paymentIntentId: null })] })]).rows[0][5]).toBe("cs_live_abc");
+    expect(receiptsTable([order({ payments: [payment({ paymentIntentId: null })] })]).rows[0][6]).toBe("cs_live_abc");
     const cash = order({ createdBy: "Maarten", deliveryType: "HANDOVER", payments: [payment({ provider: "manual", mode: null, method: "cash", paymentIntentId: null })] });
-    expect(receiptsTable([cash]).rows[0]).toEqual(["03/11/2026", "F2026-0007 · PLY1042 · Contant", "An Peeters", "34,90", "ja", "PLY1042", "nee"]);
+    expect(receiptsTable([cash]).rows[0]).toEqual(["03/11/2026", "F2026-0007 · PLY1042", "Contant", "An Peeters", "34,90", "ja", "PLY1042", "nee"]);
   });
 
   it("lists gifts and free orders as not paid, leaves stock orders out, and sorts by payment day", () => {
@@ -109,8 +111,8 @@ describe("Dagontvangsten", () => {
     const unpaid = order({ number: "PLY1052", paidAt: null, payments: [payment({ status: "OPEN" })] });
     const rows = receiptsTable([gift, stock, free, order(), unpaid]).rows;
     expect(rows.map((row) => row[1].split(" · ")[1])).toEqual(["PLY1042", "PLY1049", "PLY1050"]);
-    expect(rows.map((row) => row[4])).toEqual(["ja", "nee", "nee"]);
-    expect(rows[2][3]).toBe("34,90"); // a gift keeps its invoiced amount
+    expect(rows.map((row) => row[5])).toEqual(["ja", "nee", "nee"]);
+    expect(rows[2][4]).toBe("34,90"); // a gift keeps its invoiced amount
   });
 });
 

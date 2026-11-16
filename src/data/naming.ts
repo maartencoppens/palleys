@@ -42,8 +42,10 @@ export const BATCH_PREFIX = "BATCH";
 export const BATCH_DIGITS = 4;
 export const BPOST_PREFIX = "BPOST";
 export const BPOST_REGIONS = ["BE", "INT"] as const;
-// Inside a batch zip: BATCH-0001/PLY1042/<palley>_print.zip, and the list for JLC at BATCH-0001/manifest.csv.
+// Inside a batch zip: every model in BATCH-0001/models/<palley>_print.zip (one drag into JLC), and the list for JLC at
+// BATCH-0001/manifest.csv.
 export const BATCH_MANIFEST_NAME = "manifest.csv";
+export const BATCH_MODELS_FOLDER = "models";
 
 // Several models from Goedgekeurd downloaded at once, for Blender: DOWNLOAD-20261108-3.zip.
 export const DOWNLOAD_ZIP_PREFIX = "DOWNLOAD";

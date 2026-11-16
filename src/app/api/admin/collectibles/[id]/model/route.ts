@@ -10,12 +10,15 @@ import {
 
 const paramsSchema = z.object({ id: z.uuid() });
 
-// A short-lived download link for the collectible's print zip.
-export async function POST(_request: Request, ctx: RouteContext<"/api/admin/collectibles/[id]/model">) {
+const bodySchema = z.object({ modelId: z.uuid().optional() }).catch({});
+
+// A short-lived download link for the collectible's print zip: the one in use, or one version (modelId).
+export async function POST(request: Request, ctx: RouteContext<"/api/admin/collectibles/[id]/model">) {
   try {
     await requireAdmin();
     const { id } = paramsSchema.parse(await ctx.params);
-    return NextResponse.json(await getCollectibleModelDownload(id));
+    const { modelId } = bodySchema.parse(await request.json().catch(() => ({})));
+    return NextResponse.json(await getCollectibleModelDownload(id, modelId));
   } catch (error) {
     if (error instanceof UnauthorizedError) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     if (error instanceof ZodError || error instanceof CollectibleNotFoundError) {

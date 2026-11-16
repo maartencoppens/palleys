@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useLocale, useMessages } from "@/core/locale/client";
 import type { DeliveryOptionView } from "@/core/modules/checkout/types";
 import { formatPrice } from "@/core/utils/format";
@@ -11,14 +12,28 @@ type DeliveryOptionsPickerProps = {
   onChange: (id: string) => void;
   status: "loading" | "ready" | "error";
   error?: string;
+  /** Delivery in person was clicked without a code: show `friendsHint` right under it. */
+  friendsHintOpen?: boolean;
+  onFriendsLocked?: () => void;
+  friendsHint?: ReactNode;
 };
 
 /*
  * Radio list of delivery options, grouped by type. Prices come from our server; what's picked here is re-checked
- * at checkout. Delivery in person for friends and family is always listed, so people know it exists, but greyed out
- * until a code that unlocks it is applied (the server then sends it as a real option).
+ * at checkout. Delivery in person for friends and family is always listed and clickable, so people see it is an option;
+ * without a code it can't be chosen yet, and clicking it says how to get one (the server sends it as a real option once
+ * a code that unlocks it is applied).
  */
-export default function DeliveryOptionsPicker({ options, value, onChange, status, error }: DeliveryOptionsPickerProps) {
+export default function DeliveryOptionsPicker({
+  options,
+  value,
+  onChange,
+  status,
+  error,
+  friendsHintOpen = false,
+  onFriendsLocked,
+  friendsHint,
+}: DeliveryOptionsPickerProps) {
   const { shipping: m } = useMessages();
   const locale = useLocale();
   const groupLabels = { HOME: m.home, SERVICE_POINT: m.servicePoint, PICKUP: m.pickup, HANDOVER: m.handover };
@@ -82,20 +97,32 @@ export default function DeliveryOptionsPicker({ options, value, onChange, status
             );
           })}
           {group.type === "HANDOVER" && friendsLocked && (
-            <label
-              aria-disabled
-              className="flex cursor-not-allowed items-center gap-4 rounded-2xl border-[1.5px] border-dashed border-off-white-dark bg-off-white/60 px-4 py-3.5 opacity-70"
-            >
-              <input type="radio" name="deliveryOption" disabled className="size-5 shrink-0 accent-medium-green" />
-              <span className="flex min-w-0 flex-1 flex-col">
-                <span className="font-label text-base font-bold text-text-primary">{m.options[FRIENDS_DELIVERY.id]?.label ?? FRIENDS_DELIVERY.label}</span>
-                <span className="flex items-center gap-1.5 text-sm text-text-muted">
-                  <LockIcon />
-                  {m.friendsLocked}
+            <>
+              <button
+                type="button"
+                onClick={onFriendsLocked}
+                aria-expanded={friendsHintOpen}
+                aria-controls="friends-hint"
+                className={`flex w-full cursor-pointer items-center gap-4 rounded-2xl border-[1.5px] px-4 py-3.5 text-left transition-colors ${
+                  friendsHintOpen ? "border-orange bg-light-yellow/60" : "border-off-white-dark bg-white hover:bg-off-white"
+                }`}
+              >
+                <span aria-hidden className={`grid size-5 shrink-0 place-items-center rounded-full border-2 ${friendsHintOpen ? "border-orange" : "border-text-muted"}`} />
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="font-label text-base font-bold text-text-primary">{m.options[FRIENDS_DELIVERY.id]?.label ?? FRIENDS_DELIVERY.label}</span>
+                  <span className="flex items-center gap-1.5 text-sm text-text-muted">
+                    <LockIcon />
+                    {m.friendsLocked}
+                  </span>
                 </span>
-              </span>
-              <span className="font-label text-base font-extrabold text-text-muted">{m.free}</span>
-            </label>
+                <span className="font-label text-base font-extrabold text-medium-green">{m.free}</span>
+              </button>
+              {friendsHintOpen && friendsHint && (
+                <div id="friends-hint" role="alert">
+                  {friendsHint}
+                </div>
+              )}
+            </>
           )}
         </fieldset>
       ))}

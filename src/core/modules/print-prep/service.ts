@@ -17,8 +17,11 @@ import { palleyFileName } from "@/core/utils/naming";
 import { PRINT_FILE_CONTENT_TYPE } from "@/data/uploads";
 import { OPEN_ORDER_STATUSES } from "@/core/modules/orders/check-in";
 import { attachPreviewModel } from "@/core/modules/collectibles/service";
+import type { Prisma } from "@/db/generated/client";
 import type { CollectiblePrintItem, ProcessingItem, ProcessingOverview } from "./types";
 import { isProcessedKeyOf, processedKey } from "./utils";
+import { parseModelMeta } from "./model-meta";
+import { readStoredModelMeta } from "./meta-store";
 
 // Uploaden mag bij een goedgekeurd model (eerste keer) of een verwerkt
 // model (vervangen, bv. na een fout in Blender).
@@ -34,6 +37,7 @@ const ITEM_SELECT = {
   downloadedBy: true,
   processedAt: true,
   processedBy: true,
+  processedMeta: true,
 } as const;
 
 type ItemRow = PrintNameSource & {
@@ -42,6 +46,7 @@ type ItemRow = PrintNameSource & {
   downloadedBy: string | null;
   processedAt: Date | null;
   processedBy: string | null;
+  processedMeta: Prisma.JsonValue;
 };
 
 function toItem(row: ItemRow): ProcessingItem {
@@ -53,8 +58,22 @@ function toItem(row: ItemRow): ProcessingItem {
     downloadedBy: row.downloadedBy,
     processedAt: row.processedAt?.toISOString() ?? null,
     processedBy: row.processedBy,
+    meta: parseModelMeta(row.processedMeta),
   };
 }
+
+const NOT_YET_AT_JLC: Prisma.OrderWhereInput = { OR: [{ batchId: null }, { batch: { is: { status: "OPEN" } } }] };
+
+/**
+ * Still to print: not on an order whose batch already went to JLC. A model that was printed once but is on another
+ * order still to go (a reprint) stays.
+ */
+const STILL_TO_PRINT: Prisma.PreviewWhereInput = {
+  OR: [
+    { orderItems: { none: { order: { batch: { is: { status: { not: "OPEN" } } } } } } },
+    { orderItems: { some: { order: { status: { in: ["PAID", "PENDING_PAYMENT"] }, ...NOT_YET_AT_JLC } } } },
+  ],
+};
 
 // Alles voor de Processed-pagina in één aanroep.
 export async function getProcessingOverview(): Promise<ProcessingOverview> {
@@ -65,13 +84,25 @@ export async function getProcessingOverview(): Promise<ProcessingOverview> {
       orderBy: { downloadedAt: "asc" },
       select: ITEM_SELECT,
     }),
+    // Zodra de batch naar JLC is, verdwijnt het model uit "Klaar voor print".
     prisma.preview.findMany({
-      where: { status: PreviewStatus.PRINT_READY, processedKey: { not: null } },
+      where: { status: PreviewStatus.PRINT_READY, processedKey: { not: null }, ...STILL_TO_PRINT },
       orderBy: { processedAt: "desc" },
       select: ITEM_SELECT,
     }),
   ]);
   return { inProgress: inProgress.map(toItem), printReady: printReady.map(toItem) };
+}
+
+/** For a model uploaded before we read them, or to read it again. */
+export async function refreshProcessedMeta(id: string) {
+  const preview = await prisma.preview.findUnique({ where: { id }, select: { processedKey: true } });
+  if (!preview) throw new PreviewNotFoundError(id);
+  if (!preview.processedKey) throw new PreviewConflictError("Nog geen verwerkt bestand");
+  const meta = await readStoredModelMeta(preview.processedKey);
+  if (!meta) throw new PreviewConflictError("Dit bestand kon niet gelezen worden: zit er een OBJ in de zip?");
+  await prisma.preview.update({ where: { id }, data: { processedMeta: meta } });
+  return { previewId: id, meta };
 }
 
 async function getUploadablePreview(id: string) {
@@ -112,6 +143,7 @@ export async function confirmProcessedUpload(
     throw new PreviewConflictError("Upload niet gevonden, probeer opnieuw");
   }
 
+  const meta = await readStoredModelMeta(key);
   const { count } = await prisma.preview.updateMany({
     where: { id, status: preview.status }, // niemand anders was ons voor
     data: {
@@ -119,6 +151,7 @@ export async function confirmProcessedUpload(
       processedKey: key,
       processedAt: new Date(),
       processedBy: adminName,
+      processedMeta: meta ?? undefined,
     },
   });
   if (count === 0) throw new PreviewConflictError("Status is intussen gewijzigd");
@@ -135,7 +168,7 @@ export async function confirmProcessedUpload(
       console.error(`Could not delete ${preview.processedKey}:`, err);
     }
   }
-  return { previewId: id, status: PreviewStatus.PRINT_READY };
+  return { previewId: id, status: PreviewStatus.PRINT_READY, meta };
 }
 
 // Verse signed URL per klik: een link die bij het laden van de pagina

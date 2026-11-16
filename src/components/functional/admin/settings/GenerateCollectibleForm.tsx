@@ -24,16 +24,20 @@ type GenerateCollectibleFormProps = {
   prompts: PromptSettings;
   /** The animals of the personalised Palley, whose prompts can be the starting point. */
   animals: AnimalOption[];
+  /** An existing collectible to make a new model version for; null = a new collectible. */
+  collectible?: { id: string; animalCode: string | null } | null;
 };
 
 /*
  * A new collectible's model, apart from any order. It starts from photos (the pose is made right away with the chosen
  * prompt) or from a pose made elsewhere (straight to the 3D model). Either way the admin lands on the preview page.
  */
-export function GenerateCollectibleForm({ prompts, animals }: GenerateCollectibleFormProps) {
+export function GenerateCollectibleForm({ prompts, animals, collectible = null }: GenerateCollectibleFormProps) {
   const router = useRouter();
-  const [animalType, setAnimalType] = useState(GENERAL);
-  const [prompt, setPrompt] = useState(prompts.base);
+  // For an existing collectible: start from its animal's prompt.
+  const startAnimal = collectible?.animalCode && animals.some((animal) => animal.code === collectible.animalCode) ? collectible.animalCode : GENERAL;
+  const [animalType, setAnimalType] = useState(startAnimal);
+  const [prompt, setPrompt] = useState(() => posePrompt(prompts, startAnimal || null));
   const [start, setStart] = useState<Start>("photos");
   const [photos, setPhotos] = useState<File[]>([]);
   const [pose, setPose] = useState<File | null>(null);
@@ -63,7 +67,7 @@ export function GenerateCollectibleForm({ prompts, animals }: GenerateCollectibl
     setStatus("Starten…");
     let previewId: string | null = null;
     try {
-      ({ previewId } = await postGenerateCollectible({ animalType: animalType || null, prompt }));
+      ({ previewId } = await postGenerateCollectible({ animalType: animalType || null, prompt, ...(collectible && { collectibleId: collectible.id }) }));
       if (start === "pose") {
         setStatus("Pose uploaden…");
         await uploadPose(previewId, pose!);
