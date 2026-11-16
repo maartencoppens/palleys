@@ -72,3 +72,9 @@ export async function putOrderNotes(orderId: string, notes: string) {
   const { data } = await api.put<AdminOrderDetail["adminNotes"]>(`/admin/orders/${orderId}/notes`, { notes });
   return data;
 }
+
+/** Sends a whole order to a later step by hand (batch, JLC, post-production, finished). No batchId = a new batch. */
+export async function postOrderStep(orderId: string, input: { step: string; batchId?: string | null; reason: string }) {
+  const { data } = await api.post<{ orderId: string; step: string; batchRef?: string }>(`/admin/orders/${orderId}/step`, input);
+  return data;
+}

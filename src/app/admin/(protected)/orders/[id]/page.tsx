@@ -11,6 +11,8 @@ import { isPersonalDelivery, needsShippingAddress } from "@/data/shipping";
 import { attachments } from "@/data/options";
 import { MANUAL_PAYMENT_PROVIDER, PAYMENT_METHOD_LABELS } from "@/data/payment-methods";
 import { Badge } from "@/components/design/Badge";
+import { listOpenBatchRefs } from "@/core/modules/batches/service";
+import { StatusOverridePanel } from "@/components/functional/admin/StatusOverridePanel";
 import { DeleteOrderPanel } from "@/components/functional/admin/orders/DeleteOrderPanel";
 import { EditOrderDetails } from "@/components/functional/admin/orders/EditOrderDetails";
 import { OrderActions } from "@/components/functional/admin/OrderActions";
@@ -35,7 +37,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
   const { id } = await params;
   const order = await getOrderForAdmin(id);
   if (!order) notFound();
-  const returnRequests = await getReturnRequestsForOrder(order.id);
+  const [returnRequests, openBatches] = await Promise.all([getReturnRequestsForOrder(order.id), listOpenBatchRefs()]);
   const shippedAt = order.shipment?.shippedAt;
   const estimate = order.shipment && shippedAt
     ? receivedOn({ deliveryType: order.shipment.deliveryType, shippedAt: new Date(shippedAt), deliveredAt: null })
@@ -314,6 +316,12 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
           />
 
           <OrderNotesPanel orderId={order.id} notes={order.adminNotes} />
+
+          {open && (
+            <StatusOverridePanel
+              order={{ id: order.id, number: order.number, status: order.status, batchStatus: order.batch?.status ?? null, openBatches }}
+            />
+          )}
 
           <section className="rounded-3xl bg-white p-6 text-sm">
             <h2 className="font-display text-xl font-medium text-medium-green">Klant</h2>

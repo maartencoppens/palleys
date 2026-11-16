@@ -38,7 +38,11 @@ import {
   isPhotoKeyOf,
   photoKey,
   posePrompt,
+  modelUploadKey,
+  isModelUploadKeyOf,
 } from "./utils";
+import { InvalidModelZipError, readModelZip, type ModelZipContents } from "./model-zip";
+import { attachPreviewModel } from "@/core/modules/collectibles/service";
 import { getShopSettings } from "@/core/modules/settings/service";
 import { activeQuantity } from "@/core/modules/orders/check-in";
 import { startProductionForPreview } from "@/core/modules/orders/production";
@@ -56,7 +60,7 @@ import type {
   StatusOverrideInput,
 } from "./types";
 
-import { MAX_PHOTOS_PER_PREVIEW } from "@/data/uploads";
+import { MAX_PHOTOS_PER_PREVIEW, PRINT_FILE_CONTENT_TYPE } from "@/data/uploads";
 
 import { z } from "zod";
 import { parsePreviewRef } from "@/core/utils/naming";
@@ -200,21 +204,31 @@ export async function overrideStatus(
 ) {
   const preview = await prisma.preview.findUnique({
     where: { id },
-    select: { status: true },
+    select: { status: true, downloadedAt: true },
   });
   if (!preview) throw new PreviewNotFoundError(id);
-  if (preview.status === input.status) {
-    throw new PreviewConflictError("De preview heeft deze status al");
+  // Goedgekeurd and In Blender (Processed) are both APPROVED: what tells them apart is whether it was downloaded.
+  const approved = input.status === PreviewStatus.APPROVED;
+  const inBlender = approved && Boolean(input.inBlender);
+  const wasInBlender = preview.status === PreviewStatus.APPROVED && preview.downloadedAt !== null;
+  if (preview.status === input.status && (!approved || inBlender === wasInBlender)) {
+    throw new PreviewConflictError("De preview staat al in deze stap");
   }
 
   await prisma.$transaction([
-    prisma.preview.update({ where: { id }, data: { status: input.status } }),
+    prisma.preview.update({
+      where: { id },
+      data: {
+        status: input.status,
+        ...(approved && { downloadedAt: inBlender ? new Date() : null, downloadedBy: inBlender ? adminName : null }),
+      },
+    }),
     prisma.previewStatusChange.create({
       data: {
         previewId: id,
         fromStatus: preview.status,
         toStatus: input.status,
-        reason: input.reason,
+        reason: inBlender ? `In Blender (Processed): ${input.reason}` : input.reason,
         changedBy: adminName,
       },
     }),
@@ -338,6 +352,144 @@ export async function uploadPose(id: string, image: Buffer, adminName: string): 
   }
   await deleteReplacedFiles(modelKeyList(replaced));
   return { previewId: id, status: stays ? preview.status : PreviewStatus.POSE_READY };
+}
+
+/**
+ * Where an admin's own 3D model takes a preview: MODEL_READY (reviewed and approved like Meshy's), or PRINT_READY when
+ * it is already the print-ready zip from Blender. On a manual order that isn't paid yet (UPLOADED) the model waits, like
+ * a pose: the payment moves the preview on (markOrderPaid). Throws what the admin should do otherwise.
+ */
+async function ownModelTarget(id: string, printReady: boolean) {
+  const preview = await prisma.preview.findUnique({
+    where: { id },
+    select: {
+      status: true,
+      forCollectible: true,
+      animalType: true,
+      processedKey: true,
+      glbKey: true,
+      objKey: true,
+      mtlKey: true,
+      textureKey: true,
+      _count: { select: { orderItems: { where: { order: { createdBy: { not: null } } } } } },
+    },
+  });
+  if (!preview) throw new PreviewNotFoundError(id);
+  const target = printReady ? PreviewStatus.PRINT_READY : PreviewStatus.MODEL_READY;
+  const waitsForPayment = preview.status === PreviewStatus.UPLOADED && preview._count.orderItems > 0;
+  // A model to review can be replaced by another one; a print-ready one is replaced on Processed.
+  const replaces = !printReady && preview.status === PreviewStatus.MODEL_READY;
+  if (!waitsForPayment && !replaces && !canTransition(preview.status, target)) {
+    const reasons: Partial<Record<PreviewStatus, string>> = {
+      UPLOADED: "Een 3D-model uploaden kan pas als de preview betaald is",
+      GENERATING_POSE: "Er wordt nog een pose gemaakt: wacht tot die klaar is",
+      APPROVED: "Dit model is al goedgekeurd: de printklare zip upload je op Processed",
+      PRINT_READY: "Dit model is al klaar voor print: een nieuwe zip upload je op Processed",
+      EXPIRED: "Deze preview is verlopen",
+    };
+    throw new PreviewConflictError(reasons[preview.status] ?? "Een 3D-model uploaden kan niet in deze status");
+  }
+  // Skipping the approval skips its check too: the animal is in the print's file name. A paid manual order gets it then.
+  if (printReady && !waitsForPayment && !preview.animalType && !preview.forCollectible) {
+    throw new PreviewConflictError("Kies eerst de diersoort: die komt in de bestandsnaam van de print");
+  }
+  return { preview, status: waitsForPayment ? preview.status : target };
+}
+
+/** Step 1 of an own 3D model: a signed URL straight to R2 (a model is too big to pass through our server). */
+export async function createOwnModelUpload(id: string, printReady: boolean) {
+  await ownModelTarget(id, printReady);
+  const key = modelUploadKey(id);
+  return { key, uploadUrl: await createUploadUrl(key, PRINT_FILE_CONTENT_TYPE) };
+}
+
+async function textureAsPng(texture: ModelZipContents["texture"]) {
+  if (texture.extension === "png") return Buffer.from(texture.bytes);
+  try {
+    return await sharp(texture.bytes).png().toBuffer();
+  } catch {
+    throw new InvalidModelZipError("De textuur kon niet gelezen worden als afbeelding");
+  }
+}
+
+/**
+ * Step 2: the zip is in R2. Its files are stored like Meshy's (GLB for the viewer when there is one, OBJ + MTL + PNG
+ * for printing), so the preview simply carries on after Meshy: review and approve, or, already print-ready, straight to
+ * Processed with the zip itself as the print file. A running Meshy task is dropped: its webhook no longer finds it.
+ */
+export async function confirmOwnModelUpload(
+  id: string,
+  input: { key: string; printReady: boolean },
+  adminName: string,
+): Promise<PreviewActionResult> {
+  if (!isModelUploadKeyOf(id, input.key)) throw new PreviewConflictError("Ongeldige key");
+  const { preview, status } = await ownModelTarget(id, input.printReady);
+  if (!(await objectExists(input.key))) throw new PreviewConflictError("Upload niet gevonden, probeer opnieuw");
+
+  let contents: ModelZipContents;
+  let texture: Buffer;
+  try {
+    contents = readModelZip(await getObject(input.key));
+    texture = await textureAsPng(contents.texture);
+  } catch (err) {
+    await deleteReplacedFiles([input.key]);
+    throw err;
+  }
+
+  const keys = modelKeys(id, `own-${randomUUID()}`);
+  const model: ModelFileKeys = { ...keys, glbKey: contents.glb ? keys.glbKey : null };
+  await Promise.all([
+    contents.glb ? putObject(keys.glbKey, Buffer.from(contents.glb), "model/gltf-binary") : null,
+    putObject(keys.objKey, Buffer.from(contents.obj), "model/obj"),
+    putObject(keys.mtlKey, Buffer.from(contents.mtl), "model/mtl"),
+    putObject(keys.textureKey, texture, "image/png"),
+  ]);
+
+  const now = new Date();
+  const saved = await prisma.$transaction(async (tx) => {
+    const { count } = await tx.preview.updateMany({
+      where: { id, status: preview.status },
+      data: {
+        status,
+        ...model,
+        meshyTaskId: null,
+        error: null,
+        downloadedAt: null,
+        downloadedBy: null,
+        ...(input.printReady && { processedKey: input.key, processedAt: now, processedBy: adminName }),
+      },
+    });
+    if (count === 0) return false;
+    await tx.previewStatusChange.create({
+      data: {
+        previewId: id,
+        fromStatus: preview.status,
+        toStatus: status,
+        reason: input.printReady ? "Eigen 3D-model geüpload, al klaar voor print" : "Eigen 3D-model geüpload in plaats van Meshy",
+        changedBy: adminName,
+      },
+    });
+    return true;
+  });
+  if (!saved) {
+    await deleteReplacedFiles([...modelKeyList(model), input.key]);
+    throw new PreviewConflictError("Status is intussen gewijzigd");
+  }
+
+  // The zip is the print file when it's print-ready; otherwise its files are stored apart and it has no use any more.
+  await deleteReplacedFiles([
+    ...modelKeyList(preview),
+    input.printReady ? (preview.processedKey !== input.key ? preview.processedKey : null) : input.key,
+  ]);
+
+  if (status !== PreviewStatus.UPLOADED) {
+    // The Palley is now made especially for the customer, as when a pose is approved.
+    await startProductionForPreview(id, adminName);
+    if (status === PreviewStatus.PRINT_READY && preview.forCollectible) {
+      await attachPreviewModel(id, adminName).catch((err) => console.error(`[previews] model of ${id} not attached:`, err));
+    }
+  }
+  return { previewId: id, status };
 }
 
 /**
@@ -678,14 +830,18 @@ export async function getPreviewForAdmin(
         where: { order: { paidAt: { not: null } } },
         orderBy: { order: { paidAt: "desc" } },
         take: 1,
-        select: { notes: true, order: { select: { id: true, number: true } } },
+        select: { notes: true, order: { select: { id: true, number: true, status: true, batch: { select: { status: true } } } } },
       },
       glbKey: true,
+      objKey: true,
+      textureKey: true,
+      downloadedAt: true,
       poseAttempts: true,
       animalType: true,
       meshyTaskId: true,
       forCollectible: true,
       processedKey: true,
+      _count: { select: { orderItems: { where: { order: { createdBy: { not: null } } } } } },
       collectible: { select: { id: true, modelKey: true } },
       promptOverride: true,
       photos: {
@@ -710,7 +866,9 @@ export async function getPreviewForAdmin(
 
   const canApprovePose = canTransition(preview.status, PreviewStatus.GENERATING_MODEL);
   let generatedNr = 0;
-  const [photos, poseImageUrl, glbUrl, meshyProgress, poseCandidates] = await Promise.all([
+  // Without a GLB (an own model can come without one) the viewer shows the OBJ with its texture.
+  const objModel = !preview.glbKey && preview.objKey && preview.textureKey ? { objKey: preview.objKey, textureKey: preview.textureKey } : null;
+  const [photos, poseImageUrl, glbUrl, meshyProgress, poseCandidates, objUrl, textureUrl] = await Promise.all([
     Promise.all(
       preview.photos.map(async (photo) => ({
         id: photo.id,
@@ -736,7 +894,10 @@ export async function getPreviewForAdmin(
         current: candidate.key === preview.poseImageKey,
       })),
     ),
+    signedUrlOrNull(objModel?.objKey ?? null),
+    signedUrlOrNull(objModel?.textureKey ?? null),
   ]);
+  const waitsForPayment = preview.status === PreviewStatus.UPLOADED && preview._count.orderItems > 0;
   const uploadedPoses = preview.poseCandidates.filter((candidate) => candidate.source === "UPLOADED").length;
 
   return {
@@ -745,7 +906,13 @@ export async function getPreviewForAdmin(
     email: preview.email,
     error: preview.error,
     order: preview.orderItems[0]
-      ? { ...preview.orderItems[0].order, notes: preview.orderItems[0].notes }
+      ? {
+          id: preview.orderItems[0].order.id,
+          number: preview.orderItems[0].order.number,
+          status: preview.orderItems[0].order.status,
+          batchStatus: preview.orderItems[0].order.batch?.status ?? null,
+          notes: preview.orderItems[0].notes,
+        }
       : null,
     printName: await getPrintName(preview.id),
     quantity: preview.quantity,
@@ -767,6 +934,14 @@ export async function getPreviewForAdmin(
       uploadedPoses < MAX_UPLOADED_POSES,
     uploadedPosesLeft: Math.max(0, MAX_UPLOADED_POSES - uploadedPoses),
     glbUrl,
+    objModelUrls: objUrl && textureUrl ? { obj: objUrl, texture: textureUrl } : null,
+    canUploadModel:
+      waitsForPayment ||
+      preview.status === PreviewStatus.MODEL_READY ||
+      canTransition(preview.status, PreviewStatus.MODEL_READY),
+    hasModel: preview.objKey !== null || preview.glbKey !== null,
+    inBlender: preview.status === PreviewStatus.APPROVED && preview.downloadedAt !== null,
+    hasProcessedFile: preview.processedKey !== null,
     animalType: preview.animalType,
     meshyTaskId: preview.meshyTaskId,
     meshyProgress,

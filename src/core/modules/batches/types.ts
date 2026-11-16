@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { BatchStatus, OrderStatus } from "@/db/generated/enums";
 import { MAX_BATCH_ORDERS, PICKUP_UPDATE_MAX_LENGTH } from "@/data/batches";
+import { ORDER_STEPS } from "./steps";
 
 export const batchOrdersSchema = z.object({ orderIds: z.array(z.uuid()).min(1).max(MAX_BATCH_ORDERS) });
 export const batchActionSchema = z.object({ action: z.enum(["send_to_jlc", "received", "ship_all_deliveries"]) });
@@ -10,6 +11,14 @@ export const pickupUpdateSchema = z.object({
     en: z.string().trim().max(PICKUP_UPDATE_MAX_LENGTH).optional().transform((value) => value || undefined),
   }),
 });
+/** Sending an order to a later step by hand (batches/service.ts forwardOrderToStep). No batchId = a new batch. */
+export const orderStepSchema = z.object({
+  step: z.enum(ORDER_STEPS),
+  batchId: z.uuid().nullish(),
+  reason: z.string().trim().min(3).max(500),
+});
+export type OrderStepInput = z.infer<typeof orderStepSchema>;
+
 export const finishedQuerySchema = z.object({
   tab: z.enum(["delivered", "collected"]).catch("delivered"),
   page: z.coerce.number().int().min(1).max(10_000).catch(1),

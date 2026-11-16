@@ -1,17 +1,19 @@
 import type { PreviewStatus } from "@/db/client";
 
 // → POSE_READY without GENERATING_POSE: an admin uploaded a pose made elsewhere (on the preview page, or with a manual
-// order, where it takes effect once the order is paid). Never further than that: approving a pose stays a click.
+// order, where it takes effect once the order is paid). An uploaded pose never goes further: approving it stays a click.
+// → MODEL_READY / PRINT_READY without Meshy: an admin uploaded a 3D model they made themselves (core/modules/previews/
+// model-zip.ts), to review like Meshy's, or already print-ready from Blender. Same places, same payment rule as a pose.
 const TRANSITIONS: Record<PreviewStatus, PreviewStatus[]> = {
   UPLOADED: ["PAID", "EXPIRED"],
-  PAID: ["GENERATING_POSE", "POSE_READY"],
+  PAID: ["GENERATING_POSE", "POSE_READY", "MODEL_READY", "PRINT_READY"],
   GENERATING_POSE: ["POSE_READY", "FAILED"],
-  POSE_READY: ["GENERATING_MODEL", "GENERATING_POSE", "FAILED"],
-  GENERATING_MODEL: ["MODEL_READY", "FAILED"],
-  MODEL_READY: ["APPROVED", "GENERATING_POSE", "GENERATING_MODEL", "POSE_READY"],
+  POSE_READY: ["GENERATING_MODEL", "GENERATING_POSE", "FAILED", "MODEL_READY", "PRINT_READY"],
+  GENERATING_MODEL: ["MODEL_READY", "FAILED", "PRINT_READY"],
+  MODEL_READY: ["APPROVED", "GENERATING_POSE", "GENERATING_MODEL", "POSE_READY", "PRINT_READY"],
   APPROVED: ["PRINT_READY"],
   PRINT_READY: [],
-  FAILED: ["GENERATING_POSE", "GENERATING_MODEL", "APPROVED", "POSE_READY"],
+  FAILED: ["GENERATING_POSE", "GENERATING_MODEL", "APPROVED", "POSE_READY", "MODEL_READY", "PRINT_READY"],
   EXPIRED: [],
 };
 

@@ -1,8 +1,10 @@
 import { z } from "zod";
 import { MAX_ANIMAL_PROMPT_LENGTH, MAX_PROMPT_LENGTH } from "@/data/prompts";
 import type { PoseSource, PreviewStatus } from "@/db/client";
+import type { BatchStatus, OrderStatus } from "@/db/generated/enums";
 import {
   ALLOWED_IMAGE_TYPES,
+  MAX_PRINT_FILE_BYTES,
   MAX_UPLOAD_BYTES,
   MAX_PHOTOS_PER_PREVIEW,
 } from "@/data/uploads";
@@ -25,7 +27,20 @@ export const statusOverrideSchema = z.object({
   status: z.enum(
     ADMIN_SETTABLE_STATUSES as [PreviewStatus, ...PreviewStatus[]],
   ),
+  // Only with APPROVED: downloaded and in Blender (Processed) instead of still to download (Goedgekeurd).
+  inBlender: z.boolean().default(false),
   reason: z.string().trim().min(3).max(500),
+});
+
+// An own 3D model: one zip, the same size limit as a print zip from Blender.
+export const ownModelUploadSchema = z.object({
+  size: z.number().int().positive().max(MAX_PRINT_FILE_BYTES),
+  printReady: z.boolean().default(false),
+});
+
+export const confirmOwnModelSchema = z.object({
+  key: z.string().min(1).max(300),
+  printReady: z.boolean().default(false),
 });
 
 // A well-formed code; whether it's in the animal list is checked in the service.
@@ -36,7 +51,7 @@ export const animalTypeSchema = z.object({
 export type CreateUploadInput = z.infer<typeof createUploadSchema>;
 
 export type PhotoInput = z.infer<typeof photoInputSchema>;
-export type StatusOverrideInput = z.infer<typeof statusOverrideSchema>;
+export type StatusOverrideInput = z.input<typeof statusOverrideSchema>;
 
 export type AdminPhoto = {
   id: string;
@@ -78,7 +93,7 @@ export type AdminPreviewDetail = {
   email: string | null;
   error: string | null;
   // De betaalde order (null voor testpreviews en nieuwe collectibles).
-  order: { id: string; number: string; notes: string | null } | null;
+  order: { id: string; number: string; status: OrderStatus; batchStatus: BatchStatus | null; notes: string | null } | null;
   /** De basisnaam van de printbestanden: PAL-PLY1042-01-P-RING-KAT, COL-007-HOND of PRV-A3F9C2E1. */
   printName: string;
   quantity: number; // aantal exemplaren in de order
@@ -94,6 +109,15 @@ export type AdminPreviewDetail = {
   canUploadPose: boolean;
   uploadedPosesLeft: number;
   glbUrl: string | null;
+  /** The OBJ and its texture, for the viewer when there's no GLB (an own model can come without one). */
+  objModelUrls: { obj: string; texture: string } | null;
+  /** An own 3D model can be uploaded instead of Meshy's (also on an unpaid manual order: it waits for the payment). */
+  canUploadModel: boolean;
+  hasModel: boolean;
+  /** Approved and downloaded: in Blender (Processed) rather than still to download (Goedgekeurd). */
+  inBlender: boolean;
+  /** The print-ready zip from Blender (or an own print-ready model) is there: what a batch sends to JLC. */
+  hasProcessedFile: boolean;
   meshyTaskId: string | null;
   meshyProgress: MeshyProgress | null; // alleen terwijl het model gemaakt wordt
   canApprove: boolean;

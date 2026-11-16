@@ -12,12 +12,15 @@ import { GeneratePoseButton } from "@/components/functional/admin/GeneratePoseBu
 import { GenerateModelButton } from "@/components/functional/admin/GenerateModelButton";
 import { SyncModelButton } from "@/components/functional/admin/SyncModelButton";
 import { getShopSettings } from "@/core/modules/settings/service";
+import { listOpenBatchRefs } from "@/core/modules/batches/service";
 import { AnimalTypePicker } from "@/components/functional/admin/AnimalTypePicker";
 import { AttachModelButton } from "@/components/functional/admin/AttachModelButton";
 import { PreviewPromptEditor } from "@/components/functional/admin/PreviewPromptEditor";
 import { PhotoManager } from "@/components/functional/admin/PhotoManager";
 import { PoseCandidates } from "@/components/functional/admin/PoseCandidates";
 import { StatusOverridePanel } from "@/components/functional/admin/StatusOverridePanel";
+import { OwnModelUpload } from "@/components/functional/admin/OwnModelUpload";
+import { OWN_MODEL_HELP } from "@/core/modules/previews/own-model";
 import type { MeshyProgress } from "@/core/modules/previews/types";
 
 export const instant = false;
@@ -32,7 +35,11 @@ export default async function AdminPreviewDetailPage({
   const parsed = paramsSchema.safeParse(await params);
   if (!parsed.success) notFound();
 
-  const [preview, { catalog }] = await Promise.all([getPreviewForAdmin(parsed.data.id), getShopSettings()]);
+  const [preview, { catalog }, openBatches] = await Promise.all([
+    getPreviewForAdmin(parsed.data.id),
+    getShopSettings(),
+    listOpenBatchRefs(),
+  ]);
   if (!preview) notFound();
   // A preview from before an animal was removed keeps its code: show it as a choice so it stays visible.
   const animals =
@@ -60,9 +67,9 @@ export default async function AdminPreviewDetailPage({
 
       {/* On a phone: the model, then the photos, then the actions, with the emergency status last. */}
       <div className="mt-6 grid grid-cols-1 gap-6 lg:mt-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-8">
-        {preview.glbUrl ? (
+        {preview.glbUrl || preview.objModelUrls ? (
           <ModelViewer
-            src={preview.glbUrl}
+            model={preview.glbUrl ? { glb: preview.glbUrl } : preview.objModelUrls!}
             alt={`3D-model van preview ${preview.id}`}
           />
         ) : (
@@ -72,9 +79,25 @@ export default async function AdminPreviewDetailPage({
         )}
         <div className="order-3 lg:order-none">
           <StatusOverridePanel
-            previewId={preview.id}
-            currentStatus={preview.status}
-            history={preview.statusChanges}
+            preview={{
+              id: preview.id,
+              status: preview.status,
+              inBlender: preview.inBlender,
+              hasModel: preview.hasModel,
+              hasProcessedFile: preview.hasProcessedFile,
+              history: preview.statusChanges,
+            }}
+            order={
+              preview.order
+                ? {
+                    id: preview.order.id,
+                    number: preview.order.number,
+                    status: preview.order.status,
+                    batchStatus: preview.order.batchStatus,
+                    openBatches,
+                  }
+                : undefined
+            }
           />
         </div>
         <aside className="order-2 space-y-6 lg:order-none lg:row-span-2">
@@ -213,6 +236,17 @@ export default async function AdminPreviewDetailPage({
                   />
                 </>
               )}
+            </section>
+          )}
+          {preview.canUploadModel && (
+            <section className="rounded-3xl bg-white p-6">
+              <h2 className="font-display text-xl font-medium text-medium-green">Eigen 3D-model</h2>
+              <p className="mt-1 text-sm leading-[1.5] text-text-muted">
+                Al zelf een 3D-model gemaakt? Upload het en sla Meshy over: daarna gaat het verder zoals een model van Meshy.{" "}
+                {OWN_MODEL_HELP}
+                {preview.status === "UPLOADED" && " De order is nog niet betaald: het model wacht tot dan."}
+              </p>
+              <OwnModelUpload previewId={preview.id} hasModel={preview.hasModel} />
             </section>
           )}
           <section className="rounded-3xl bg-white p-6">

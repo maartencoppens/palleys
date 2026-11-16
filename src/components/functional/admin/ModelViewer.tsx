@@ -3,16 +3,52 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
+/** A GLB (Meshy's, or with an own model), or an own model's OBJ with its texture when it came without a GLB. */
+export type ModelSource = { glb: string } | { obj: string; texture: string };
+
 type ModelViewerProps = {
-  src: string;
+  model: ModelSource;
   alt: string;
 };
 
+/**
+ * Loads the model as one object. An OBJ gets its texture straight from its URL: the MTL names the texture by file name,
+ * which a signed URL doesn't have, and every model here has a single texture anyway.
+ */
+function loadModel(model: ModelSource, onLoad: (object: THREE.Object3D) => void, onError: () => void) {
+  if ("glb" in model) {
+    new GLTFLoader().load(model.glb, (gltf) => onLoad(gltf.scene), undefined, onError);
+    return;
+  }
+  new OBJLoader().load(
+    model.obj,
+    (object) => {
+      new THREE.TextureLoader().load(
+        model.texture,
+        (texture) => {
+          texture.colorSpace = THREE.SRGBColorSpace;
+          object.traverse((child) => {
+            if (child instanceof THREE.Mesh) child.material = new THREE.MeshStandardMaterial({ map: texture });
+          });
+          onLoad(object);
+        },
+        undefined,
+        onError,
+      );
+    },
+    undefined,
+    onError,
+  );
+}
+
 type LoadStatus = "loading" | "ready" | "error";
 
-export function ModelViewer({ src, alt }: ModelViewerProps) {
+export function ModelViewer({ model: source, alt }: ModelViewerProps) {
+  // One string for the effect: a new object with the same URLs must not reload the model.
+  const sourceKey = JSON.stringify(source);
   const containerRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<LoadStatus>("loading");
 
@@ -45,20 +81,18 @@ export function ModelViewer({ src, alt }: ModelViewerProps) {
 
     // --- Model laden ---
     let disposed = false;
-    new GLTFLoader().load(
-      src,
-      (gltf) => {
+    loadModel(
+      JSON.parse(sourceKey) as ModelSource,
+      (model) => {
         if (disposed) {
-          disposeObject(gltf.scene);
+          disposeObject(model);
           return;
         }
-        const model = gltf.scene;
         const size = frameModel(model, camera, controls);
         scene.add(model);
         scene.add(createPrintBed(size));
         setStatus("ready");
       },
-      undefined,
       () => {
         if (!disposed) setStatus("error");
       },
@@ -89,7 +123,7 @@ export function ModelViewer({ src, alt }: ModelViewerProps) {
       renderer.dispose();
       container.removeChild(renderer.domElement);
     };
-  }, [src]);
+  }, [sourceKey]);
 
   return (
     <div className="relative h-[360px] overflow-hidden rounded-3xl bg-white sm:h-[480px]">

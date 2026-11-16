@@ -7,7 +7,8 @@ import { editionPriceCents } from "@/core/modules/catalog/utils";
 import type { CollectibleView } from "@/core/modules/collectibles/types";
 import { postManualOrder } from "@/core/modules/orders/api";
 import type { ManualOrderRequest } from "@/core/modules/orders/types";
-import { uploadAdminPhoto, uploadPose } from "@/core/modules/previews/api";
+import { uploadAdminPhoto, uploadOwnModel, uploadPose } from "@/core/modules/previews/api";
+import { OWN_MODEL_HELP, ownModelFileProblem } from "@/core/modules/previews/own-model";
 import type { CatalogSettings } from "@/core/modules/settings/types";
 import { getApiErrorMessage } from "@/core/networking/api";
 import { formatPrice, fromEuroInput, toEuroInput } from "@/core/utils/format";
@@ -43,6 +44,9 @@ type PersonalizedLine = {
   photos: File[];
   /** A pose made beforehand: the preview starts at "pose ready" instead of generating one. */
   pose: File | null;
+  /** A 3D model made beforehand: the preview starts after Meshy ("klaar voor review"), or at "klaar voor print". */
+  model: File | null;
+  modelPrintReady: boolean;
 };
 type CollectibleLine = {
   key: number;
@@ -142,6 +146,8 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
       if (line.photos.length > MAX_PHOTOS_PER_PREVIEW) return `Maximaal ${MAX_PHOTOS_PER_PREVIEW} foto's per Palley`;
       if (line.photos.some((photo) => photo.size > MAX_UPLOAD_BYTES)) return "Een van de foto's is groter dan 10 MB";
       if (line.pose && line.pose.size > MAX_UPLOAD_BYTES) return "Een pose-afbeelding is groter dan 10 MB";
+      const modelProblem = line.model && ownModelFileProblem(line.model);
+      if (modelProblem) return modelProblem;
     }
     if (!stockOrder && deliveryType === "ship") {
       if (!option) return "Er is geen verzendoptie beschikbaar";
@@ -194,19 +200,23 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
     try {
       const result = await postManualOrder(request);
 
+      // The model last: a pose uploaded after it would replace it (a new pose makes the model it came from invalid).
       const uploads = result.previews.flatMap(({ lineIndex, previewId }) => {
         const line = lines[lineIndex];
         if (line.kind !== "personalized") return [];
         return [
-          ...line.photos.map((file) => ({ previewId, file, pose: false })),
-          ...(line.pose ? [{ previewId, file: line.pose, pose: true }] : []),
+          ...line.photos.map((file) => ({ previewId, file, kind: "Foto" as const })),
+          ...(line.pose ? [{ previewId, file: line.pose, kind: "Pose" as const }] : []),
+          ...(line.model ? [{ previewId, file: line.model, kind: "3D-model" as const, printReady: line.modelPrintReady }] : []),
         ];
       });
       let failed = 0;
       for (const [index, upload] of uploads.entries()) {
-        setStatus(`${upload.pose ? "Pose" : "Foto"} uploaden (${index + 1} van ${uploads.length})…`);
+        setStatus(`${upload.kind} uploaden (${index + 1} van ${uploads.length})…`);
         try {
-          await (upload.pose ? uploadPose(upload.previewId, upload.file) : uploadAdminPhoto(upload.previewId, upload.file));
+          if (upload.kind === "3D-model") await uploadOwnModel(upload.previewId, upload.file, upload.printReady);
+          else if (upload.kind === "Pose") await uploadPose(upload.previewId, upload.file);
+          else await uploadAdminPhoto(upload.previewId, upload.file);
         } catch {
           failed++;
         }
@@ -229,8 +239,8 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
       <section role="alert" className={`${cardClassName} flex flex-col items-start gap-4`}>
         <h2 className={cardTitleClassName}>Order {uploadFailure.number} is aangemaakt</h2>
         <p className="text-base">
-          {uploadFailure.failed === 1 ? "1 bestand kon" : `${uploadFailure.failed} bestanden konden`} niet geüpload worden (foto&apos;s of
-          pose). Voeg ze toe via de preview op de orderpagina.
+          {uploadFailure.failed === 1 ? "1 bestand kon" : `${uploadFailure.failed} bestanden konden`} niet geüpload worden (foto&apos;s,
+          pose of 3D-model). Voeg ze toe via de preview op de orderpagina.
         </p>
         <Button variant="primary" href={`/admin/orders/${uploadFailure.orderId}`}>
           Naar de order
@@ -449,6 +459,35 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
                     <p id={`pose-help-${index}`} className="mt-1 text-sm text-text-muted">
                       Slaat het genereren over: de Palley staat na betaling klaar om de pose goed te keuren (of toch een nieuwe te maken).
                     </p>
+                  </Field>
+                )}
+                {line.kind === "personalized" && (
+                  <Field label="3D-model, al gemaakt (optioneel)" id={`model-${index}`}>
+                    <input
+                      id={`model-${index}`}
+                      type="file"
+                      accept=".zip,application/zip"
+                      onChange={(e) => updateLine(line.key, { model: e.target.files?.[0] ?? null })}
+                      aria-describedby={`model-help-${index}`}
+                      className="block w-full text-sm file:mr-3 file:rounded-full file:border-[1.5px] file:border-medium-green file:bg-white file:px-4 file:py-2 file:font-label file:font-semibold file:text-medium-green"
+                    />
+                    <p id={`model-help-${index}`} className="mt-1 text-sm text-text-muted">
+                      Slaat pose en Meshy over: de Palley staat na betaling klaar voor review van het model. {OWN_MODEL_HELP}
+                    </p>
+                    {line.model && (
+                      <label className="mt-2 flex items-start gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={line.modelPrintReady}
+                          onChange={(e) => updateLine(line.key, { modelPrintReady: e.target.checked })}
+                          className="mt-0.5 size-4 accent-medium-green"
+                        />
+                        <span>
+                          Al klaar voor print (zip uit Blender)
+                          <span className="block text-text-muted">Gaat na betaling meteen naar Klaar voor print, klaar voor een batch.</span>
+                        </span>
+                      </label>
+                    )}
                   </Field>
                 )}
 
@@ -676,7 +715,7 @@ export function ManualOrderForm({ catalog, collectibles, deliveryOptions, paymen
 }
 
 function newPersonalizedLine(key: number, animals: AnimalOption[]): PersonalizedLine {
-  return { key, kind: "personalized", animal: animals[0].value, edition: "keychain", attachment: attachments[0].value, quantity: 1, price: null, notes: "", photos: [], pose: null };
+  return { key, kind: "personalized", animal: animals[0].value, edition: "keychain", attachment: attachments[0].value, quantity: 1, price: null, notes: "", photos: [], pose: null, model: null, modelPrintReady: false };
 }
 
 function newCollectibleLine(key: number, collectibles: CollectibleView[]): CollectibleLine {

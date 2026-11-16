@@ -150,3 +150,16 @@ gemarkeerd met `Order.createdBy`. E-mail en adres zijn optioneel (overhandigen),
 voorwaarden blijven leeg omdat de klant ze niet online aanvaardde. Betalen kan op drie manieren: betaallink (Stripe Checkout,
 30 minuten geldig; kan zodra Stripe gekoppeld is), al betaald (contant, overschrijving, geschenk) of later. Zo'n
 order blijft open tot ze betaald of geannuleerd is: de cron sluit ze niet, en een verlopen betaallink kan opnieuw gemaakt worden.
+
+**Eigen 3D-model.** Wie zelf al een model maakte (Blender, Meshy-website), slaat pose en Meshy over: op de previewpagina
+(**Eigen 3D-model**) of per Palley bij **Order toevoegen**. Upload één zip met OBJ + MTL + textuur (PNG/JPG, een GLB voor de
+viewer mag erbij); die gaat via een signed URL naar R2 en de server controleert hem (`core/modules/previews/model-zip.ts`). De
+preview staat daarna op "Klaar voor review", net als na Meshy, of met **Al klaar voor print** meteen op "Klaar voor print" met
+de zip zelf als printbestand. Bij een nog onbetaalde handmatige order wacht het model tot de betaling.
+
+**Handmatig doorzetten.** "Status handmatig aanpassen" op de previewpagina toont de stappen per backofficepagina (Te
+reviewen, Goedgekeurd, Processed: In Blender / Klaar voor print) en, voor een betaalde order, ook Batches, Productie (naar JLC,
+postproductie) en Afgerond; op de orderpagina staat hetzelfde als "Order handmatig doorzetten". Een order gaat alleen vooruit
+(`core/modules/batches/steps.ts`), altijd volledig, met een verplichte reden in de geschiedenis. Palleys op maat die nog in de
+pipeline zitten, komen op "Klaar voor print"; naar JLC of postproductie gaat de order in een eigen batch; Afgerond vinkt alles
+af en zet de order op verzonden/overhandigd, zonder mail.

@@ -2,7 +2,7 @@ import { api } from "@/core/networking/api";
 import axios from "axios";
 import type { PreviewStatus } from "@/db/client";
 import type { PreviewActionResult, PrintDownload } from "./types";
-import { ALLOWED_IMAGE_TYPES, type ImageMimeType } from "@/data/uploads";
+import { ALLOWED_IMAGE_TYPES, PRINT_FILE_CONTENT_TYPE, type ImageMimeType } from "@/data/uploads";
 
 export async function postApprovePreview(previewId: string) {
   const { data } = await api.post<PreviewActionResult>(
@@ -78,12 +78,31 @@ export async function postStatusOverride(
   previewId: string,
   status: PreviewStatus,
   reason: string,
+  options: { inBlender?: boolean } = {},
 ) {
   const { data } = await api.post<PreviewActionResult>(
     `/admin/previews/${previewId}/status`,
-    { status, reason },
+    { status, reason, inBlender: options.inBlender ?? false },
   );
   return data;
+}
+
+/**
+ * An own 3D model (zip with OBJ + MTL + texture) in three steps: a signed URL, straight to R2, then the server checks
+ * it and moves the preview on. Always application/zip: the content type must match the one in the signed URL.
+ */
+export async function uploadOwnModel(previewId: string, file: File, printReady: boolean) {
+  const { data } = await api.post<{ key: string; uploadUrl: string }>(`/admin/previews/${previewId}/model`, {
+    size: file.size,
+    printReady,
+  });
+  await axios.put(data.uploadUrl, file, { headers: { "Content-Type": PRINT_FILE_CONTENT_TYPE } });
+  const { data: result } = await api.post<PreviewActionResult>(
+    `/admin/previews/${previewId}/model/confirm`,
+    { key: data.key, printReady },
+    { timeout: 120_000 },
+  );
+  return result;
 }
 
 // ---------- Customer upload (public, /create) ----------

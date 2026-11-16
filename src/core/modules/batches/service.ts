@@ -8,7 +8,7 @@ import { createDownloadUrl, objectExists } from "@/core/networking/external/stor
 import { EmailError, sendEmail } from "@/core/networking/external/email-client";
 import { batchRef, batchZipName } from "@/core/utils/naming";
 import { palleyNameOf } from "@/core/modules/orders/utils";
-import { allItemsCheckedIn, checkInItemOf, OPEN_ORDER_STATUSES } from "@/core/modules/orders/check-in";
+import { activeQuantity, allItemsCheckedIn, checkInItemOf, OPEN_ORDER_STATUSES } from "@/core/modules/orders/check-in";
 import { buildPickupMail } from "@/core/modules/orders/emails";
 import { updateOrderStatus } from "@/core/modules/orders/admin";
 import { moveOrder } from "@/core/modules/payments/service";
@@ -19,6 +19,7 @@ import { FINISHED_PAGE_SIZE } from "@/data/batches";
 import { toLocale } from "@/core/locale/config";
 import { zipSync } from "fflate";
 import { BATCHABLE_ORDER_STATUS, isBatchEditable } from "./status";
+import { ORDER_STEP_LABELS, ORDER_STEP_PAGES, reachableOrderSteps } from "./steps";
 import { batchContents, deliveryGroup, isItemPrintReady, isOrderPrintReady } from "./utils";
 import { completeBatchIfDone } from "./sync";
 import type {
@@ -26,6 +27,7 @@ import type {
   BatchOrderView,
   BatchView,
   FinishedOrdersPage,
+  OrderStepInput,
   ProductionBatchView,
   ProductionPage,
 } from "./types";
@@ -284,11 +286,16 @@ async function claimOrders(tx: Tx, batch: { id: string; number: number }, orderI
   });
 }
 
+async function openNewBatch(tx: Tx, adminName: string, note?: string) {
+  const number = await nextCounterValue(tx, BATCH_COUNTER_KEY);
+  const batch = await tx.batch.create({ data: { number, createdBy: adminName }, select: { id: true, number: true } });
+  await tx.batchStatusChange.create({ data: { batchId: batch.id, fromStatus: null, toStatus: "OPEN", source: SOURCE(adminName), note } });
+  return batch;
+}
+
 export async function createBatch(orderIds: string[], adminName: string) {
   return prisma.$transaction(async (tx) => {
-    const number = await nextCounterValue(tx, BATCH_COUNTER_KEY);
-    const batch = await tx.batch.create({ data: { number, createdBy: adminName }, select: { id: true, number: true } });
-    await tx.batchStatusChange.create({ data: { batchId: batch.id, fromStatus: null, toStatus: "OPEN", source: SOURCE(adminName) } });
+    const batch = await openNewBatch(tx, adminName);
     await claimOrders(tx, batch, orderIds, adminName);
     return { batchId: batch.id, ref: batchRef(batch.number) };
   });
@@ -329,11 +336,18 @@ export async function deleteBatch(batchId: string) {
 }
 
 /** Moves a batch one step, with a log row. Returns false when it wasn't in `from` anymore. */
-async function moveBatch(batchId: string, from: BatchStatus, to: BatchStatus, adminName: string, data: Prisma.BatchUpdateManyMutationInput) {
+async function moveBatch(
+  batchId: string,
+  from: BatchStatus,
+  to: BatchStatus,
+  adminName: string,
+  data: Prisma.BatchUpdateManyMutationInput,
+  note?: string,
+) {
   return prisma.$transaction(async (tx) => {
     const { count } = await tx.batch.updateMany({ where: { id: batchId, status: from }, data: { status: to, ...data } });
     if (count === 0) return false;
-    await tx.batchStatusChange.create({ data: { batchId, fromStatus: from, toStatus: to, source: SOURCE(adminName) } });
+    await tx.batchStatusChange.create({ data: { batchId, fromStatus: from, toStatus: to, source: SOURCE(adminName), note } });
     return true;
   });
 }
@@ -530,3 +544,140 @@ export async function sendPickupUpdate(message: { nl: string; en?: string }, adm
   return { sent, failed };
 }
 
+
+// ---------- Forwarding an order by hand ----------
+
+/** The open batches, to choose one when an order is put in a batch by hand. */
+export async function listOpenBatchRefs() {
+  const rows = await prisma.batch.findMany({ where: { status: "OPEN" }, orderBy: { number: "asc" }, select: { id: true, number: true } });
+  return rows.map((batch) => ({ id: batch.id, ref: batchRef(batch.number) }));
+}
+
+/** An order into a batch by hand: without the print-ready check of claimOrders, that is what the admin skips. */
+async function putInBatch(tx: Tx, batch: { id: string; number: number }, orderId: string, adminName: string) {
+  const order = await tx.order.findUniqueOrThrow({ where: { id: orderId }, select: { status: true } });
+  const { count } = await tx.order.updateMany({
+    where: { id: orderId, batchId: null, status: { in: OPEN_ORDER_STATUSES } },
+    data: { batchId: batch.id },
+  });
+  if (count === 0) throw new BatchActionError("De order is intussen gewijzigd of al in een andere batch gezet");
+  await tx.orderStatusChange.create({
+    data: { orderId, fromStatus: order.status, toStatus: order.status, source: SOURCE(adminName), note: `In ${batchRef(batch.number)} gezet` },
+  });
+}
+
+async function takeOutOfBatch(tx: Tx, batch: { id: string; number: number }, orderId: string, adminName: string, why: string) {
+  const order = await tx.order.findUniqueOrThrow({ where: { id: orderId }, select: { status: true } });
+  await tx.order.update({ where: { id: orderId }, data: { batchId: null } });
+  await tx.orderStatusChange.create({
+    data: { orderId, fromStatus: order.status, toStatus: order.status, source: SOURCE(adminName), note: `Uit ${batchRef(batch.number)} gehaald: ${why}` },
+  });
+}
+
+/**
+ * Sends a whole order to a later step by hand, past whatever it is still waiting for (the emergency status panel). What
+ * that step normally needs is filled in, with a log line for each:
+ *   - every Palley op maat still in the pipeline goes to "Klaar voor print" (it was made some other way);
+ *   - BATCH: into the chosen open batch, or a new one;
+ *   - AT_JLC / POST_PRODUCTION: in a batch of its own, which moves along (an order in an open batch with others leaves
+ *     it; one at JLC with others moves only with its batch, on Productie);
+ *   - FINISHED: every item ticked off and the order shipped / handed over, without a mail.
+ * Without a print file, a Palley simply misses from the batch zip.
+ */
+export async function forwardOrderToStep(orderId: string, input: OrderStepInput, adminName: string) {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: {
+      number: true,
+      status: true,
+      productionStartedAt: true,
+      batch: { select: { id: true, number: true, status: true, _count: { select: { orders: true } } } },
+      items: { select: { id: true, quantity: true, cancelledQuantity: true, checkedInAt: true, previewId: true, preview: { select: { status: true } } } },
+    },
+  });
+  if (!order) throw new BatchActionError("Deze order bestaat niet");
+  const { step } = input;
+  if (!reachableOrderSteps(order.status, order.batch?.status ?? null).includes(step)) {
+    throw new BatchActionError(
+      OPEN_ORDER_STATUSES.includes(order.status)
+        ? "Een order gaat alleen vooruit: terug kan via Batches (uit de batch halen)"
+        : "Alleen een betaalde order die nog niet afgerond is, kan doorgezet worden",
+    );
+  }
+  const shared = order.batch && order.batch._count.orders > 1;
+  if (step === "POST_PRODUCTION" && order.batch?.status === "SENT_TO_JLC" && shared) {
+    throw new BatchActionError(`${order.number} ligt samen met andere orders bij JLC: zet ${batchRef(order.batch.number)} op Productie op "terug van JLC"`);
+  }
+  const chosen = step === "BATCH" && input.batchId
+    ? await prisma.batch.findUnique({ where: { id: input.batchId }, select: { id: true, number: true, status: true } })
+    : null;
+  if (step === "BATCH" && input.batchId && chosen?.status !== "OPEN") throw new BatchActionError("Deze batch is niet (meer) open");
+
+  const label = `${ORDER_STEP_PAGES[step]}: ${ORDER_STEP_LABELS[step]}`;
+  const note = `Handmatig doorgezet naar ${label}. Reden: ${input.reason}`;
+  const source = SOURCE(adminName);
+
+  // The models are done: whatever was left of the pipeline is skipped, and for the customer it's in production.
+  const active = order.items.filter((item) => activeQuantity(item) > 0);
+  const unfinished = active.flatMap((item) => (item.previewId && item.preview?.status !== "PRINT_READY" ? [item] : []));
+  await prisma.$transaction(async (tx) => {
+    await tx.orderStatusChange.create({ data: { orderId, fromStatus: order.status, toStatus: order.status, source, note } });
+    if (!order.productionStartedAt) await tx.order.update({ where: { id: orderId }, data: { productionStartedAt: new Date() } });
+    for (const item of unfinished) {
+      await tx.preview.update({ where: { id: item.previewId! }, data: { status: "PRINT_READY" } });
+      await tx.previewStatusChange.create({
+        data: { previewId: item.previewId!, fromStatus: item.preview!.status, toStatus: "PRINT_READY", reason: note, changedBy: adminName },
+      });
+    }
+  });
+
+  if (step === "FINISHED") {
+    await prisma.$transaction(async (tx) => {
+      // It never went to JLC with that batch.
+      if (order.batch?.status === "OPEN") await takeOutOfBatch(tx, order.batch, orderId, adminName, "apart afgerond");
+      await tx.orderItem.updateMany({
+        where: { id: { in: active.filter((item) => !item.checkedInAt).map((item) => item.id) } },
+        data: { checkedInAt: new Date(), checkedInBy: adminName },
+      });
+    });
+    // Alone at JLC: its batch comes back with it, so the last order out completes it (moveOrder → completeBatchIfDone).
+    if (order.batch?.status === "SENT_TO_JLC" && !shared) {
+      await moveBatch(order.batch.id, "SENT_TO_JLC", "IN_POST_PRODUCTION", adminName, { receivedAt: new Date(), receivedBy: adminName }, note);
+    }
+    if (!(await moveOrder(orderId, "SHIPPED", source, label))) throw new BatchActionError("De order is intussen gewijzigd");
+    await prisma.shipment.updateMany({ where: { orderId, shippedAt: null }, data: { shippedAt: new Date() } });
+    return { orderId, step };
+  }
+
+  if (step === "BATCH") {
+    const batch = await prisma.$transaction(async (tx) => {
+      const target = chosen ?? (await openNewBatch(tx, adminName, `Voor ${order.number}, handmatig doorgezet`));
+      await putInBatch(tx, target, orderId, adminName);
+      return target;
+    });
+    return { orderId, step, batchRef: batchRef(batch.number) };
+  }
+
+  // AT_JLC or POST_PRODUCTION: in a batch of its own unless it already has one that can move with it.
+  let batch = order.batch ? { id: order.batch.id, number: order.batch.number, status: order.batch.status } : null;
+  if (!batch || (batch.status === "OPEN" && shared)) {
+    const previous = batch;
+    const created = await prisma.$transaction(async (tx) => {
+      if (previous) await takeOutOfBatch(tx, previous, orderId, adminName, "apart doorgezet");
+      const fresh = await openNewBatch(tx, adminName, `Voor ${order.number}, handmatig doorgezet`);
+      await putInBatch(tx, fresh, orderId, adminName);
+      return fresh;
+    });
+    batch = { ...created, status: "OPEN" };
+  }
+  const ref = batchRef(batch.number);
+  if (batch.status === "OPEN") {
+    await moveBatch(batch.id, "OPEN", "SENT_TO_JLC", adminName, { sentToJlcAt: new Date(), sentToJlcBy: adminName }, note);
+    if (order.status === "PAID") await moveOrder(orderId, "IN_PRODUCTION", source, `${ref} verzonden naar JLC (handmatig)`);
+    batch.status = "SENT_TO_JLC";
+  }
+  if (step === "POST_PRODUCTION" && batch.status === "SENT_TO_JLC") {
+    await moveBatch(batch.id, "SENT_TO_JLC", "IN_POST_PRODUCTION", adminName, { receivedAt: new Date(), receivedBy: adminName }, note);
+  }
+  return { orderId, step, batchRef: ref };
+}

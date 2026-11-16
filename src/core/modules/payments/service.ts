@@ -334,6 +334,7 @@ const animalTypeOf = (animals: AnimalOption[], animal: string | null) => findAni
 
 async function markOrderPaid(orderId: string, orderNumber: string, source: ProcessSource) {
   const { catalog } = await getShopSettings();
+  const withOwnModel: string[] = [];
   const conflicts = await prisma.$transaction(async (tx) => {
     const order = await tx.order.findUniqueOrThrow({
       where: { id: orderId },
@@ -384,6 +385,17 @@ async function markOrderPaid(orderId: string, orderNumber: string, source: Proce
         },
       });
       if (updated.count === 1) {
+        // An admin uploaded their own 3D model with the order (a manual order): it carries on after Meshy, to review,
+        // or straight to Processed when it was print-ready. Only an upload puts these files on an unpaid preview.
+        const jumped = await tx.preview.updateMany({
+          where: { id: item.previewId, status: "PAID", processedKey: { not: null } },
+          data: { status: "PRINT_READY" },
+        });
+        const modelled = await tx.preview.updateMany({
+          where: { id: item.previewId, status: "PAID", objKey: { not: null } },
+          data: { status: "MODEL_READY" },
+        });
+        if (jumped.count + modelled.count > 0) withOwnModel.push(item.previewId);
         // An admin uploaded a pose with the order (a manual order): it continues as if that pose had just been
         // generated, so the team approves one pose as usual (and can still generate another). Never Meshy by itself.
         if (canTransitionPreview("PAID", "POSE_READY")) {
@@ -419,6 +431,13 @@ async function markOrderPaid(orderId: string, orderNumber: string, source: Proce
 
   if (conflicts === null) return;
   console.info(`[payments] order ${orderNumber} paid (${source})`);
+  if (withOwnModel.length > 0) {
+    // The model is there already, so the Palley is being made: what approving the pose does otherwise. Imported here:
+    // orders/production imports this module.
+    const { startProductionForPreview } = await import("@/core/modules/orders/production");
+    const admin = (await prisma.order.findUnique({ where: { id: orderId }, select: { createdBy: true } }))?.createdBy ?? "system";
+    for (const previewId of withOwnModel) await startProductionForPreview(previewId, admin);
+  }
   if (conflicts.length > 0) await flagOrder(orderId, conflicts.join(" | "));
   await mailTeamAboutNewOrder(orderId, conflicts);
 }

@@ -66,6 +66,16 @@ export function modelKeys(previewId: string, taskId: string) {
   };
 }
 
+/** A 3D model an admin made themselves, as uploaded (one zip). Random, like a processed zip: replacing never overwrites. */
+export function modelUploadKey(previewId: string) {
+  return `${previewFolder(previewId)}/model-upload-${crypto.randomUUID()}.zip`;
+}
+
+/** Is this key one of this preview's model uploads? For keys the browser sends back after uploading. */
+export function isModelUploadKeyOf(previewId: string, key: string) {
+  return key.startsWith(`${previewFolder(previewId)}/model-upload-`) && key.endsWith(".zip") && !key.includes("..");
+}
+
 // What a preview's print name needs: its order line on a paid order, or the collectible it was made for.
 export const PRINT_NAME_SELECT = {
   id: true,
