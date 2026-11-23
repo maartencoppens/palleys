@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { requireAdmin, UnauthorizedError } from "@/core/modules/auth/service";
 import { getPaymentMethodOverview, PaymentMethodConfigError, setPaymentMethod } from "@/core/modules/payments/method-config";
@@ -15,6 +15,7 @@ function errorResponse(error: unknown) {
 }
 
 export async function GET() {
+  await connection(); // per request, never prerendered at build time (it needs the admin's session)
   try {
     await requireAdmin();
     return NextResponse.json({ overview: await getPaymentMethodOverview() });

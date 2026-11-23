@@ -18,7 +18,7 @@ function createClient() {
     // Alleen SSL als er een CA-certificaat ingesteld is (externe database).
     ...(env.DATABASE_SSL_CA && {
       ssl: {
-        ca: readFileSync(path.join(process.cwd(), env.DATABASE_SSL_CA), "utf8"),
+        ca: readFileSync(path.join(/*turbopackIgnore: true*/ process.cwd(), env.DATABASE_SSL_CA), "utf8"),
         rejectUnauthorized: true,
       },
     }),

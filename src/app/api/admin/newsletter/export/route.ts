@@ -1,10 +1,11 @@
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import { requireAdmin, UnauthorizedError } from "@/core/modules/auth/service";
 import { buildSubscribersCsv } from "@/core/modules/newsletter/service";
 import { formatDateCompact } from "@/core/utils/format";
 
 // The active mailing list as CSV. Email addresses: behind admin auth, never cached.
 export async function GET() {
+  await connection(); // per request, never prerendered at build time (it needs the admin's session)
   try {
     await requireAdmin();
     return new Response(await buildSubscribersCsv(), {
