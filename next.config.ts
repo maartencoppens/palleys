@@ -17,6 +17,9 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   // Same navigation behaviour as before the upgrade to 16.4; turning this on is a choice of its own.
   partialPrefetching: false,
+  experimental: {
+    agentUpgrade: "security",
+  },
   poweredByHeader: false,
   async headers() {
     return [
