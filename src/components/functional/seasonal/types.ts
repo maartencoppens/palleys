@@ -22,8 +22,6 @@ export type SeasonSlot =
   | "howItWorksAfter"
   /** Over the featured collection section (absolute). */
   | "collectionDecor"
-  /** On the corner of a featured collectible card; gets the card's index. */
-  | "collectibleCorner"
   /** Over the Made in Gent section (absolute). */
   | "madeInGentDecor"
   /** Over the charity section (absolute). */
@@ -36,11 +34,9 @@ export type SeasonSlot =
   | "pageHeroDecor"
   /** First item of a secondary page's hero text, above the eyebrow. */
   | "pageHeroBeforeTitle"
-  /** On the corner of a collectible card in the shop grid; gets the card's index. */
-  | "shopCardCorner"
   /** Over the top of the shop page's product area, under the hero (absolute). */
   | "shopDecor"
-  /** On a team member's avatar (about page, in the member card); gets the member's index. */
+  /** On a team member's card (about page, absolute within the card); gets the member's index. */
   | "teamAvatar"
   /** A strip at the top of the footer's green area when there's no CTA card above it (in the flow, so it adds height). */
   | "footerTop"

@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import Image from "next/image";
 import Button from "@/components/design/Button";
 import { Link } from "@/core/locale/client";
@@ -20,11 +19,6 @@ export type Product = {
   stock?: number | null;
 };
 
-type ProductCardProps = Product & {
-  /** Drawn in the top-right corner of the image area, moving along with the card (e.g. a seasonal Santa hat). */
-  decoration?: ReactNode;
-};
-
 /*
  * Figma: featured-product-card, 313×382. The whole card opens the product: a second link covers the card, hidden from
  * screen readers and the keyboard (the "Shop" button is the real one). It's its own element rather than an ::after of
@@ -40,8 +34,7 @@ export default async function ProductCard({
   tag,
   soldOut = false,
   stock = null,
-  decoration,
-}: ProductCardProps) {
+}: Product) {
   const [{ collection: m }, locale] = await Promise.all([getMessages(), getLocale()]);
   return (
     // `relative` keeps the absolutely positioned sr-only text inside the card (and inside the scroll row on phones).
@@ -77,7 +70,6 @@ export default async function ProductCard({
             sizes="289px"
           />
         </div>
-        {decoration}
       </div>
 
       <div className="flex flex-1 flex-col justify-between gap-8 px-s pt-s pb-m">

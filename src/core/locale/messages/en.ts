@@ -1239,8 +1239,6 @@ export const en: Messages = {
     christmas: {
       greeting: "Merry Pawmas!",
       sticker: ["New!", "with a", "Santa hat"],
-      heroNote: "New for Christmas: your Palley with a Santa hat. The clip fits a Christmas tree branch too.",
-      heroNoteDeadline: "Order before {date}.",
       bannerNew: "New: your pet with a Santa hat",
       bannerDeadline: "Order before {date} = under the tree in time",
       feature: {

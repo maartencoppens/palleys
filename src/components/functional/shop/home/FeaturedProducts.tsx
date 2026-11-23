@@ -26,9 +26,9 @@ async function LiveProducts() {
   return (
     <>
       <ul className={rowClassName}>
-        {collectibles.map((collectible, index) => (
+        {collectibles.map((collectible) => (
           <li key={collectible.id} className={itemClassName}>
-            <CollectibleCard collectible={collectible} decoration={<Seasonal slot="collectibleCorner" index={index} />} />
+            <CollectibleCard collectible={collectible} />
           </li>
         ))}
       </ul>

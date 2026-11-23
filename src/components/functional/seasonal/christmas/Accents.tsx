@@ -70,25 +70,14 @@ export function ChristmasCollectionOrnaments() {
 }
 
 /*
- * A Santa hat hung on the top-right corner of the first featured cards' image area. Rendered inside the card (its
- * `decoration`), so it moves along when the card lifts on hover; the card clips, so it stays within the corner.
- */
-export function ChristmasCardHat({ index }: SeasonSlotProps) {
-  if (index > 1) return null;
-  return (
-    <SantaHat className="pointer-events-none absolute -top-1 right-1 h-auto w-[68px] origin-bottom rotate-[16deg]" />
-  );
-}
-
-/*
- * On a team member's avatar (about page). Drawn in the member card, which centres the avatar under 24px (md: 32px) of
- * padding; the avatar is 128px (md: 160px). Brim centred on the avatar, covering its top ~14px. Alternating tilt.
+ * On a team member's card (about page), like the hat on the logo: brim on the card's top edge near the top-right corner,
+ * tilted with the rounded corner. Not on the photo itself. Every other card tilts a little more, so the row looks lively.
  */
 export function ChristmasTeamHat({ index }: SeasonSlotProps) {
-  const tilt = index % 2 === 0 ? "-rotate-[12deg]" : "rotate-[10deg]";
+  const tilt = index % 2 === 0 ? "rotate-[18deg]" : "rotate-[24deg]";
   return (
     <SantaHat
-      className={`pointer-events-none absolute -top-[9px] left-1/2 h-auto w-[72px] -translate-x-[42%] origin-bottom md:-top-[10px] md:w-[88px] ${tilt}`}
+      className={`pointer-events-none absolute -top-[32px] -right-[8px] h-auto w-16 origin-bottom md:-top-[38px] md:-right-[10px] md:w-[76px] ${tilt}`}
     />
   );
 }

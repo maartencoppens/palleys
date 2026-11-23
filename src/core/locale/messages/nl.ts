@@ -1506,8 +1506,6 @@ export const nl = {
     christmas: {
       greeting: "Merry Pawmas!",
       sticker: ["Nieuw!", "met", "kerstmuts"],
-      heroNote: "Nieuw voor kerst: je Palley met kerstmuts. Het klemmetje past ook aan een kerstboomtak.",
-      heroNoteDeadline: "Bestel vóór {date}.",
       bannerNew: "Nieuw: je huisdier met kerstmuts",
       bannerDeadline: "Bestel vóór {date} = op tijd onder de kerstboom",
       feature: {

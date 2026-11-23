@@ -1,7 +1,6 @@
 import { SeasonAttribute } from "../SeasonAttribute";
 import type { SeasonSlotProps, SeasonSlots } from "../types";
 import {
-  ChristmasCardHat,
   ChristmasCharityOrnaments,
   ChristmasCollectionOrnaments,
   ChristmasFooterGreeting,
@@ -17,7 +16,6 @@ import { ChristmasPageHeroDecor, ChristmasPageHeroGreeting } from "./PageHero";
 import { ChristmasFeature } from "./ChristmasFeature";
 import { ChristmasHeroDecor } from "./HeroDecor";
 import { ChristmasHeroGreeting } from "./HeroGreeting";
-import { ChristmasHeroNote } from "./HeroNote";
 
 function ChristmasRoot({ season }: SeasonSlotProps) {
   return <SeasonAttribute season={season.id} />;
@@ -28,12 +26,10 @@ export const christmasSlots: SeasonSlots = {
   root: ChristmasRoot,
   heroDecor: ChristmasHeroDecor,
   heroBeforeTitle: ChristmasHeroGreeting,
-  heroAfterText: ChristmasHeroNote,
   afterHero: ChristmasFeature,
   stepBadge: ChristmasStepHat,
   howItWorksAfter: ChristmasHowItWorksNote,
   collectionDecor: ChristmasCollectionOrnaments,
-  collectibleCorner: ChristmasCardHat,
   madeInGentDecor: ChristmasMadeInGentSnow,
   charityDecor: ChristmasCharityOrnaments,
   footerDecor: ChristmasFooterLights,
@@ -41,7 +37,6 @@ export const christmasSlots: SeasonSlots = {
   ctaPhoto: ChristmasCtaPhoto,
   pageHeroDecor: ChristmasPageHeroDecor,
   pageHeroBeforeTitle: ChristmasPageHeroGreeting,
-  shopCardCorner: ChristmasCardHat,
   shopDecor: ChristmasCollectionOrnaments,
   teamAvatar: ChristmasTeamHat,
   footerTop: ChristmasFooterLightsStrip,
