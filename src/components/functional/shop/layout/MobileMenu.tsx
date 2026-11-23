@@ -166,9 +166,14 @@ export default function MobileMenu({
             ref={closeRef}
             type="button"
             onClick={onClose}
-            className="grid size-12 place-items-center rounded-full bg-off-white/10 transition-colors hover:bg-off-white/20"
+            className="group relative grid size-12 place-items-center rounded-full"
             aria-label={nav.closeMenu}
           >
+            {/* The blob is a separate layer, so the button's focus ring isn't cut off by the mask. */}
+            <span
+              className="absolute inset-0 bg-off-white/10 mask-blob-2 transition-colors group-hover:bg-off-white/20"
+              aria-hidden
+            />
             <span className="relative block size-5" aria-hidden>
               <span className="absolute top-1/2 left-0 h-[3px] w-5 -translate-y-1/2 rotate-45 rounded-full bg-off-white" />
               <span className="absolute top-1/2 left-0 h-[3px] w-5 -translate-y-1/2 -rotate-45 rounded-full bg-off-white" />

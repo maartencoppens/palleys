@@ -15,6 +15,9 @@ type PanelProps = {
   children: React.ReactNode;
 };
 
+/* The panel number sits in the brand blob; each panel gets its own of the three shapes. */
+const BLOB_MASKS = ["mask-blob-1", "mask-blob-2", "mask-blob-3"];
+
 const badgeClassName: Record<StepStatus, string> = {
   done: "bg-medium-green",
   active: "bg-coral",
@@ -44,7 +47,7 @@ export default function Panel({
     >
       <header className="flex items-center gap-3 md:gap-4">
         <span
-          className={`grid size-10 shrink-0 place-items-center rounded-full font-display text-lg font-bold text-off-white md:size-12 md:text-[22px] ${badgeClassName[status]}`}
+          className={`grid size-10 shrink-0 place-items-center font-display text-lg font-bold text-off-white md:size-12 md:text-[22px] ${BLOB_MASKS[(number - 1) % BLOB_MASKS.length]} ${badgeClassName[status]}`}
           aria-hidden
         >
           {number}

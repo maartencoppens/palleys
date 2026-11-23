@@ -16,6 +16,9 @@ import type { Messages } from "@/core/locale/messages";
 import { fill } from "@/core/locale/fill";
 import { prefersReducedMotion } from "@/core/utils/gsap";
 
+/* Photos and their step numbers use the brand blob shapes instead of circles. */
+const BLOB_MASKS = ["mask-blob-1", "mask-blob-2", "mask-blob-3"];
+
 type HeroCarouselProps = {
   m: Messages["hero"]["flow"];
 };
@@ -184,18 +187,25 @@ export default function HeroCarousel({ m }: HeroCarouselProps) {
                       distance === 0 ? "scale-100" : "scale-[0.58]"
                     } ${distance === 2 ? "opacity-0" : "opacity-100"}`}
                   >
-                    <Image
-                      src={images[index]}
-                      width={640}
-                      height={640}
-                      sizes="(min-width: 1280px) 460px, 240px"
-                      loading="eager"
-                      draggable={false}
-                      alt={step.alt}
-                      className="size-full rounded-full bg-off-white object-cover shadow-[0_24px_48px_-16px_rgb(0_0_0/0.45)] ring-[6px] ring-off-white"
-                    />
+                    {/*
+                     * The photo sits in the brand blob. A mask cuts off rings and box-shadows, so the off-white rim is a
+                     * slightly larger blob behind the photo and the shadow is a drop-shadow on this wrapper.
+                     */}
+                    <div className="relative size-full drop-shadow-[0_18px_24px_rgb(0_0_0/0.35)]">
+                      <span className={`absolute inset-0 bg-off-white ${BLOB_MASKS[index % BLOB_MASKS.length]}`} aria-hidden />
+                      <Image
+                        src={images[index]}
+                        width={640}
+                        height={640}
+                        sizes="(min-width: 1280px) 460px, 240px"
+                        loading="eager"
+                        draggable={false}
+                        alt={step.alt}
+                        className={`absolute inset-[6px] size-[calc(100%-12px)] bg-off-white object-cover ${BLOB_MASKS[index % BLOB_MASKS.length]}`}
+                      />
+                    </div>
                     <span
-                      className="absolute top-[4%] left-[4%] grid size-[22%] place-items-center rounded-full bg-title-accent font-display text-[clamp(1.25rem,0.9rem+1.4vw,2rem)] font-bold text-banner-text"
+                      className={`absolute top-[4%] left-[4%] grid size-[22%] place-items-center bg-title-accent font-display text-[clamp(1.25rem,0.9rem+1.4vw,2rem)] font-bold text-banner-text ${BLOB_MASKS[(index + 1) % BLOB_MASKS.length]}`}
                       aria-hidden
                     >
                       {index + 1}

@@ -125,7 +125,7 @@ export default function Cart({ deliveryTime, returnNote, animals, editions }: Ca
   if (!cart || cart.lines.length === 0) {
     return (
       <div className="flex flex-col items-center gap-6 rounded-3xl bg-white px-6 py-10 text-center md:rounded-[32px] md:py-14">
-        <div className="relative size-40 overflow-hidden rounded-full bg-light-yellow md:size-48">
+        <div className="relative size-40 overflow-hidden bg-light-yellow mask-blob-1 md:size-48">
           <Image
             src="/images/products/golden-retriever.webp"
             alt=""

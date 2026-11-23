@@ -66,7 +66,7 @@ export default function CheckoutReturn() {
   if (paid) {
     return (
       <div role="status" className={card}>
-        <span className="grid size-14 place-items-center rounded-full bg-medium-green" aria-hidden>
+        <span className="grid size-14 place-items-center bg-medium-green mask-blob-2" aria-hidden>
           <Image src="/images/create/check.svg" width={24} height={18} alt="" />
         </span>
         <h1 className="font-display text-3xl font-bold text-medium-green md:text-4xl">{m.paidTitle}</h1>

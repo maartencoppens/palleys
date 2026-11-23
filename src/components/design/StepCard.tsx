@@ -41,8 +41,9 @@ export default function StepCard({ number, title, description, blob, icon, class
         />
 
         {/*
-         * SVG instead of text in a circle: the number scales with the artwork's zoom as one shape, so a
-         * browser's minimum font size or text autosizing on phones can't push it out of the circle.
+         * SVG instead of text in a blob: the number scales with the artwork's zoom as one shape, so a
+         * browser's minimum font size or text autosizing on phones can't push it out of the badge.
+         * The badge is the brand blob (blob-1), scaled from its 273×267 artwork into the 60px box.
          */}
         <svg
           data-animate="wiggle"
@@ -50,7 +51,11 @@ export default function StepCard({ number, title, description, blob, icon, class
           viewBox="0 0 60 60"
           aria-hidden
         >
-          <circle cx="30" cy="30" r="30" className="fill-medium-green" />
+          <path
+            d="M273 121.5C273 204.343 218.843 267 136 267C53.1573 267 0 226.343 0 143.5C0 60.6573 22.1573 0 105 0C187.843 0 273 38.6573 273 121.5Z"
+            transform="scale(0.2198 0.2247)"
+            className="fill-medium-green"
+          />
           <text
             x="30"
             y="30"

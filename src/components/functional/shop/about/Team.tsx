@@ -42,6 +42,9 @@ const members: Member[] = [
 ];
 
 // Avatar colours repeat in the Figma order.
+/* Avatars use the brand blob instead of a circle; each member gets one of the three shapes. */
+const AVATAR_BLOBS = ["mask-blob-1", "mask-blob-2", "mask-blob-3"];
+
 const avatarColours = [
   "bg-coral",
   "bg-accent-highlights",
@@ -70,7 +73,7 @@ export default async function Team() {
             className="flex flex-col items-center gap-3 rounded-[32px] bg-white p-6 text-center md:p-8"
           >
             <div
-              className={`relative grid size-32 place-items-center overflow-hidden rounded-full md:size-40 ${avatarColours[index % avatarColours.length]}`}
+              className={`relative grid size-32 place-items-center overflow-hidden md:size-40 ${AVATAR_BLOBS[index % AVATAR_BLOBS.length]} ${avatarColours[index % avatarColours.length]}`}
             >
               {member.photo ? (
                 <Image

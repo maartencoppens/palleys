@@ -22,7 +22,7 @@ export default async function StudentCompany() {
       className="mx-auto max-w-[1440px] section-x section-pt"
     >
       <div data-animate="pop" className="flex flex-col items-start gap-6 rounded-[32px] bg-light-yellow px-6 py-8 md:flex-row md:items-center md:gap-10 md:rounded-[40px] md:px-12 md:py-12 lg:gap-14 lg:px-16 lg:py-14">
-        <span className="grid size-24 shrink-0 place-items-center rounded-full bg-orange md:size-[140px]" aria-hidden>
+        <span className="grid size-24 shrink-0 place-items-center bg-orange mask-blob-1 md:size-[140px]" aria-hidden>
           <Image className="w-[60%] md:w-auto" src="/images/about/cap.svg" width={58.6667} height={43.3333} alt="" />
         </span>
 

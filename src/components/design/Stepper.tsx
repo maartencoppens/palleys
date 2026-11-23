@@ -3,10 +3,22 @@ import { useMessages } from "@/core/locale/client";
 import { fill } from "@/core/locale/fill";
 import { STEP_IDS, type StepId, type StepStatus } from "@/data/options";
 
-const circleClassName: Record<StepStatus, string> = {
+/*
+ * Each step number sits in the brand blob (one shape per step). A mask cuts off borders, so the outline of an
+ * upcoming step is a second, slightly smaller white blob on top of the orange one.
+ */
+const BLOB_MASKS = ["mask-blob-1", "mask-blob-2", "mask-blob-3"];
+
+const blobClassName: Record<StepStatus, string> = {
   done: "bg-medium-green",
-  active: "bg-coral text-off-white",
-  upcoming: "border-2 border-accent-highlights bg-white text-text-primary",
+  active: "bg-coral",
+  upcoming: "bg-accent-highlights",
+};
+
+const numberClassName: Record<StepStatus, string> = {
+  done: "",
+  active: "text-off-white",
+  upcoming: "text-text-primary",
 };
 
 /*
@@ -38,9 +50,14 @@ export default function Stepper({
                 aria-current={stepStatus === "active" ? "step" : undefined}
               >
                 <span
-                  className={`grid size-10 place-items-center rounded-full font-display text-xl font-bold md:size-[52px] md:text-2xl ${circleClassName[stepStatus]}`}
+                  className={`relative grid size-10 place-items-center font-display text-xl font-bold md:size-[52px] md:text-2xl ${numberClassName[stepStatus]}`}
                   aria-hidden
                 >
+                  <span className={`absolute inset-0 ${BLOB_MASKS[index % BLOB_MASKS.length]} ${blobClassName[stepStatus]}`} />
+                  {stepStatus === "upcoming" && (
+                    <span className={`absolute inset-[2px] bg-white ${BLOB_MASKS[index % BLOB_MASKS.length]}`} />
+                  )}
+                  <span className="relative grid place-items-center">
                   {stepStatus === "done" ? (
                     <Image
                       src="/images/create/check.svg"
@@ -51,6 +68,7 @@ export default function Stepper({
                   ) : (
                     index + 1
                   )}
+                  </span>
                 </span>
                 <span
                   className={`hidden font-display text-xl font-medium sm:inline md:text-2xl ${stepStatus === "upcoming" ? "text-text-primary" : "text-medium-green"}`}
