@@ -245,7 +245,7 @@ function PostProductionBatch({ batch }: { batch: ProductionBatchView }) {
             </>
           )}
           {deliver.map((order) => (
-            <BatchOrderCard key={order.id} order={order} itemActions={checkIn(order)}>
+            <BatchOrderCard key={order.id} order={order} itemActions={checkIn(order)} withComments>
               {order.address && <p className="text-sm">{order.address}</p>}
               {open(order) ? (
                 <FinishOrderForm orderId={order.id} deliveryType={order.deliveryType} disabled={!order.allCheckedIn} />
@@ -259,7 +259,7 @@ function PostProductionBatch({ batch }: { batch: ProductionBatchView }) {
         <section aria-label="Afhalen" className="flex flex-col gap-4">
           <h3 className={h3}>Afhalen · {pickup.length}</h3>
           {pickup.map((order) => (
-            <BatchOrderCard key={order.id} order={order} itemActions={checkIn(order)}>
+            <BatchOrderCard key={order.id} order={order} itemActions={checkIn(order)} withComments>
               <p className="text-sm">
                 {order.deliveryLabel}
                 <br />

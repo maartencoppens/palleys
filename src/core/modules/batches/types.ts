@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { BatchStatus, OrderStatus } from "@/db/generated/enums";
 import { MAX_BATCH_ORDERS, PICKUP_UPDATE_MAX_LENGTH } from "@/data/batches";
 import { ORDER_STEPS } from "./steps";
+import type { PalleyComment } from "./comments";
 
 export const batchOrdersSchema = z.object({ orderIds: z.array(z.uuid()).min(1).max(MAX_BATCH_ORDERS) });
 export const batchActionSchema = z.object({ action: z.enum(["send_to_jlc", "received", "ship_all_deliveries"]) });
@@ -35,6 +36,10 @@ export type BatchItemView = {
   printReady: boolean;
   checkedInAt: string | null;
   checkedInBy: string | null;
+  /** Extras (a Santa hat…), as labels: check them at check-in. */
+  addons: string[];
+  /** What the customer and the team wrote about this Palley, oldest first. */
+  comments: PalleyComment[];
 };
 
 export type BatchOrderView = {
@@ -56,6 +61,8 @@ export type BatchOrderView = {
   attentionReason: string | null;
   allCheckedIn: boolean;
   items: BatchItemView[];
+  /** What the team wrote about the whole order (notepad, typed reasons), oldest first. */
+  comments: PalleyComment[];
 };
 
 export type BatchView = {

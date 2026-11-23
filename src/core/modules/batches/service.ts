@@ -21,6 +21,8 @@ import { zipSync } from "fflate";
 import { BATCHABLE_ORDER_STATUS, isBatchEditable } from "./status";
 import { ORDER_STEP_LABELS, ORDER_STEP_PAGES, reachableOrderSteps } from "./steps";
 import { batchContents, deliveryGroup, isItemPrintReady, isOrderPrintReady } from "./utils";
+import { orderComments, palleyComments } from "./comments";
+import { addonLabels } from "@/core/modules/addons/utils";
 import { completeBatchIfDone } from "./sync";
 import type {
   BatchesPage,
@@ -65,7 +67,17 @@ const ITEM_SELECT = {
   title: true,
   checkedInAt: true,
   checkedInBy: true,
-  preview: { select: { status: true, processedKey: true, poseImageKey: true } },
+  notes: true,
+  addons: true,
+  preview: {
+    select: {
+      status: true,
+      processedKey: true,
+      poseImageKey: true,
+      // The reasons the team gave for the model's status changes: part of the Palley's comments.
+      statusChanges: { orderBy: { createdAt: "asc" }, select: { reason: true, changedBy: true, createdAt: true, toStatus: true } },
+    },
+  },
   collectible: { select: { modelKey: true, imageKey: true } },
 } as const satisfies Prisma.OrderItemSelect;
 
@@ -85,6 +97,13 @@ const ORDER_SELECT = {
   country: true,
   locale: true,
   attentionReason: true,
+  createdBy: true,
+  createdAt: true,
+  adminNotes: true,
+  adminNotesUpdatedBy: true,
+  adminNotesUpdatedAt: true,
+  // Only the admin's entries can hold typed text (batches/comments.ts picks those out).
+  statusChanges: { where: { source: { startsWith: "admin:" }, note: { not: null } }, orderBy: { createdAt: "asc" }, select: { note: true, source: true, createdAt: true } },
   reprintOf: { select: { number: true } },
   shipment: {
     select: { deliveryType: true, label: true, shippedAt: true, trackingCode: true, trackingUrl: true, readyForPickupAt: true, lastPickupUpdateAt: true },
@@ -114,6 +133,8 @@ async function toOrderView(order: OrderRow): Promise<BatchOrderView> {
       printReady: isItemPrintReady(item),
       checkedInAt: iso(item.checkedInAt),
       checkedInBy: item.checkedInBy,
+      addons: addonLabels(item.addons),
+      comments: palleyComments(item, order),
     })),
   );
   const deliveryType = order.shipment?.deliveryType ?? null;
@@ -136,6 +157,7 @@ async function toOrderView(order: OrderRow): Promise<BatchOrderView> {
     attentionReason: order.attentionReason,
     allCheckedIn: allItemsCheckedIn(order.items.map(checkInItemOf)),
     items,
+    comments: orderComments(order),
   };
 }
 
