@@ -6,9 +6,10 @@ import { postAddToCart } from "@/core/modules/cart/api";
 import type { CartView } from "@/core/modules/cart/types";
 import { useMessages } from "@/core/locale/client";
 import type { Attachment, Edition } from "@/data/options";
+import type { Addon } from "@/data/addons";
 
 type Photo = { id: string; file: File };
-type Input = { animal: string; edition: Edition; attachment?: Attachment; photos: Photo[]; notes: string };
+type Input = { animal: string; edition: Edition; attachment?: Attachment; addons?: Addon[]; photos: Photo[]; notes: string };
 type Status = "idle" | "uploading" | "adding" | "done";
 
 /**
@@ -23,7 +24,7 @@ export function useAddPalleyToCart() {
   const [cart, setCart] = useState<CartView | null>(null);
   const upload = useRef<{ photoIds: string; previewId: string } | null>(null);
 
-  const addToCart = useCallback(async ({ animal, edition, attachment, photos, notes }: Input) => {
+  const addToCart = useCallback(async ({ animal, edition, attachment, addons, photos, notes }: Input) => {
     setError(null);
     const photoIds = photos.map((p) => p.id).join(",");
     try {
@@ -39,6 +40,7 @@ export function useAddPalleyToCart() {
         animal,
         edition,
         attachment,
+        ...(addons && addons.length > 0 && { addons }),
         notes: notes.trim() || undefined,
       });
       setCart(updated);

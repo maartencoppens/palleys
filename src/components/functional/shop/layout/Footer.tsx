@@ -10,6 +10,7 @@ import { PRIVACY_URL, TERMS_URL } from "@/data/checkout";
 import { CONTACT_DETAILS_URL, SOCIAL_LINKS } from "@/data/company";
 import { SHIPPING_POLICY_URL } from "@/data/shipping";
 import { RETURN_URL } from "@/data/returns";
+import Seasonal from "@/components/functional/seasonal/Seasonal";
 
 const socialIcons = [
   {
@@ -151,7 +152,7 @@ export default async function Footer({
               aria-hidden
             />
             <div data-animate="pop" className="relative mx-auto max-w-[1280px]">
-              <CtaCard />
+              <CtaCard photo={(photo) => <Seasonal slot="ctaPhoto" fallback={photo} />} />
             </div>
           </div>
         </div>
@@ -168,8 +169,11 @@ export default async function Footer({
           <hr className="border-off-white/20" />
         </div>
       )}
+      {/* With a card above, the season decorates the green area itself (footerDecor); otherwise it gets a strip. */}
+      {!cta && <Seasonal slot="footerTop" />}
 
-      <div className="bg-medium-green">
+      <div className="relative bg-medium-green">
+        {cta && <Seasonal slot="footerDecor" />}
         <div
           className={`mx-auto flex w-full max-w-[var(--container-page)] flex-col gap-12 px-[clamp(20px,2.7vw,52px)] pb-4 xl:gap-[73px] ${cta ? "section-pt xl:pt-[clamp(120px,16.3vw,235px)]" : "pt-0"}`}
         >
@@ -190,6 +194,7 @@ export default async function Footer({
                 <p className="font-label text-2xl leading-[normal] font-extrabold md:text-[32px]">
                   {m.tagline}
                 </p>
+                <Seasonal slot="footerGreeting" />
               </div>
 
               <Suspense

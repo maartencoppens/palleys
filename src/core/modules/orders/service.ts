@@ -14,6 +14,7 @@ import { nextCounterValue, type CounterClient } from "@/db/counters";
 import { ORDER_START } from "@/data/naming";
 import type { AdminOrderDetail, AdminOrderListItem, AdminOrderStats, OrderCheckInRow, OrderListQuery } from "./types";
 import type { OrderStatusView } from "@/core/modules/checkout/types";
+import { addonLabels } from "@/core/modules/addons/utils";
 
 const ORDER_LIST_LIMIT = 100;
 
@@ -59,6 +60,7 @@ export async function listOrdersForAdmin(query: OrderListQuery): Promise<AdminOr
   const where: Prisma.OrderWhereInput = {};
   if (query.status === "ATTENTION") where.attentionReason = { not: null };
   else if (query.status) where.status = query.status;
+  if (query.addon) where.items = { some: { addons: { has: query.addon } } };
   if (query.q) {
     where.OR = [
       { number: { contains: query.q, mode: "insensitive" } },
@@ -88,7 +90,7 @@ export async function listOrdersForAdmin(query: OrderListQuery): Promise<AdminOr
       createdAt: true,
       paidAt: true,
       shipment: { select: { deliveryType: true } },
-      items: { select: { quantity: true } },
+      items: { select: { quantity: true, addons: true } },
       payments: { orderBy: { createdAt: "desc" }, take: 1, select: { status: true, mode: true } },
     },
   });
@@ -109,6 +111,7 @@ export async function listOrdersForAdmin(query: OrderListQuery): Promise<AdminOr
     createdAt: order.createdAt.toISOString(),
     paidAt: order.paidAt?.toISOString() ?? null,
     deliveryType: order.shipment?.deliveryType ?? null,
+    addons: addonLabels(order.items.flatMap((item) => item.addons)),
   }));
 }
 
@@ -219,6 +222,7 @@ export async function getOrderForAdmin(id: string): Promise<AdminOrderDetail | n
         photoUrl: photoUrls[0] ?? collectibleImageUrl(item.collectible?.imageKey ?? null),
         photoUrls,
         attachment: item.attachment,
+        addons: addonLabels(item.addons),
         collectibleHasModel: Boolean(item.collectible?.modelKey),
       };
     }),

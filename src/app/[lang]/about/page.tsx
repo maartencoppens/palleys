@@ -1,4 +1,5 @@
 import CtaCard from "@/components/design/CtaCard";
+import Seasonal from "@/components/functional/seasonal/Seasonal";
 import PageHero from "@/components/design/PageHero";
 import Story from "@/components/functional/shop/about/Story";
 import StudentCompany from "@/components/functional/shop/about/StudentCompany";
@@ -32,6 +33,8 @@ export default async function AboutPage() {
         eyebrow={m.eyebrow}
         title={m.title}
         intro={m.intro}
+        decoration={<Seasonal slot="pageHeroDecor" />}
+        beforeTitle={<Seasonal slot="pageHeroBeforeTitle" />}
       />
       <main className="bg-off-white">
         <Story />
@@ -42,7 +45,7 @@ export default async function AboutPage() {
           className="section-x section-pb lg:px-20"
         >
           <div data-animate="pop" className="mx-auto max-w-[1280px]">
-            <CtaCard />
+            <CtaCard photo={(photo) => <Seasonal slot="ctaPhoto" fallback={photo} />} />
           </div>
         </section>
         <Charity flowsIntoFooter />

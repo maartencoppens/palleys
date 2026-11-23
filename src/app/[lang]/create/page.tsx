@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { getLocale, getMessages, metadataLocale } from "@/core/locale/server";
 import { getSiteSettings } from "@/core/modules/settings/service";
 import Configurator from "@/components/functional/create/Configurator";
+import { getSeasonalConfigurator } from "@/components/functional/seasonal/configurator";
 import Footer from "@/components/functional/shop/layout/Footer";
 import InfoBanner from "@/components/functional/shop/home/InfoBanner";
 import Navbar from "@/components/functional/shop/layout/Navbar";
@@ -27,7 +28,11 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/create">):
  */
 async function LiveConfigurator() {
   await connection();
-  const [{ catalog, content: allContent }, locale] = await Promise.all([getSiteSettings(), getLocale()]);
+  const [{ catalog, content: allContent }, locale, seasonal] = await Promise.all([
+    getSiteSettings(),
+    getLocale(),
+    getSeasonalConfigurator(),
+  ]);
   const content = allContent[locale];
   const { meta, cart } = MESSAGES[locale];
   // From the cheapest to the dearest edition on sale.
@@ -51,7 +56,13 @@ async function LiveConfigurator() {
           returnable: false,
         })}
       />
-      <Configurator catalog={catalog} deliveryTime={content.deliveryTime} returnNote={content.returnNote} />
+      <Configurator
+        catalog={catalog}
+        deliveryTime={content.deliveryTime}
+        returnNote={content.returnNote}
+        addons={seasonal.addons}
+        keychainTip={seasonal.keychainTip}
+      />
       <SiteAnimations />
     </>
   );

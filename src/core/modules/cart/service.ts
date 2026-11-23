@@ -18,6 +18,10 @@ import { COLLECTIBLE_EDITION } from "@/data/collectibles";
 import { findAnimal } from "@/core/modules/animals/utils";
 import type { KeychainSize } from "@/data/sizes";
 import { attachmentSchema, editionSchema } from "./types";
+import { normalizeAddons, type Addon } from "@/data/addons";
+import { addonsPriceCents, titleWithAddons } from "@/core/modules/addons/utils";
+import { orderableAddons } from "@/core/modules/addons/service";
+import type { SeasonalSettings } from "@/core/modules/settings/types";
 import type {
   AddCollectibleToCartRequest,
   AddToCartInput,
@@ -55,6 +59,7 @@ const LINE_SELECT = {
   edition: true,
   attachment: true,
   animal: true,
+  addons: true,
   size: true,
   notes: true,
   quantity: true,
@@ -81,6 +86,7 @@ type StoredLine = {
   edition: string | null;
   attachment: string | null;
   animal: string | null;
+  addons: string[];
   size: string;
   notes: string | null;
   quantity: number;
@@ -111,6 +117,8 @@ export type ResolvedCartLine = {
   notes: string | null;
   quantity: number;
   unitCents: number;
+  /** Extras (data/addons.ts), only on a Palley op maat; their price is in unitCents, their label in the title. */
+  addons: Addon[];
 } & (
   | {
       kind: "personalized";
@@ -168,7 +176,11 @@ const editionLabelOf = (value: Edition) => editions.find((option) => option.valu
 // A collectible line from before the choice existed is a keychain.
 const collectibleEdition = (value: string | null) => editionSchema.safeParse(value).data ?? COLLECTIBLE_EDITION;
 
-function resolveLine(line: StoredLine, catalog: CatalogSettings): ResolvedCartLine | null {
+function resolveLine(
+  line: StoredLine,
+  catalog: CatalogSettings,
+  addonPrices: SeasonalSettings["addonPrices"],
+): ResolvedCartLine | null {
   if (line.collectible) {
     const collectible = line.collectible;
     if (!collectible.published || collectible.soldOut || collectible.archivedAt) return null;
@@ -195,6 +207,7 @@ function resolveLine(line: StoredLine, catalog: CatalogSettings): ResolvedCartLi
       notes: null,
       quantity: line.quantity,
       unitCents: collectible.priceCents,
+      addons: [],
       imageUrl: collectibleImageUrl(collectible.imageKey),
     };
   }
@@ -208,7 +221,9 @@ function resolveLine(line: StoredLine, catalog: CatalogSettings): ResolvedCartLi
   const labels = variantLabel(edition.data, animal);
   const attachment = edition.data === "keychain" ? chosenAttachment(line.attachment) : null;
   const attachmentLabel = attachment && labelOf(attachment);
-  const title = [labels.title, labels.edition, attachmentLabel].filter(Boolean).join(" · ");
+  // Chosen in season; the line keeps them (and their price) after the season ends, until it's ordered.
+  const addons = normalizeAddons(line.addons);
+  const title = titleWithAddons([labels.title, labels.edition, attachmentLabel].filter(Boolean).join(" · "), addons);
   return {
     id: line.id,
     kind: "personalized",
@@ -228,7 +243,8 @@ function resolveLine(line: StoredLine, catalog: CatalogSettings): ResolvedCartLi
     attachmentLabel,
     notes: line.notes,
     quantity: line.quantity,
-    unitCents: priceFor(variant, catalog.prices),
+    unitCents: priceFor(variant, catalog.prices) + addonsPriceCents(addons, addonPrices),
+    addons,
     imageUrl: null,
   };
 }
@@ -254,11 +270,11 @@ async function loadLines(cartId: string): Promise<ResolvedCartLine[]> {
     orderBy: { createdAt: "asc" },
     select: LINE_SELECT,
   });
-  const { catalog } = await getShopSettings();
+  const { catalog, seasonal } = await getShopSettings();
   const resolved: ResolvedCartLine[] = [];
   const stale: string[] = [];
   for (const line of lines) {
-    const ok = resolveLine(line, catalog);
+    const ok = resolveLine(line, catalog, seasonal.addonPrices);
     if (ok) resolved.push(ok);
     else stale.push(line.id);
   }
@@ -294,6 +310,7 @@ async function toView(lines: ResolvedCartLine[]): Promise<CartView> {
     animalLabels: line.animalLabels,
     edition: line.edition,
     attachment: line.attachment,
+    addons: line.addons,
     notes: line.notes,
     quantity: line.quantity,
     unitCents: line.unitCents,
@@ -350,6 +367,9 @@ export async function addPreviewToCart(
   if (!animalOnSale || catalog.disabledEditions.includes(input.edition)) {
     throw new CartError("option_unavailable");
   }
+  // Extras only while their season is on.
+  const addons = await orderableAddons(input.addons);
+  if (addons === null) throw new CartError("option_unavailable");
 
   const { cart, cartToken } = await findOrCreateCart(token);
 
@@ -366,6 +386,7 @@ export async function addPreviewToCart(
       edition: input.edition,
       attachment: input.edition === "keychain" ? (input.attachment ?? null) : null,
       animal: input.animal,
+      addons,
       size: DEFAULT_SIZE,
       notes: input.notes || null,
     },

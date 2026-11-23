@@ -6,7 +6,9 @@ import type { AnimalOption } from "@/core/modules/animals/types";
 import type { PromptSettings } from "@/core/modules/settings/types";
 import { Badge } from "@/components/design/Badge";
 import { Textarea } from "@/components/design/form";
-import { MAX_PROMPT_LENGTH } from "@/data/prompts";
+import { MAX_ANIMAL_PROMPT_LENGTH, MAX_PROMPT_LENGTH } from "@/data/prompts";
+import { ADDONS, type Addon } from "@/data/addons";
+import { SEASON_LABELS } from "@/data/seasons";
 import { SaveBar, SettingsCard } from "./SettingsParts";
 import { useSettingsSave } from "./useSettingsSave";
 
@@ -29,6 +31,9 @@ export function PromptSettingsForm({ prompts, defaults, animals }: PromptSetting
   const [own, setOwn] = useState<Record<string, string>>(() =>
     Object.fromEntries(animals.flatMap((animal) => (prompts.animals[animal.code]?.trim() ? [[animal.code, prompts.animals[animal.code]]] : []))),
   );
+  const [addonPrompts, setAddonPrompts] = useState<Record<Addon, string>>(
+    () => Object.fromEntries(ADDONS.map((addon) => [addon.value, prompts.addons[addon.value]?.trim() || defaults.addons[addon.value] || ""])) as Record<Addon, string>,
+  );
   const { save, saving, message, error } = useSettingsSave("prompts");
 
   const setAnimalPrompt = (code: string, text: string | null) =>
@@ -41,7 +46,7 @@ export function PromptSettingsForm({ prompts, defaults, animals }: PromptSetting
     <form
       onSubmit={(event) => {
         event.preventDefault();
-        void save({ base, animals: own });
+        void save({ base, animals: own, addons: addonPrompts });
       }}
       className="flex flex-col gap-6"
     >
@@ -118,6 +123,39 @@ export function PromptSettingsForm({ prompts, defaults, animals }: PromptSetting
               </li>
             );
           })}
+        </ul>
+      </SettingsCard>
+
+      <SettingsCard
+        title="Extra's"
+        intro="Komt onderaan de prompt (van het dier of de algemene) wanneer de klant die extra koos, bv. een kerstmuts. Houd het printbaar: niets dat uitsteekt of dun is."
+      >
+        <ul className="flex flex-col gap-5">
+          {ADDONS.map((addon) => (
+            <li key={addon.value}>
+              <label htmlFor={`prompt-addon-${addon.value}`} className="font-label text-base font-bold">
+                {addon.label} <span className="font-semibold text-text-muted">({SEASON_LABELS[addon.season]})</span>
+              </label>
+              <Textarea
+                id={`prompt-addon-${addon.value}`}
+                rows={6}
+                maxLength={MAX_ANIMAL_PROMPT_LENGTH}
+                value={addonPrompts[addon.value]}
+                onChange={(event) => setAddonPrompts((current) => ({ ...current, [addon.value]: event.target.value }))}
+                className="mt-2 min-h-40 font-mono text-sm!"
+              />
+              <div className="mt-2 flex justify-end">
+                <button
+                  type="button"
+                  className={linkClassName}
+                  disabled={addonPrompts[addon.value] === defaults.addons[addon.value]}
+                  onClick={() => setAddonPrompts((current) => ({ ...current, [addon.value]: defaults.addons[addon.value] ?? "" }))}
+                >
+                  Standaardtekst terugzetten
+                </button>
+              </div>
+            </li>
+          ))}
         </ul>
       </SettingsCard>
 

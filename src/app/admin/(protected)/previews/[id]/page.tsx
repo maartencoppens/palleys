@@ -23,6 +23,7 @@ import { StatusOverridePanel } from "@/components/functional/admin/StatusOverrid
 import { OwnModelUpload } from "@/components/functional/admin/OwnModelUpload";
 import { OWN_MODEL_HELP } from "@/core/modules/previews/own-model";
 import type { MeshyProgress } from "@/core/modules/previews/types";
+import { AddonCheck } from "@/components/functional/admin/AddonBadges";
 
 export const instant = false;
 
@@ -102,6 +103,7 @@ export default async function AdminPreviewDetailPage({
           />
         </div>
         <aside className="order-2 space-y-6 lg:order-none lg:row-span-2">
+          <AddonCheck labels={preview.addons} />
           {preview.forCollectible && (
             <section className="rounded-3xl bg-white p-6">
               <h2 className="font-display text-xl font-medium text-medium-green">Collectible-model</h2>

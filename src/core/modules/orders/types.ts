@@ -7,6 +7,7 @@ import { MANUAL_PAYMENT_METHODS } from "@/data/payment-methods";
 import { MAX_LINE_QUANTITY, MAX_ORDER_LINES, MAX_PRODUCT_PRICE_CENTS } from "@/data/pricing";
 import { MAX_SHIPPING_PRICE_CENTS, POSTAL_CODE_PATTERNS } from "@/data/shipping";
 import type { CheckInSummary } from "./check-in";
+import { ADDON_VALUES } from "@/data/addons";
 
 export const ORDER_STATUSES = [
   "PENDING_PAYMENT",
@@ -21,6 +22,8 @@ export const ORDER_STATUSES = [
 export const orderListQuerySchema = z.object({
   status: z.enum([...ORDER_STATUSES, "ATTENTION"]).optional(),
   q: z.string().trim().max(200).optional(),
+  // Only orders with this extra (data/addons.ts), e.g. every order with a Santa hat.
+  addon: z.enum(ADDON_VALUES).optional(),
 });
 
 export const resolveAttentionSchema = z.object({ note: z.string().trim().min(3).max(500) });
@@ -207,6 +210,8 @@ export type AdminOrderListItem = {
   createdAt: string;
   paidAt: string | null;
   deliveryType: string | null;
+  /** Extras on any of its Palleys, as labels ("Met kerstmuts"). */
+  addons: string[];
 };
 
 export type AdminOrderDetail = {
@@ -262,6 +267,8 @@ export type AdminOrderDetail = {
     notes: string | null;
     photoUrl: string | null;
     attachment: string | null;
+    /** Extras the customer chose (data/addons.ts), as labels: "Met kerstmuts". They're in the pose prompt. */
+    addons: string[];
     photoUrls: string[]; // de foto's van een gepersonaliseerde Palley, leeg bij een collectible
     /** A collectible is printed from its own stored model; false when nobody uploaded one yet. */
     collectibleHasModel: boolean;

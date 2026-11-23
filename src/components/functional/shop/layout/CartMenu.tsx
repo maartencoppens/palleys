@@ -42,6 +42,7 @@ export function lineChoices(
     withAnimal && line.animalLabels ? line.animalLabels[locale] : null,
     line.edition ? options.editions[line.edition] : null,
     withAttachment && line.attachment ? options.attachments[line.attachment] : null,
+    ...line.addons.map((addon) => options.addons[addon]),
   ]
     .filter(Boolean)
     .join(" · ");
@@ -224,7 +225,7 @@ export default function CartMenu({ pinned, onOpenChange, onReveal }: CartMenuPro
             </div>
           ) : lines.length === 0 ? (
             <div className="flex flex-col items-center gap-4 px-5 py-6 text-center">
-              <div className="relative size-24 overflow-hidden rounded-full bg-light-yellow">
+              <div className="relative size-24 overflow-hidden bg-light-yellow mask-blob-1">
                 <Image
                   src="/images/products/golden-retriever.webp"
                   alt=""

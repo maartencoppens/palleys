@@ -490,6 +490,7 @@ async function sendConfirmationOnce(orderId: string, idempotencySuffix = "") {
           animal: true,
           edition: true,
           attachment: true,
+          addons: true,
           quantity: true,
           unitCents: true,
           notes: true,

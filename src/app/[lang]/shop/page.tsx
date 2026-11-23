@@ -6,6 +6,7 @@ import PageHero from "@/components/design/PageHero";
 import { CollectibleCardSkeleton, CollectibleGrid } from "@/components/functional/shop/collection/CollectibleGrid";
 import Footer from "@/components/functional/shop/layout/Footer";
 import SiteAnimations from "@/components/functional/SiteAnimations";
+import Seasonal from "@/components/functional/seasonal/Seasonal";
 import { getLocale, getMessages, metadataLocale } from "@/core/locale/server";
 import { listPublishedCollectibles } from "@/core/modules/collectibles/service";
 import { pageMetadata } from "@/core/seo/metadata";
@@ -69,8 +70,11 @@ export default async function ShopPage() {
         title={m.title}
         intro={m.intro}
         backdropClassName="bg-page"
+        decoration={<Seasonal slot="pageHeroDecor" />}
+        beforeTitle={<Seasonal slot="pageHeroBeforeTitle" />}
       />
-      <main className="bg-page">
+      <main className="relative bg-page">
+        <Seasonal slot="shopDecor" />
         <div className="mx-auto max-w-[1440px] section-x section-pb pt-10 md:pt-14">
           <Suspense
             fallback={

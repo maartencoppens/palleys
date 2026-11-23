@@ -15,6 +15,7 @@ import MadeInGent from "@/components/functional/shop/home/MadeInGent";
 import WhyPalleys from "@/components/functional/shop/home/WhyPalleys";
 import Footer from "@/components/functional/shop/layout/Footer";
 import SiteAnimations from "@/components/functional/SiteAnimations";
+import Seasonal from "@/components/functional/seasonal/Seasonal";
 import { metadataLocale } from "@/core/locale/server";
 import { pageMetadata } from "@/core/seo/metadata";
 
@@ -40,6 +41,7 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
       </Suspense>
       <main>
         <Hero />
+        <Seasonal slot="afterHero" />
         <HowItWorks />
         <FeaturedProducts />
         <MadeInGent />

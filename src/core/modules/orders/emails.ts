@@ -10,6 +10,7 @@ import { findAnimal } from "@/core/modules/animals/utils";
 import type { AnimalOption } from "@/core/modules/animals/types";
 import { DEFAULT_SITE_CONTENT } from "@/data/site-content";
 import { localizedTexts } from "@/core/modules/collectibles/translations";
+import { normalizeAddons } from "@/data/addons";
 
 /*
  * Order confirmation mail: the "durable medium" consumer law asks for (order, totals, company details, terms
@@ -39,6 +40,8 @@ export type ConfirmationOrder = {
     animal: string | null;
     edition: string | null;
     attachment: string | null;
+    /** Extras on a Palley op maat (data/addons.ts), e.g. a Santa hat. */
+    addons?: string[];
     quantity: number;
     unitCents: number;
     notes: string | null;
@@ -67,7 +70,7 @@ function withdrawalNote(items: ConfirmationOrder["items"], m: Messages["email"])
 
 /** OrderItem.title is Dutch for the backoffice: a Palley is named from its options, a collectible keeps its name and adds its attachment. */
 export function itemTitle(
-  item: Pick<ConfirmationOrder["items"][number], "title" | "animal" | "edition" | "attachment" | "collectible">,
+  item: Pick<ConfirmationOrder["items"][number], "title" | "animal" | "edition" | "attachment" | "addons" | "collectible">,
   messages: Messages,
   locale: Locale,
   animals: AnimalOption[],
@@ -86,6 +89,7 @@ export function itemTitle(
     fill(messages.email.itemTitle, { animal: findAnimal(animals, item.animal)?.labels[locale] ?? item.animal }),
     editions[item.edition as Edition] ?? item.edition,
     item.attachment ? (attachments[item.attachment as Attachment] ?? item.attachment) : null,
+    ...normalizeAddons(item.addons).map((addon) => messages.options.addons[addon]),
   ]
     .filter(Boolean)
     .join(" · ");

@@ -61,6 +61,19 @@
     }
   }
 
+  /* Seasonal snowflakes (components/design/seasonal/christmas/Art.tsx): a slow drift down and sideways, then back. */
+  --animate-snow-drift: snow-drift 9s ease-in-out infinite;
+
+  @keyframes snow-drift {
+    0%,
+    100% {
+      transform: translate(0, 0);
+    }
+    50% {
+      transform: translate(6px, 14px);
+    }
+  }
+
   /* Navbar cart badge when the count changes */
   --animate-cart-badge: cart-badge-pop 0.4s ease-out;
 
@@ -151,6 +164,12 @@
 @utility stack {
   gap: var(--space-stack);
 }
+
+/*
+ * Seasonal editions: the active season sets data-season on <html> (components/functional/seasonal). Use these variants
+ * for small seasonal touches inside client components, e.g. `hidden christmas:block`. Without a season they never match.
+ */
+@custom-variant christmas (&:where([data-season="christmas"], [data-season="christmas"] *));
 
 /*
  * The brand blob (the shapes from HowItWorks, public/images/steps/blob-1..3.svg) as a mask. Use these instead of

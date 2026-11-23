@@ -6,6 +6,7 @@ import { clientMessages } from "@/core/locale/messages";
 import { metadataLocale } from "@/core/locale/server";
 import { siteUrl } from "@/core/seo/metadata";
 import { THEME_COLOR } from "@/data/seo";
+import Seasonal from "@/components/functional/seasonal/Seasonal";
 import { fontClassName, siteIcons } from "../fonts";
 import "../globals.css";
 
@@ -53,6 +54,8 @@ export default async function ShopLayout({ children, params }: LayoutProps<"/[la
   return (
     <html lang={lang} className={fontClassName} suppressHydrationWarning>
       <body>
+        {/* Marks <html> with the active season (Christmas…), if any. */}
+        <Seasonal slot="root" />
         <LocaleProvider locale={lang} messages={clientMessages(lang)}>
           {children}
         </LocaleProvider>

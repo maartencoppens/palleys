@@ -6,6 +6,8 @@ import { formatDateTime, formatPrice } from "@/core/utils/format";
 import Button from "@/components/design/Button";
 import { Badge } from "@/components/design/Badge";
 import { Input } from "@/components/design/form";
+import { AddonBadges } from "@/components/functional/admin/AddonBadges";
+import { ADDONS } from "@/data/addons";
 import { OrderStatusBadge, orderStatusLabel, PaymentStatusBadge } from "@/components/functional/admin/OrderStatusBadge";
 
 export const instant = false;
@@ -60,6 +62,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
           className="h-12 bg-white text-base! sm:max-w-md md:h-14 md:text-lg!"
         />
         {query.status && <input type="hidden" name="status" value={query.status} />}
+        {query.addon && <input type="hidden" name="addon" value={query.addon} />}
         <Button type="submit" variant="primary">
           Zoeken
         </Button>
@@ -71,6 +74,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
           const params = new URLSearchParams();
           if (filter.value) params.set("status", filter.value);
           if (query.q) params.set("q", query.q);
+          if (query.addon) params.set("addon", query.addon);
           return (
             <Link
               key={filter.value || "all"}
@@ -81,6 +85,29 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
               }`}
             >
               {filter.label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Orders with an extra, e.g. every Palley with a Santa hat: on or off, on top of the status filter. */}
+      <nav aria-label="Filter op extra" className="mt-2 flex flex-wrap gap-2">
+        {ADDONS.map((addon) => {
+          const active = query.addon === addon.value;
+          const params = new URLSearchParams();
+          if (query.status) params.set("status", query.status);
+          if (query.q) params.set("q", query.q);
+          if (!active) params.set("addon", addon.value);
+          return (
+            <Link
+              key={addon.value}
+              href={`/admin/orders${params.size ? `?${params}` : ""}`}
+              aria-current={active ? "page" : undefined}
+              className={`rounded-full border-[1.5px] px-4 py-1.5 font-label text-sm font-bold transition-colors ${
+                active ? "border-coral bg-coral text-off-white" : "border-coral/50 bg-white text-medium-green hover:bg-off-white"
+              }`}
+            >
+              ★ {addon.label}
             </Link>
           );
         })}
@@ -119,6 +146,11 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
                     {order.createdBy && (
                       <span className="ml-2" title={`Toegevoegd door ${order.createdBy}`}>
                         <Badge>Handmatig</Badge>
+                      </span>
+                    )}
+                    {order.addons.length > 0 && (
+                      <span className="ml-2">
+                        <AddonBadges labels={order.addons} />
                       </span>
                     )}
                   </td>

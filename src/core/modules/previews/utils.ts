@@ -5,6 +5,8 @@ import { palleyFileName, previewRef } from "@/core/utils/naming";
 import { collectibleIdOf } from "@/core/modules/collectibles/utils";
 import { palleyNameOf, type PalleyNameSource } from "@/core/modules/orders/utils";
 import { PAID_ORDER_STATUSES } from "@/core/modules/orders/status";
+import { addonPrompts } from "@/core/modules/addons/utils";
+import type { PromptSettings } from "@/core/modules/settings/types";
 
 const MIME_BY_EXT: Record<string, string> = {
   ...Object.fromEntries(
@@ -85,7 +87,13 @@ export const PRINT_NAME_SELECT = {
     where: { order: { status: { in: PAID_ORDER_STATUSES } } },
     // The first print, not a reprint of it.
     orderBy: { reprintNr: "asc" },
-    select: { position: true, productCode: true, reprintNr: true, order: { select: { number: true, reprintOf: { select: { number: true } } } } },
+    select: {
+      position: true,
+      productCode: true,
+      reprintNr: true,
+      addons: true,
+      order: { select: { number: true, reprintOf: { select: { number: true } } } },
+    },
     take: 1,
   },
 } as const;
@@ -143,6 +151,12 @@ export function linkPrintFiles(input: {
 }
 
 /** The prompt for one animal code: its own full prompt, or the general one when it has none (or there's no animal). */
-export function posePrompt(prompts: { base: string; animals: Partial<Record<string, string>> }, animalType: string | null) {
-  return (animalType && prompts.animals[animalType]?.trim()) || prompts.base.trim();
+export function posePrompt(
+  prompts: Pick<PromptSettings, "base" | "animals"> & Partial<Pick<PromptSettings, "addons">>,
+  animalType: string | null,
+  addons: readonly unknown[] = [],
+) {
+  const animalPrompt = (animalType && prompts.animals[animalType]?.trim()) || prompts.base.trim();
+  // The customer's extras (a Santa hat…) come last, each as its own paragraph.
+  return [animalPrompt, ...addonPrompts(addons, { addons: prompts.addons ?? {} })].join("\n\n");
 }

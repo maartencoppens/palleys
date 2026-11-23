@@ -6,6 +6,7 @@ import type { SiteContent } from "@/core/modules/settings/types";
 import { DEFAULT_SITE_CONTENT } from "@/data/site-content";
 import JsonLd from "@/components/functional/seo/JsonLd";
 import { faqData } from "@/core/seo/structured-data";
+import { getSeasonalExtras } from "@/core/modules/seasons/content";
 
 // The name makes it an exclusive accordion. The starting values and the live list are in the page at the same time while
 // it streams, so they need a name each: with one name the browser closes the first list's open question before React hydrates.
@@ -34,12 +35,14 @@ function FaqList({ faqs, name }: { faqs: SiteContent["faq"]; name: string }) {
 
 async function LiveFaqList() {
   await connection();
-  const content = await getSiteContent();
+  const [content, extras] = await Promise.all([getSiteContent(), getSeasonalExtras()]);
+  // A season (Christmas…) puts its own question first.
+  const faqs = [...extras.faq, ...content.faq];
   return (
     <>
-      <FaqList faqs={content.faq} name="faq" />
+      <FaqList faqs={faqs} name="faq" />
       {/* The same questions for search engines, which can show them right in the results. */}
-      <JsonLd data={faqData(content.faq)} />
+      <JsonLd data={faqData(faqs)} />
     </>
   );
 }

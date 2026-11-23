@@ -27,6 +27,7 @@ import { PhotoThumbnails } from "@/components/functional/admin/PhotoThumbnails";
 import { PreviewStatusBadge } from "@/components/functional/admin/PreviewStatusBadge";
 import { DeliveredOnForm } from "@/components/functional/admin/returns/DeliveredOnForm";
 import { ReturnRequestCard } from "@/components/functional/admin/returns/ReturnRequestCard";
+import { AddonBadges } from "@/components/functional/admin/AddonBadges";
 
 export const instant = false;
 
@@ -138,6 +139,11 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <p className="font-label text-base font-bold">
                       {item.title} × {item.quantity}
+                      {item.addons.length > 0 && (
+                        <span className="ml-2">
+                          <AddonBadges labels={item.addons} />
+                        </span>
+                      )}
                       {item.cancelledQuantity > 0 && (
                         <span className="ml-2 align-middle">
                           <Badge tone="danger">

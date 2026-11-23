@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { SantaHat } from "@/components/design/seasonal/christmas/Art";
 import { useCallback, useRef, useState } from "react";
 import { Link, useMessages } from "@/core/locale/client";
 import {
@@ -160,7 +161,7 @@ export default function Navbar({ pinOnScroll = true }: { pinOnScroll?: boolean }
         >
           <Link
             href="/"
-            className="shrink-0 rounded-full"
+            className="relative shrink-0 rounded-full"
             aria-label={nav.homeLabel}
             data-nav-item
           >
@@ -172,6 +173,8 @@ export default function Navbar({ pinOnScroll = true }: { pinOnScroll?: boolean }
               alt=""
               priority
             />
+            {/* Only during the Christmas edition (the `christmas:` variant, globals.css): a Santa hat on the logo. */}
+            <SantaHat className="pointer-events-none absolute -top-[24%] -right-[16%] hidden h-auto w-[62%] rotate-[-20deg] christmas:block" />
           </Link>
 
           <nav

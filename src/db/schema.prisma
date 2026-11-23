@@ -243,6 +243,7 @@ model CartLine {
   edition       String? // waarde uit src/data/options.ts (keychain | figure), alleen bij een preview
   attachment    String? // waarde uit src/data/options.ts (clip | key-ring), alleen bij een sleutelhanger
   animal        String? // waarde uit src/data/options.ts (dog, cat, ...), alleen bij een preview
+  addons        String[]     @default([]) // extra's uit src/data/addons.ts (santa-hat), alleen bij een preview
   size          String       @default("M")
   notes         String?
   quantity      Int          @default(1)
@@ -426,6 +427,7 @@ model OrderItem {
   edition           String?
   attachment        String? // clip | key-ring, alleen bij een sleutelhanger
   animal            String?
+  addons            String[]            @default([]) // extra's uit src/data/addons.ts (santa-hat): veranderen de prompt
   title             String // zoals de klant het zag, bv. "Palley Hond · Met sleutelhanger"
   notes             String?
   quantity          Int                 @default(1)
@@ -593,6 +595,7 @@ model ShopSettings {
   siteContent           Json? // teksten op de website
   company               Json? // bedrijfsgegevens en sociale media
   prompts               Json? // de Nano Banana-prompt: algemeen en per diersoort
+  seasonal              Json? // seizoensthema (kerst…): welk seizoen, van wanneer tot wanneer, besteldeadline
   updatedBy             String?
   updatedAt             DateTime @updatedAt
 }

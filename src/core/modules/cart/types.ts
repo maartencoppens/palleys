@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { attachments, editions, type Attachment, type Edition } from "@/data/options";
+import { ADDON_VALUES, ADDONS, type Addon } from "@/data/addons";
 import { animalOptionSchema } from "@/core/modules/animals/types";
 import { MAX_NOTES_LENGTH } from "@/data/checkout";
 import { MAX_LINE_QUANTITY } from "@/data/pricing";
@@ -11,6 +12,8 @@ const editionValues = editions.map((e) => e.value) as [Edition, ...Edition[]];
 export const animalSchema = animalOptionSchema.shape.value;
 export const editionSchema = z.enum(editionValues);
 export const attachmentSchema = z.enum(attachments.map((a) => a.value) as [Attachment, ...Attachment[]]);
+// Extras like a Santa hat (data/addons.ts). Whether they can be ordered right now is checked against the season.
+export const addonsSchema = z.array(z.enum(ADDON_VALUES)).max(ADDONS.length);
 
 // The client sends a preview, a choice and notes. Never a price.
 export const addToCartSchema = z
@@ -19,6 +22,7 @@ export const addToCartSchema = z
     animal: animalSchema,
     edition: editionSchema,
     attachment: attachmentSchema.optional(),
+    addons: addonsSchema.optional(),
     notes: z.string().trim().max(MAX_NOTES_LENGTH).optional(),
   })
   .refine((input) => input.edition !== "keychain" || input.attachment, { path: ["attachment"] });
@@ -69,6 +73,8 @@ export type CartLineView = {
   edition: Edition | null;
   /** Every keychain has one, a figurine doesn't. */
   attachment: Attachment | null;
+  /** Extras on a Palley op maat (a Santa hat…), which the shop shows in its language. Empty for a collectible. */
+  addons: Addon[];
   notes: string | null;
   quantity: number;
   unitCents: number;

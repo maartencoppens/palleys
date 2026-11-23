@@ -2,6 +2,7 @@ import Image from "next/image";
 import SectionHeader from "@/components/design/SectionHeader";
 import { fill } from "@/core/locale/fill";
 import { getMessages } from "@/core/locale/server";
+import Seasonal from "@/components/functional/seasonal/Seasonal";
 
 type Member = {
   name: string;
@@ -70,8 +71,9 @@ export default async function Team() {
         {members.map((member, index) => (
           <li
             key={member.name}
-            className="flex flex-col items-center gap-3 rounded-[32px] bg-white p-6 text-center md:p-8"
+            className="relative flex flex-col items-center gap-3 rounded-[32px] bg-white p-6 text-center md:p-8"
           >
+            <Seasonal slot="teamAvatar" index={index} />
             <div
               className={`relative grid size-32 place-items-center overflow-hidden md:size-40 ${AVATAR_BLOBS[index % AVATAR_BLOBS.length]} ${avatarColours[index % avatarColours.length]}`}
             >

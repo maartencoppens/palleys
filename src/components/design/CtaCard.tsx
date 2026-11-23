@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Image from "next/image";
 import { Link } from "@/core/locale/client";
 import { getMessages } from "@/core/locale/server";
@@ -7,7 +8,15 @@ import { getMessages } from "@/core/locale/server";
  * photo (560px of 1280). Stacks with the photo on top below 1024px. A soft shadow keeps the card
  * readable when the band behind it is cream too (about page).
  */
-export default async function CtaCard() {
+type CtaCardProps = {
+  /**
+   * Wraps the photo, to swap it for another one (e.g. a seasonal photo). Gets the normal photo, which it can return as
+   * is. Whatever it returns fills the photo area.
+   */
+  photo?: (photo: ReactNode) => ReactNode;
+};
+
+export default async function CtaCard({ photo = (normal) => normal }: CtaCardProps = {}) {
   const { cta: m, common } = await getMessages();
   return (
     <article className="flex flex-col-reverse overflow-hidden rounded-[32px] bg-off-white shadow-[0_24px_60px_-24px_rgb(7_88_71/0.35)] ring-1 ring-medium-green/10 lg:min-h-[clamp(440px,37vw,534px)] lg:flex-row">
@@ -37,13 +46,15 @@ export default async function CtaCard() {
       </div>
 
       <div className="relative h-60 shrink-0 sm:h-72 lg:h-auto lg:w-[43.75%]">
-        <Image
-          className="object-cover object-[50%_65%] lg:object-center"
-          src="/images/cta/golden-retriever.jpg"
-          alt={m.photoAlt}
-          fill
-          sizes="(min-width: 1024px) 560px, 100vw"
-        />
+        {photo(
+          <Image
+            className="object-cover object-[50%_65%] lg:object-center"
+            src="/images/cta/golden-retriever.jpg"
+            alt={m.photoAlt}
+            fill
+            sizes="(min-width: 1024px) 560px, 100vw"
+          />,
+        )}
       </div>
     </article>
   );

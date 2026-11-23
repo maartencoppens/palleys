@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import Image from "next/image";
 import { Link } from "@/core/locale/client";
 import { getMessages } from "@/core/locale/server";
+import Seasonal from "@/components/functional/seasonal/Seasonal";
 
 /* Arrow from the Figma "text-link" component, drawn with currentColor so it follows the link colour. */
 function ArrowRight() {
@@ -131,9 +132,10 @@ export default async function MadeInGent() {
   return (
     <section
       id="made-in-gent"
-      className="mx-auto flex w-full max-w-[1440px] flex-col overflow-hidden rounded-tr-section-lg rounded-bl-section-lg bg-medium-green lg:flex-row"
+      className="relative mx-auto flex w-full max-w-[1440px] flex-col overflow-hidden rounded-tr-section-lg rounded-bl-section-lg bg-medium-green lg:flex-row"
       aria-labelledby="made-in-gent-title"
     >
+      <Seasonal slot="madeInGentDecor" />
       {/*
        * The photo is a blob on the green. Stacked (below 1024px) it's a 4:3 shot whose crop follows the keychain in
        * the open hand, which sits in the lower half of the photo; beside the panel it's taller.

@@ -6,6 +6,7 @@ import { CollectibleCard, CollectibleCardSkeleton } from "@/components/functiona
 import { getLocale, getMessages } from "@/core/locale/server";
 import { listPublishedCollectibles } from "@/core/modules/collectibles/service";
 import { HOME_COLLECTIBLE_LIMIT } from "@/data/collectibles";
+import Seasonal from "@/components/functional/seasonal/Seasonal";
 
 const rowClassName =
   "flex w-full max-w-[1440px] snap-x snap-mandatory scroll-px-[var(--space-section-x)] gap-[31px] overflow-x-auto section-x pb-2 [scrollbar-width:none] xl:grid xl:grid-cols-4 xl:overflow-visible xl:px-[clamp(16px,3.26vw,47px)] xl:pb-0";
@@ -25,9 +26,9 @@ async function LiveProducts() {
   return (
     <>
       <ul className={rowClassName}>
-        {collectibles.map((collectible) => (
+        {collectibles.map((collectible, index) => (
           <li key={collectible.id} className={itemClassName}>
-            <CollectibleCard collectible={collectible} />
+            <CollectibleCard collectible={collectible} decoration={<Seasonal slot="collectibleCorner" index={index} />} />
           </li>
         ))}
       </ul>
@@ -49,9 +50,10 @@ export default async function FeaturedProducts() {
   return (
     <section
       id="collectables"
-      className="flex min-h-svh flex-col items-center justify-center stack bg-page section-y xl:gap-[50px] xl:py-[104px]"
+      className="relative flex min-h-svh flex-col items-center justify-center stack bg-page section-y xl:gap-[50px] xl:py-[104px]"
       aria-labelledby="collectables-title"
     >
+      <Seasonal slot="collectionDecor" />
       <SectionHeader
         tag={m.tag}
         title={m.title}

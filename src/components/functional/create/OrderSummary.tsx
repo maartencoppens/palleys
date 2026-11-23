@@ -7,6 +7,8 @@ type OrderSummaryProps = {
   edition: string | null;
   /** Null for a figurine: nothing to attach. */
   attachment: string | null;
+  /** Chosen extras (a Santa hat…), in the shopper's language. */
+  extras?: string[];
   /** The length of the base (its longest side), e.g. "3,7 cm lang". */
   size: string;
   /** File name for one photo, "3 photos" for several. */
@@ -19,6 +21,7 @@ export default function OrderSummary({
   pet,
   edition,
   attachment,
+  extras = [],
   size,
   photos,
   priceCents,
@@ -29,6 +32,7 @@ export default function OrderSummary({
     { label: m.pet, value: pet },
     { label: m.palley, value: edition },
     ...(attachment ? [{ label: m.attachment, value: attachment }] : []),
+    ...(extras.length > 0 ? [{ label: m.extras, value: extras.join(", ") }] : []),
     { label: m.size, value: size },
     { label: m.photos, value: photos },
   ];

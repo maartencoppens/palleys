@@ -17,9 +17,11 @@ export type Step = {
 type StepCardProps = Step & {
   number: number;
   className?: string;
+  /** Drawn on the number badge, e.g. a seasonal Santa hat. Positioned within the 270px artwork box. */
+  badgeDecoration?: ReactNode;
 };
 
-export default function StepCard({ number, title, description, blob, icon, className = "" }: StepCardProps) {
+export default function StepCard({ number, title, description, blob, icon, className = "", badgeDecoration }: StepCardProps) {
   return (
     <li
       className={`flex w-full max-w-[447px] items-center gap-5 text-left md:flex-col md:gap-3.5 md:text-center ${className}`}
@@ -66,6 +68,7 @@ export default function StepCard({ number, title, description, blob, icon, class
             {number}
           </text>
         </svg>
+        {badgeDecoration}
       </div>
 
       <div className="flex flex-col gap-1.5 md:items-center md:gap-3.5">

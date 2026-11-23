@@ -67,6 +67,7 @@ import { parsePreviewRef } from "@/core/utils/naming";
 import { readModelMeta } from "@/core/modules/print-prep/model-meta";
 import { MAX_POSE_ATTEMPTS, MAX_UPLOADED_POSES } from "@/data/pipeline";
 import { REVIEW_LIST_LIMIT, SEARCH_LIMIT } from "@/data/admin";
+import { addonLabels } from "@/core/modules/addons/utils";
 
 export class PreviewNotFoundError extends Error {}
 export class PreviewConflictError extends Error {}
@@ -563,6 +564,8 @@ export async function generatePose(id: string): Promise<PreviewActionResult> {
     include: {
       // Only the photos the admin left in the prompt.
       photos: { where: { inPrompt: true }, orderBy: { createdAt: "asc" }, select: { key: true }, take: MAX_PHOTOS_PER_PREVIEW },
+      // The extras the customer paid for (a Santa hat…): they go into the prompt.
+      orderItems: { where: { order: { paidAt: { not: null } } }, select: { addons: true } },
     },
   });
   if (!preview) throw new PreviewNotFoundError(id);
@@ -593,7 +596,8 @@ export async function generatePose(id: string): Promise<PreviewActionResult> {
       preview.photos.map((photo) => getObject(photo.key)),
     );
     const { prompts } = await getShopSettings();
-    const prompt = preview.promptOverride?.trim() || posePrompt(prompts, preview.animalType);
+    const addons = preview.orderItems.flatMap((item) => item.addons);
+    const prompt = preview.promptOverride?.trim() || posePrompt(prompts, preview.animalType, addons);
     const pose = await geminiGeneratePose({ images, prompt });
 
     const key = poseImageKey(id, pose.mimeType);
@@ -866,7 +870,11 @@ export async function getPreviewForAdmin(
         where: { order: { paidAt: { not: null } } },
         orderBy: { order: { paidAt: "desc" } },
         take: 1,
-        select: { notes: true, order: { select: { id: true, number: true, status: true, batch: { select: { status: true } } } } },
+        select: {
+          notes: true,
+          addons: true,
+          order: { select: { id: true, number: true, status: true, batch: { select: { status: true } } } },
+        },
       },
       glbKey: true,
       objKey: true,
@@ -958,6 +966,7 @@ export async function getPreviewForAdmin(
         }
       : null,
     printName: await getPrintName(preview.id),
+    addons: addonLabels(preview.orderItems[0]?.addons),
     quantity: preview.quantity,
     createdAt: preview.createdAt.toISOString(),
     photos,
@@ -1017,7 +1026,9 @@ export async function getPreviewForAdmin(
       preview._count.collectibleModels === 0 &&
       preview.status === PreviewStatus.PRINT_READY &&
       preview.processedKey !== null,
-    prompt: preview.promptOverride?.trim() || posePrompt((await getShopSettings()).prompts, preview.animalType),
+    prompt:
+      preview.promptOverride?.trim() ||
+      posePrompt((await getShopSettings()).prompts, preview.animalType, preview.orderItems[0]?.addons ?? []),
   };
 }
 
@@ -1059,6 +1070,7 @@ export async function listPreviewsForReview(): Promise<ReviewListItem[]> {
       printName: printBaseName(preview),
       forCollectible: preview.forCollectible,
       quantity: preview.quantity,
+      addons: addonLabels(preview.orderItems[0]?.addons),
       photoUrls: await Promise.all(
         preview.photos.map((photo) => createDownloadUrl(photo.key)),
       ),

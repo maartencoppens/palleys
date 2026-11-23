@@ -302,6 +302,7 @@ export const en: Messages = {
   options: {
     editions: { keychain: "With keychain", figure: "Figurine only" },
     attachments: { clip: "Clip", "key-ring": "Key ring" },
+    addons: { "santa-hat": "With Santa hat" },
   },
 
   create: {
@@ -325,6 +326,9 @@ export const en: Messages = {
       attachment: "How do you want to attach it to your keys?",
       size: "About {size} long, measured along the base from head to tail.",
       sizeTitle: "This is how big a Palley is",
+      extras: "Extras",
+      addonFree: "Free",
+      addonPrice: "+ {price}",
       keychainHint: "The keychain comes with a chain and a clip or key ring, your choice.",
     },
     upload: {
@@ -398,6 +402,7 @@ export const en: Messages = {
       sizeValue: "{size} long",
       photos: "Photos",
       photosCount: "{count} photos",
+      extras: "Extra",
       total: "Total",
       exclShipping: "excl. shipping",
       charity: "With your Palley you also help other animals: 50% of our profit goes to Dierenasiel Gent.",
@@ -1228,6 +1233,37 @@ export const en: Messages = {
       termsLink: "terms and conditions",
       privacyLink: "privacy policy",
       shippingPolicyLink: "shipping policy",
+    },
+  },
+  seasons: {
+    christmas: {
+      greeting: "Merry Pawmas!",
+      sticker: ["New!", "with a", "Santa hat"],
+      heroNote: "New for Christmas: your Palley with a Santa hat. The clip fits a Christmas tree branch too.",
+      heroNoteDeadline: "Order before {date}.",
+      bannerNew: "New: your pet with a Santa hat",
+      bannerDeadline: "Order before {date} = under the tree in time",
+      feature: {
+        label: "Christmas edition",
+        tag: "The Christmas edition is here",
+        title: "Your pet, now with a Santa hat",
+        text: "The same Palley made from your own photo, wearing a Santa hat. Hang it on your keys, or clip it onto a Christmas tree branch.",
+        deadline: "Order before {date} → delivered before Christmas",
+        cta: "Make a Christmas Palley",
+        tagTo: "To: you",
+        tagFrom: "From: your pal",
+        photoAlt: "A golden retriever Palley wearing a Santa hat, clipped onto a Christmas tree",
+      },
+      howItWorksDeadline: "For Christmas? Order before {date} and your Palley is under the tree in time.",
+      howItWorksNoDeadline: "For Christmas? Order in time and your Palley will be under the tree.",
+      faqQuestion: "Will my Palley arrive before Christmas?",
+      faqAnswer: "Yes, if you order before {date}. If you order later, we'll deliver it as soon as we can after Christmas.",
+      faqAnswerNoDeadline: "We make a custom Palley in 2 to 3 weeks. So order in time if you want it under the tree.",
+      footerGreeting: "Happy holidays from us and our pals!",
+      configurator: {
+        santaHat: "We print your pet wearing a Santa hat: red with a white brim and pompom, solidly part of the figure.",
+        clipTip: "Tip: with the clip, your Palley also hangs from a Christmas tree branch.",
+      },
     },
   },
 };

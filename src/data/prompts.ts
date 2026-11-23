@@ -1,3 +1,5 @@
+import type { Addon } from "./addons";
+
 // De prompts voor Nano Banana Pro: één algemene, en per dier een volledige eigen prompt. Een dier zonder eigen prompt
 // (bv. een nieuw dier) gebruikt de algemene. Dit zijn de startwaarden; de echte staan in /admin/settings/prompts.
 // Aanpassen = nieuwe poses testen.
@@ -56,3 +58,12 @@ export const DEFAULT_ANIMAL_PROMPTS: Record<string, string> =
       `${POSE_PROMPT.trim()}\n\nSpecies-specific instructions: ${note}`,
     ]),
   );
+
+/*
+ * Added at the end of the pose prompt when the customer chose that extra (data/addons.ts). The starting texts; the real
+ * ones are in /admin/settings/prompts. Printability first: nothing may stick out or be thin.
+ */
+export const DEFAULT_ADDON_PROMPTS: Record<Addon, string> = {
+  "santa-hat":
+    "EXTRA: SANTA HAT\nThe animal wears a classic Santa hat, molded solidly onto the head as part of the figurine: red body, thick white fur brim, white pompom. The hat tip folds down and rests against the side of the head or the back, so nothing sticks out; the pompom touches the body. The hat is thick and rounded everywhere, with no thin or hollow parts. The ears stay visible where natural (they may poke through or sit under the brim). Keep the animal's likeness exactly as instructed above.",
+};

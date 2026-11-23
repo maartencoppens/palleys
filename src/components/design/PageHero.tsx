@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import HeroArt from "@/components/functional/shop/home/HeroArt";
 import InfoBanner from "@/components/functional/shop/home/InfoBanner";
 import Navbar from "@/components/functional/shop/layout/Navbar";
@@ -9,6 +10,10 @@ type PageHeroProps = {
   intro: string;
   /** Background of the section below, which shows through the rounded bottom-left corner. */
   backdropClassName?: string;
+  /** Drawn over the scene, behind the text (absolute, fills the hero below the banner), e.g. a seasonal scene. */
+  decoration?: ReactNode;
+  /** Shown above the eyebrow, e.g. a seasonal greeting. */
+  beforeTitle?: ReactNode;
 };
 
 /*
@@ -17,7 +22,14 @@ type PageHeroProps = {
  * page opens in the same world. The scene is pinned to the bottom-left, so on this shorter hero the foliage still
  * runs along the bottom edge and nothing is cut off at the side.
  */
-export default function PageHero({ eyebrow, title, intro, backdropClassName = "bg-off-white" }: PageHeroProps) {
+export default function PageHero({
+  eyebrow,
+  title,
+  intro,
+  backdropClassName = "bg-off-white",
+  decoration,
+  beforeTitle,
+}: PageHeroProps) {
   return (
     // A div, not a <header>: the navbar inside is already the page header.
     <div className={backdropClassName}>
@@ -27,6 +39,7 @@ export default function PageHero({ eyebrow, title, intro, backdropClassName = "b
         {/* On phones the two flowers on the left edge would sit behind the intro text. */}
         <div className="relative max-md:[&_#flower7]:hidden max-md:[&_#flowers2]:hidden">
           <HeroArt variant="page" />
+          {decoration}
 
           <div className="page-container relative py-m">
             <Navbar />
@@ -34,6 +47,7 @@ export default function PageHero({ eyebrow, title, intro, backdropClassName = "b
 
           <div className="page-container relative pt-10 pb-[clamp(150px,28vw,210px)] md:pt-[clamp(48px,6vw,90px)] lg:pb-[clamp(150px,15vw,220px)]">
             <div className="flex max-w-[880px] flex-col gap-6 lg:pl-[clamp(0px,3.02vw,58px)]">
+              {beforeTitle}
               <p
                 data-hero-item
                 className="font-label text-[15px] leading-[normal] font-semibold tracking-[1.5px] text-title-accent uppercase"

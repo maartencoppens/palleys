@@ -4,6 +4,7 @@ import HeroCarousel from "./HeroCarousel";
 import InfoBanner from "./InfoBanner";
 import Navbar from "@/components/functional/shop/layout/Navbar";
 import { getMessages } from "@/core/locale/server";
+import Seasonal from "@/components/functional/seasonal/Seasonal";
 
 /*
  * Desktop measurements come from the 1440×780 Figma frame: navbar inset 64.5px (page-container),
@@ -27,6 +28,7 @@ export default async function Hero() {
       {/* The info banner is part of the first screen, so the scene and content share what's left below it. */}
       <div className="relative flex flex-1">
         <HeroArt />
+        <Seasonal slot="heroDecor" />
 
         <div className="page-container relative flex flex-col py-m">
           <Navbar />
@@ -41,7 +43,8 @@ export default async function Hero() {
            * buttons from widening it. On phones the copy simply uses the full width.
            */}
           <div className="flex flex-1 flex-col justify-center pt-14 pb-20 lg:pt-[55px] xl:pb-0 lg:pl-[clamp(0px,3.02vw,58px)]">
-            <div className="grid w-full justify-items-start gap-8 md:gap-2xl lg:w-fit">
+            <div className="relative grid w-full justify-items-start gap-8 md:gap-2xl lg:w-fit">
+              <Seasonal slot="heroBeforeTitle" />
               <h1
                 id="hero-title"
                 className="w-max max-w-full font-display leading-[0.98] font-medium tracking-[-0.04em]"
@@ -66,6 +69,8 @@ export default async function Hero() {
               >
                 {m.text}
               </p>
+
+              <Seasonal slot="heroAfterText" />
 
               <div
                 data-hero-item

@@ -4,6 +4,7 @@ import { listPreviewsForReview } from "@/core/modules/previews/service";
 import { formatDateTime } from "@/core/utils/format";
 import { PhotoThumbnails } from "@/components/functional/admin/PhotoThumbnails";
 import { PreviewStatusBadge } from "@/components/functional/admin/PreviewStatusBadge";
+import { AddonBadges } from "@/components/functional/admin/AddonBadges";
 
 export const instant = false;
 
@@ -67,6 +68,11 @@ export default async function AdminReviewPage() {
                       <span className="ml-2 font-normal text-text-muted">{preview.quantity}×</span>
                     )}
                     <span className="block font-mono text-xs font-normal text-text-muted">{preview.printName}</span>
+                    {preview.addons.length > 0 && (
+                      <span className="mt-1 block">
+                        <AddonBadges labels={preview.addons} />
+                      </span>
+                    )}
                   </td>
                   <td data-label="Aangemaakt" className="whitespace-nowrap px-5 py-4 tabular-nums">
                     {formatDateTime(preview.createdAt)}

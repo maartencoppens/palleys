@@ -24,6 +24,7 @@ import { activeQuantity, allItemsCheckedIn, checkInItemOf, ITEM_READY_PREVIEW_ST
 import { nextOrderNumber, OrderNotFoundError } from "./service";
 import { canCheckInInBatch } from "@/core/modules/batches/status";
 import type { ManualOrderInput, ManualOrderResult, OrderStatusActionInput } from "./types";
+import { titleWithAddons } from "@/core/modules/addons/utils";
 
 /*
  * What only the backoffice does with orders: adding one by hand, ticking off items, moving an order along. An added
@@ -357,6 +358,7 @@ export async function changePreviewEdition(previewId: string, input: { edition: 
       edition: true,
       attachment: true,
       animal: true,
+      addons: true,
       order: { select: { status: true, batch: { select: { status: true } } } },
     },
   });
@@ -371,7 +373,7 @@ export async function changePreviewEdition(previewId: string, input: { edition: 
       if (!parsed || parsed.kind !== "P") throw new OrderActionError(`Onbekende productcode ${item.productCode}`);
       if (item.edition === input.edition && (item.attachment ?? null) === attachment) return [];
       const animal = findAnimal(catalog.animals, item.animal ?? "");
-      const title = editionTitle(item.title, animal?.labels.nl ?? null, input.edition, attachment);
+      const title = titleWithAddons(editionTitle(item.title, animal?.labels.nl ?? null, input.edition, attachment), item.addons);
       const before = item.title;
       return [
         prisma.orderItem.update({

@@ -7,6 +7,8 @@ import { Link, useLocale, useMessages } from "@/core/locale/client";
 import { fill, fillNodes } from "@/core/locale/fill";
 import { attachmentIcons } from "./AttachmentIcons";
 import OrderSummary from "./OrderSummary";
+import AddonToggles, { type ConfiguratorAddon } from "./AddonToggles";
+import type { Addon } from "@/data/addons";
 import PalleySize from "@/components/functional/shop/PalleySize";
 import PhotoTips from "./PhotoTips";
 import PhotoUpload, { type UploadedPhoto } from "./PhotoUpload";
@@ -38,6 +40,10 @@ type ConfiguratorProps = {
   catalog: CatalogSettings;
   deliveryTime: string;
   returnNote: string;
+  /** Extras of the active season (a Santa hat…); none outside a season. */
+  addons?: ConfiguratorAddon[];
+  /** A season's tip under the keychain choice, e.g. that the clip also fits a Christmas tree. */
+  keychainTip?: string | null;
 };
 
 /*
@@ -46,7 +52,7 @@ type ConfiguratorProps = {
  * highlighted, and the stepper reflects progress. "Add to cart" checks everything and, if something is
  * missing, jumps to that step and shows what's needed.
  */
-export default function Configurator({ catalog, deliveryTime, returnNote }: ConfiguratorProps) {
+export default function Configurator({ catalog, deliveryTime, returnNote, addons: addonOptions = [], keychainTip = null }: ConfiguratorProps) {
   const { create: m, options, common } = useMessages();
   const locale = useLocale();
   const sizeLabel = shownSizeLabel(locale);
@@ -66,7 +72,10 @@ export default function Configurator({ catalog, deliveryTime, returnNote }: Conf
   const [edition, setEdition] = useState<Edition>(editionOptions[0].value);
   const [attachment, setAttachment] = useState<Attachment>(attachments[0].value);
   const withKeychain = edition === "keychain";
-  const priceCents = editionPriceCents(edition, catalog.prices);
+  const [addons, setAddons] = useState<Addon[]>([]);
+  const chosenAddons = addonOptions.filter((option) => addons.includes(option.value));
+  const priceCents =
+    editionPriceCents(edition, catalog.prices) + chosenAddons.reduce((sum, option) => sum + option.priceCents, 0);
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
   const [notes, setNotes] = useState("");
   const [consent, setConsent] = useState(false);
@@ -140,13 +149,21 @@ export default function Configurator({ catalog, deliveryTime, returnNote }: Conf
       return;
     }
     // Uploads the photos to R2, then adds the preview with the chosen variant and notes to the cart.
-    void addToCart({ animal: animal!, edition, attachment: withKeychain ? attachment : undefined, photos, notes });
+    void addToCart({
+      animal: animal!,
+      edition,
+      attachment: withKeychain ? attachment : undefined,
+      addons: chosenAddons.map((option) => option.value),
+      photos,
+      notes,
+    });
   };
 
   const startOver = () => {
     setAnimal(null);
     setEdition(editionOptions[0].value);
     setAttachment(attachments[0].value);
+    setAddons([]);
     photos.forEach(
       (item) => item.previewUrl && URL.revokeObjectURL(item.previewUrl),
     );
@@ -204,9 +221,10 @@ export default function Configurator({ catalog, deliveryTime, returnNote }: Conf
                 options={attachmentOptions}
                 value={attachment}
                 onChange={setAttachment}
-                hint={m.choose.keychainHint}
+                hint={keychainTip ? `${m.choose.keychainHint} ${keychainTip}` : m.choose.keychainHint}
               />
             )}
+            <AddonToggles addons={addonOptions} value={addons} onChange={setAddons} />
             {/* The size on its own, so nobody expects a big statue. Same for keychain and figurine. */}
             <PalleySize size={sizeLabel} title={m.choose.sizeTitle} text={fill(m.choose.size, { size: sizeLabel })} />
           </Panel>
@@ -442,6 +460,7 @@ export default function Configurator({ catalog, deliveryTime, returnNote }: Conf
             pet={animalLabel}
             edition={editionLabel}
             attachment={attachmentLabel}
+            extras={chosenAddons.map((option) => option.label)}
             size={fill(m.summary.sizeValue, { size: sizeLabel })}
             photos={photosLabel}
             priceCents={priceCents}

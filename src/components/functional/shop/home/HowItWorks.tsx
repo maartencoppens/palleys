@@ -4,6 +4,7 @@ import SectionHeader from "@/components/design/SectionHeader";
 import StepCard, { type Step } from "@/components/design/StepCard";
 import { fillNodes } from "@/core/locale/fill";
 import { getMessages } from "@/core/locale/server";
+import Seasonal from "@/components/functional/seasonal/Seasonal";
 
 const artwork: Pick<Step, "blob" | "icon">[] = [
   {
@@ -72,6 +73,7 @@ export default async function HowItWorks() {
           <StepCard
             key={step.title}
             number={index + 1}
+            badgeDecoration={<Seasonal slot="stepBadge" index={index} />}
             {...step}
             className={
               index === 1
@@ -81,6 +83,8 @@ export default async function HowItWorks() {
           />
         ))}
       </ol>
+
+      <Seasonal slot="howItWorksAfter" />
 
       <div data-animate="fade-up">
         <Button href="/create" size="large">

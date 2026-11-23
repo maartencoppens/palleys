@@ -354,6 +354,8 @@ export const nl = {
   options: {
     editions: { keychain: "Met sleutelhanger", figure: "Enkel figuurtje" },
     attachments: { clip: "Klemmetje", "key-ring": "Sleutelring" },
+    // Extras on a Palley (data/addons.ts), only offered during their season.
+    addons: { "santa-hat": "Met kerstmuts" },
   },
 
   create: {
@@ -377,6 +379,9 @@ export const nl = {
       attachment: "Hoe wil je hem aan je sleutels hangen?",
       size: "Ongeveer {size} lang, gemeten over de basis van kop tot staart.",
       sizeTitle: "Zo groot is een Palley",
+      extras: "Extra's",
+      addonFree: "Gratis",
+      addonPrice: "+ {price}",
       keychainHint:
         "De sleutelhanger komt met een ketting en een klemmetje of sleutelring, naar keuze.",
     },
@@ -464,6 +469,7 @@ export const nl = {
       sizeValue: "{size} lang",
       photos: "Foto’s",
       photosCount: "{count} foto’s",
+      extras: "Extra",
       total: "Totaal",
       exclShipping: "excl. verzendkosten",
       charity:
@@ -1493,6 +1499,38 @@ export const nl = {
       termsLink: "algemene voorwaarden",
       privacyLink: "privacybeleid",
       shippingPolicyLink: "verzendbeleid",
+    },
+  },
+  // Seasonal editions (data/seasons.ts): only shown while that season is on. {date} is the order deadline.
+  seasons: {
+    christmas: {
+      greeting: "Merry Pawmas!",
+      sticker: ["Nieuw!", "met", "kerstmuts"],
+      heroNote: "Nieuw voor kerst: je Palley met kerstmuts. Het klemmetje past ook aan een kerstboomtak.",
+      heroNoteDeadline: "Bestel vóór {date}.",
+      bannerNew: "Nieuw: je huisdier met kerstmuts",
+      bannerDeadline: "Bestel vóór {date} = op tijd onder de kerstboom",
+      feature: {
+        label: "Kersteditie",
+        tag: "De kersteditie is er",
+        title: "Je huisdier, nu met kerstmuts",
+        text: "Dezelfde Palley van je eigen foto, met een kerstmuts op. Hang hem aan je sleutels, of klik hem met het klemmetje aan een kerstboomtak.",
+        deadline: "Bestel vóór {date} → geleverd vóór kerst",
+        cta: "Maak een kerst-Palley",
+        tagTo: "Voor: jou",
+        tagFrom: "Van: je pal",
+        photoAlt: "Een Palley van een golden retriever met een kerstmuts, aan een clipje in de kerstboom",
+      },
+      howItWorksDeadline: "Voor kerst? Bestel vóór {date} en je Palley ligt op tijd onder de boom.",
+      howItWorksNoDeadline: "Voor kerst? Bestel op tijd, dan ligt je Palley onder de boom.",
+      faqQuestion: "Komt mijn Palley op tijd voor kerst?",
+      faqAnswer: "Ja, als je bestelt vóór {date}. Bestel je later, dan leveren we hem zo snel mogelijk na kerst.",
+      faqAnswerNoDeadline: "Een Palley op maat maken we in 2 tot 3 weken. Bestel dus op tijd als je hem onder de kerstboom wilt leggen.",
+      footerGreeting: "Fijne feestdagen van ons en onze pals!",
+      configurator: {
+        santaHat: "We printen je huisdier mét kerstmuts: rood met een witte rand en pompon, stevig vast aan het figuurtje.",
+        clipTip: "Tip: met het klemmetje hang je je Palley ook aan een kerstboomtak.",
+      },
     },
   },
 };

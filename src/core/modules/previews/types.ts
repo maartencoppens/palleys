@@ -105,6 +105,8 @@ export type AdminPreviewDetail = {
   canAddPhoto: boolean;
   /** Keychain or figure on the open order, which an admin can change on request; locked once the order is at JLC. */
   edition: { edition: string; attachment: string | null; locked: boolean } | null;
+  /** The extras the customer chose, as labels ("Met kerstmuts"): they're in the prompt, so check them on the pose and model. */
+  addons: string[];
   statusChanges: AdminStatusChange[];
   poseImageUrl: string | null;
   /** Every pose so far, oldest first, to compare and approve one of them. */
@@ -153,6 +155,8 @@ export type ReviewListItem = AdminPreviewListItem & {
   printName: string;
   forCollectible: boolean; // een nieuwe collectible, los van een order
   quantity: number;
+  /** Extras the customer chose, as labels ("Met kerstmuts"). */
+  addons: string[];
 };
 
 export type PreviewActionResult = {

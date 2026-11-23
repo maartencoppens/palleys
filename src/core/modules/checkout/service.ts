@@ -186,6 +186,7 @@ export async function startCheckout(cartToken: string | null, input: CheckoutInp
             edition: line.edition,
             attachment: line.attachment,
             animal: line.animal,
+            addons: line.addons,
             title: line.title,
             notes: line.notes,
             quantity: line.quantity,

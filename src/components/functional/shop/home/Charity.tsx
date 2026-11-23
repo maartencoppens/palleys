@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { Link } from "@/core/locale/client";
 import { getMessages } from "@/core/locale/server";
+import Seasonal from "@/components/functional/seasonal/Seasonal";
 import CharityTag from "./CharityTag";
 
 /*
@@ -24,9 +25,10 @@ export default async function Charity({
   return (
     <section
       id="charity"
-      className={`flex min-h-svh flex-col justify-center stack overflow-hidden rounded-tr-section bg-medium-green section-x section-pt lg:flex-row lg:items-center lg:gap-[clamp(32px,3.5vw,56px)] lg:pt-12 lg:pr-[clamp(40px,5vw,80px)] lg:pl-5 ${flowsIntoFooter ? "section-pb lg:pb-12" : "mx-auto w-full max-w-[1440px] rounded-bl-section section-pb lg:pb-12"}`}
+      className={`relative flex min-h-svh flex-col justify-center stack overflow-hidden rounded-tr-section bg-medium-green section-x section-pt lg:flex-row lg:items-center lg:gap-[clamp(32px,3.5vw,56px)] lg:pt-12 lg:pr-[clamp(40px,5vw,80px)] lg:pl-5 ${flowsIntoFooter ? "section-pb lg:pb-12" : "mx-auto w-full max-w-[1440px] rounded-bl-section section-pb lg:pb-12"}`}
       aria-labelledby="charity-title"
     >
+      <Seasonal slot="charityDecor" />
       {/* Stand-in until there's a photo of Dierenasiel Gent. The circle cuts off the cream corners of this image. */}
       <Image
         data-animate="pop"

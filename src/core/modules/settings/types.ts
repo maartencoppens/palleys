@@ -7,8 +7,10 @@ import { MAX_SHIPPING_PRICE_CENTS, STATIC_DELIVERY_OPTIONS } from "@/data/shippi
 import { SITE_CONTENT_LIMITS } from "@/data/site-content";
 import { DEFAULT_ANIMALS } from "@/data/animals";
 import { COMPANY } from "@/data/company";
-import { MAX_PROMPT_LENGTH } from "@/data/prompts";
+import { MAX_ANIMAL_PROMPT_LENGTH, MAX_PROMPT_LENGTH } from "@/data/prompts";
+import { ADDON_VALUES, MAX_ADDON_PRICE_CENTS } from "@/data/addons";
 import { animalListSchema } from "@/core/modules/animals/types";
+import { NO_SEASON, SEASON_IDS } from "@/data/seasons";
 
 /*
  * The website configuration an admin manages in /admin/settings. Every section has its own form, schema and save, so
@@ -105,7 +107,31 @@ export const companySettingsSchema = z.object({
 export const promptSettingsSchema = z.object({
   base: z.string().trim().min(1).max(MAX_PROMPT_LENGTH),
   animals: z.record(z.string().regex(/^[A-Z0-9]+$/).max(20), z.string().trim().max(MAX_PROMPT_LENGTH)),
+  // Per extra (data/addons.ts), added at the end of the prompt. Empty or missing = its starting text.
+  addons: z.partialRecord(z.enum(ADDON_VALUES), z.string().trim().max(MAX_ANIMAL_PROMPT_LENGTH)).default({}),
 });
+
+// A calendar day as the date input gives it ("2026-12-14").
+const daySchema = z.iso.date().nullable();
+
+/*
+ * Which seasonal edition is on (core/modules/seasons). startsOn/endsOn are optional: without them the season is on as
+ * long as it's selected. orderDeadline is the last day to order for delivery before the holiday; the texts that
+ * mention it are left out while it's empty.
+ */
+export const seasonalSettingsSchema = z
+  .object({
+    season: z.enum([NO_SEASON, ...SEASON_IDS]),
+    startsOn: daySchema,
+    endsOn: daySchema,
+    orderDeadline: daySchema,
+    // What each extra (data/addons.ts) costs on top of the Palley, in cents. Missing = free.
+    addonPrices: z.partialRecord(z.enum(ADDON_VALUES), z.number().int().min(0).max(MAX_ADDON_PRICE_CENTS)).default({}),
+  })
+  .refine((value) => !value.startsOn || !value.endsOn || value.startsOn <= value.endsOn, {
+    path: ["endsOn"],
+    message: "De einddatum ligt voor de startdatum",
+  });
 
 export const SETTINGS_SECTION_SCHEMAS = {
   ordering: orderingSettingsSchema,
@@ -114,6 +140,7 @@ export const SETTINGS_SECTION_SCHEMAS = {
   content: localizedSiteContentSchema,
   company: companySettingsSchema,
   prompts: promptSettingsSchema,
+  seasonal: seasonalSettingsSchema,
 } as const;
 
 export type SettingsSection = keyof typeof SETTINGS_SECTION_SCHEMAS;
@@ -136,6 +163,7 @@ export type SiteContent = z.infer<typeof siteContentSchema>;
 export type LocalizedSiteContent = Record<Locale, SiteContent>;
 export type CompanySettings = z.infer<typeof companySettingsSchema>;
 export type PromptSettings = z.infer<typeof promptSettingsSchema>;
+export type SeasonalSettings = z.infer<typeof seasonalSettingsSchema>;
 
 export type ShopSettings = OrderingSettings &
   ShippingSettings & {
@@ -143,6 +171,7 @@ export type ShopSettings = OrderingSettings &
     content: LocalizedSiteContent;
     company: CompanySettings;
     prompts: PromptSettings;
+    seasonal: SeasonalSettings;
     updatedBy: string | null;
     updatedAt: string | null;
   };

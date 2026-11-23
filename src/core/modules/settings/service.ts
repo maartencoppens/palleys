@@ -5,12 +5,14 @@ import { prisma } from "@/db/client";
 import { COMPANY, SOCIAL_LINKS } from "@/data/company";
 import { UNIT_PRICE_CENTS } from "@/data/pricing";
 import { DEFAULT_SITE_CONTENT } from "@/data/site-content";
-import { DEFAULT_ANIMAL_PROMPTS, POSE_PROMPT } from "@/data/prompts";
+import { DEFAULT_ADDON_PROMPTS, DEFAULT_ANIMAL_PROMPTS, POSE_PROMPT } from "@/data/prompts";
 import { DEFAULT_ANIMALS } from "@/data/animals";
+import { DEFAULT_SEASONAL_SETTINGS } from "@/data/seasons";
 import {
   catalogSettingsSchema,
   companySettingsSchema,
   promptSettingsSchema,
+  seasonalSettingsSchema,
   storedShippingOverridesSchema,
   localizedSiteContentSchema,
   siteContentSchema,
@@ -39,7 +41,8 @@ const DEFAULTS: ShopSettings = {
   },
   content: DEFAULT_SITE_CONTENT,
   company: { ...COMPANY, socials: SOCIAL_LINKS },
-  prompts: { base: POSE_PROMPT.trim(), animals: DEFAULT_ANIMAL_PROMPTS },
+  prompts: { base: POSE_PROMPT.trim(), animals: DEFAULT_ANIMAL_PROMPTS, addons: DEFAULT_ADDON_PROMPTS },
+  seasonal: DEFAULT_SEASONAL_SETTINGS,
   updatedBy: null,
   updatedAt: null,
 };
@@ -69,6 +72,7 @@ export async function getShopSettings(): Promise<ShopSettings> {
     content: parsedContent(row.siteContent),
     company: parsed(companySettingsSchema, row.company, DEFAULTS.company),
     prompts: parsed(promptSettingsSchema, row.prompts, DEFAULTS.prompts),
+    seasonal: parsed(seasonalSettingsSchema, row.seasonal, DEFAULTS.seasonal),
     updatedBy: row.updatedBy,
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -98,6 +102,7 @@ const SECTION_DATA: { [S in SettingsSection]: (input: SettingsSectionInput<S>) =
   content: (input) => ({ siteContent: input }),
   company: (input) => ({ company: input }),
   prompts: (input) => ({ prompts: input }),
+  seasonal: (input) => ({ seasonal: input }),
 };
 
 /** The starting prompts, for the "back to the standard text" button. */
