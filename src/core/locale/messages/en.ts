@@ -41,6 +41,12 @@ export const en: Messages = {
       description:
         "{name} from the Palleys collection: a 3D-printed keychain or figurine in full colour, finished by hand in Ghent. {price}.",
     },
+    merchant: {
+      personalizedTitle: "Custom Palley: a 3D-printed keychain of your own pet",
+      personalizedType: "Custom Palley",
+      collectibleTitle: "{name}: 3D-printed animal keychain",
+      collectibleType: "Collection",
+    },
     privacy: {
       title: "Privacy policy | Palleys",
       description: "How Palleys handles your data and the photos of your pet: what we keep, why, for how long and which rights you have.",

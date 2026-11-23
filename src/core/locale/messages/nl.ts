@@ -43,6 +43,13 @@ export const nl = {
       description:
         "{name} uit de Palleys-collectie: een 3D-geprinte sleutelhanger of figuurtje in volle kleur, met de hand afgewerkt in Gent. {price}.",
     },
+    // The Google Merchant Center feed (/feeds/google-merchant.xml): product titles and types in Google Shopping.
+    merchant: {
+      personalizedTitle: "Palley op maat: 3D-geprinte sleutelhanger van je eigen huisdier",
+      personalizedType: "Palley op maat",
+      collectibleTitle: "{name}: 3D-geprinte dierensleutelhanger",
+      collectibleType: "Collectie",
+    },
     privacy: {
       title: "Privacybeleid | Palleys",
       description: "Hoe Palleys omgaat met je gegevens en de foto’s van je huisdier: wat we bewaren, waarom, hoe lang en welke rechten je hebt.",
