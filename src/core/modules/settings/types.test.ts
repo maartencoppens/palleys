@@ -64,7 +64,7 @@ describe("company settings", () => {
     enterpriseNumber: "0000.000.000",
     email: "hallo@palleys.be",
     phone: "",
-    socials: { instagram: "https://instagram.com/palleys", tiktok: "", facebook: "" },
+    socials: { instagram: "https://instagram.com/palleys", facebook: "" },
   };
 
   it("only takes https links for the footer", () => {
@@ -97,7 +97,7 @@ describe("prompt settings", () => {
 });
 
 describe("company settings", () => {
-  const saved = { legalName: "Palleys", address: "Bernheimlaan 26, 9050 Gentbrugge, België", enterpriseNumber: "", email: "hallo@palleys.be", phone: "", socials: { instagram: "", tiktok: "", facebook: "" } };
+  const saved = { legalName: "Palleys", address: "Bernheimlaan 26, 9050 Gentbrugge, België", enterpriseNumber: "", email: "hallo@palleys.be", phone: "", socials: { instagram: "", facebook: "" } };
 
   it("gives settings saved before the return address existed the starting one", () => {
     expect(companySettingsSchema.parse(saved).returnAddress).toBe("Bernheimlaan 26, 9050 Gentbrugge");

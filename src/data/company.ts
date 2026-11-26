@@ -16,8 +16,7 @@ export const COMPANY = {
 // Starting values; the real profile URLs are set in /admin/settings/company. An empty URL hides the icon.
 export const SOCIAL_LINKS = {
   instagram: "https://www.instagram.com/palleysofficial/",
-  tiktok: "https://www.tiktok.com/",
-  facebook: "https://www.facebook.com/",
+  facebook: "https://www.facebook.com/share/14xzyphSYSy/?mibextid=wwXIfr",
 };
 
 // The page with the legally required company details (WER boek XII), linked from the footer.

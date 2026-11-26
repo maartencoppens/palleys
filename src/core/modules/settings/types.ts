@@ -100,7 +100,8 @@ export const companySettingsSchema = z.object({
   phone: z.string().trim().max(FIELD_LIMITS.phone),
   // Saved before this field existed: the starting address from data/company.ts.
   returnAddress: z.string().trim().max(200).default(COMPANY.returnAddress),
-  socials: z.object({ instagram: socialUrl, tiktok: socialUrl, facebook: socialUrl }),
+  // TikTok was dropped: zod strips it from settings saved before.
+  socials: z.object({ instagram: socialUrl, facebook: socialUrl }),
 });
 
 // The pose prompt: a general one, and per animal code a full prompt of its own. Empty or missing = the general one.

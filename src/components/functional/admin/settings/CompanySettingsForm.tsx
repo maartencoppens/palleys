@@ -18,7 +18,6 @@ const COMPANY_FIELDS = [
 
 const SOCIAL_FIELDS = [
   { name: "instagram", label: "Instagram" },
-  { name: "tiktok", label: "TikTok" },
   { name: "facebook", label: "Facebook" },
 ] as const;
 

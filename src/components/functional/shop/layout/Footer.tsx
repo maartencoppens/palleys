@@ -25,12 +25,6 @@ const socialIcons = [
     icon: "/images/footer/facebook.svg",
     size: 56,
   },
-  {
-    key: "tiktok",
-    label: "TikTok",
-    icon: "/images/footer/tiktok.svg",
-    size: 50,
-  },
 ] as const;
 
 /* The profile URLs come from /admin/settings/company; an empty one hides its icon. */
