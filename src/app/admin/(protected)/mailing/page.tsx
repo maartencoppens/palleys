@@ -4,23 +4,27 @@ import { listSubscribers } from "@/core/modules/newsletter/service";
 import { formatDateTime } from "@/core/utils/format";
 import { Badge } from "@/components/design/Badge";
 import { UnsubscribeButton } from "@/components/functional/admin/newsletter/UnsubscribeButton";
+import { SyncResendButton } from "@/components/functional/admin/newsletter/SyncResendButton";
+import { isContactSyncConfigured } from "@/core/networking/external/resend-contacts";
 
 export const instant = false;
 
-/* Who ticked "keep me posted" in the checkout. Nothing is sent from the site yet: export the list for a mailing tool. */
+/* Who ticked "keep me posted" in the checkout. Mails go out as Resend broadcasts: the list syncs there as contacts. */
 export default async function AdminMailingPage({ searchParams }: PageProps<"/admin/mailing">) {
   await requireAdminPage();
   const all = (await searchParams).alle !== undefined;
   const { subscribers, activeCount } = await listSubscribers({ all });
+  const resend = isContactSyncConfigured();
 
   return (
     <main>
       <div className="flex flex-wrap items-baseline justify-between gap-4">
         <h1 className="font-display text-[clamp(2rem,1.4rem+1.8vw,3rem)] leading-[1.22] font-medium text-medium-green">Mailinglijst</h1>
-        <div className="flex flex-wrap items-center gap-5">
+        <div className="flex flex-wrap items-start gap-5">
           <Link href={all ? "/admin/mailing" : "/admin/mailing?alle"} className="font-label font-bold text-medium-green underline underline-offset-4">
             {all ? "Alleen ingeschreven" : "Ook uitgeschreven"}
           </Link>
+          {resend && <SyncResendButton />}
           {/* A plain link: the browser downloads the file, with the admin session cookie. */}
           <a
             href="/api/admin/newsletter/export"
@@ -32,8 +36,11 @@ export default async function AdminMailingPage({ searchParams }: PageProps<"/adm
         </div>
       </div>
       <p className="mt-1 text-sm text-text-muted">
-        {activeCount === 1 ? "1 ingeschreven adres" : `${activeCount} ingeschreven adressen`}, via het vinkje in de checkout. De export
-        bevat enkel wie nog ingeschreven is. Vraagt iemand om uitgeschreven te worden, zet het adres hier op uitgeschreven.
+        {activeCount === 1 ? "1 ingeschreven adres" : `${activeCount} ingeschreven adressen`}, via het vinkje in de checkout.{" "}
+        {resend
+          ? "Nieuwe inschrijvingen komen vanzelf in Resend, net als wie je hier uitschrijft; wie zich via de link in een mail uitschrijft, staat hier daarna ook op uitgeschreven. Synchroniseer om de bestaande lijst in één keer naar Resend te zetten, of na een storing."
+          : "Resend is niet ingesteld (RESEND_API_KEY): exporteer de lijst als CSV."}{" "}
+        Vraagt iemand om uitgeschreven te worden, zet het adres hier op uitgeschreven.
       </p>
 
       {subscribers.length === 0 ? (

@@ -32,6 +32,10 @@ const schema = z.object({
   RESEND_API_KEY: optional(z.string().min(1)),
   EMAIL_FROM: optional(z.string().min(3)), // e.g. "Palleys <bestellingen@palleys.be>", domain verified in Resend
   EMAIL_REPLY_TO: optional(z.email()),
+  // The Resend segment the mailing list syncs into (Audience → Segments, a uuid). Unset = contacts without a segment.
+  RESEND_SEGMENT_ID: optional(z.uuid()),
+  // Signs the contact webhooks to /api/webhooks/resend (Resend → Webhooks → signing secret). Unset = they're refused.
+  RESEND_WEBHOOK_SECRET: optional(z.string().regex(/^whsec_[A-Za-z0-9+/=]+$/, "expected whsec_…")),
   // Bearer secret for /api/cron/* (expiring unpaid orders). Unset = the cron route refuses every call.
   CRON_SECRET: optional(z.string().min(32)),
 });

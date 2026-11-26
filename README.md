@@ -32,7 +32,8 @@ via "terug" van Stripe (`cancelled=1`), dan sluit de server de nog open session,
 nieuwe poging kan gebeuren.
 
 Env vars (zie `.env.example`): `STRIPE_SECRET`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PAYMENT_METHOD_CONFIG` (test en live
-hebben elk eigen waarden), `RESEND_API_KEY` + `EMAIL_FROM` (bevestigingsmails), `CRON_SECRET`. `STRIPE_PUBLIC` wordt niet
+hebben elk eigen waarden), `RESEND_API_KEY` + `EMAIL_FROM` (bevestigingsmails), `RESEND_SEGMENT_ID` + `RESEND_WEBHOOK_SECRET` (mailinglijst naar
+Resend, webhook op `/api/webhooks/resend` met `contact.updated` en `contact.deleted`), `CRON_SECRET`. `STRIPE_PUBLIC` wordt niet
 gebruikt. De Stripe-API-versie staat vast in `src/core/networking/external/stripe-client.ts`.
 
 Lokaal testen met echte testbetalingen (http://localhost volstaat):

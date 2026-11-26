@@ -19,7 +19,7 @@ export class EmailError extends Error {
   }
 }
 
-function resendMessage(data: unknown) {
+export function resendMessage(data: unknown) {
   const message = (data as { message?: unknown } | undefined)?.message;
   return typeof message === "string" ? message.replace(/\S+@\S+/g, "[e-mail]").slice(0, 200) : null;
 }
